@@ -1,0 +1,264 @@
+
+package pseudo.gen;
+
+
+import java.io.File;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.concurrent.Callable;
+
+import jp.ac.ut.csis.pflow.routing4.res.Network;
+import network.DrmLoader;
+import pseudo.acs.CensusODAccessor;
+import pseudo.acs.DataAccessor;
+import pseudo.acs.MNLParamAccessor;
+import pseudo.acs.MkChainAccessor;
+import pseudo.acs.PersonAccessor;
+import pseudo.acs.CensusODAccessor.EType;
+import pseudo.res.Activity;
+import pseudo.res.CensusOD;
+import pseudo.res.City;
+import pseudo.res.EGender;
+import pseudo.res.ELabor;
+import pseudo.res.EMarkov;
+import pseudo.res.EPurpose;
+import pseudo.res.ETransition;
+import pseudo.res.HouseHold;
+import pseudo.res.Japan;
+import pseudo.res.GLonLat;
+import pseudo.res.Person;
+import utils.Roulette;
+
+public class Commuter extends ActGenerator {
+
+	private CensusODAccessor odAcs;
+	
+	public Commuter(Japan japan, 
+			Map<EMarkov,Map<EGender,MkChainAccessor>> mrkAcsMap, 
+			MNLParamAccessor mnlAcs,
+			CensusODAccessor odAcs) {
+		super(japan, mnlAcs, mrkAcsMap);
+		this.odAcs = odAcs;
+	}
+	
+	private class ActivityTask implements Callable<Integer> {
+		private int id;
+		private List<HouseHold> households;
+		private Map<Integer, Integer> mapMotif;
+		private int error;
+		private int total;
+
+		public ActivityTask(int id, List<HouseHold> households,
+				Map<Integer, Integer> mapMotif){
+			this.id = id;
+			this.households = households;
+			this.mapMotif = mapMotif;
+			this.total = error = 0;
+		}	
+		
+		private GLonLat choiceOffice(GLonLat home, EGender gender) {
+			City city = japan.getCity(home.getGcode());
+			CensusOD censusOD = odAcs.get(EType.COMMUTER, city.getId());
+			if (censusOD != null) {
+				List<Double> capacities = censusOD.getCapacities(gender);
+				if (capacities.size() > 0) {
+					int choice = Roulette.choice(capacities, getRandom());	
+					boolean isHome = censusOD.isHome(choice);
+					if (isHome) {
+						return home;
+					}else {
+						String cityName = censusOD.getDestination(gender, choice);
+						City dcity = japan.getCity(cityName);
+						if (dcity != null) {
+							if (city.getId().equals(dcity.getId()) != true) {
+								return choiceDestination(dcity, ETransition.OFFICE, gender);
+							}else {
+								return choiceDestination2(home, dcity, ETransition.OFFICE, gender);
+							}
+						}
+					}
+				}
+			}
+			return null;
+		}
+
+		private ETransition freeTransitionFilter(ETransition transition) {
+			if (	transition != ETransition.STAY && 
+					transition != ETransition.HOME && 
+					transition != ETransition.SHOPPING &&  
+					transition != ETransition.EATING &&  
+					transition != ETransition.HOSPITAL &&  
+					transition != ETransition.FREE && 
+					transition != ETransition.BUSINESS) {
+				transition = ETransition.FREE;
+			}
+			return transition;
+		}
+		
+		private int createActivities(HouseHold household, Person person) {
+			GLonLat home = new GLonLat(household.getHome(), household.getGcode());
+			EGender gender = person.getGender();
+		
+			// Markov Accessor
+			MkChainAccessor mkAcs = mrkAcsMap.get(EMarkov.LABOR).get(gender);
+			boolean senior = person.getAge() >= 65;
+			
+			// first activity
+			EPurpose prePurpose = EPurpose.HOME;
+			Activity homeAct = new Activity(home, 0, 24*3600, EPurpose.HOME);
+			person.addAcitivity(homeAct);
+			
+			// second... activity
+			GLonLat curloc = home;
+			Activity preAct = homeAct;
+			for (int i = 3*3600; i < 3600*24; i += timeInterval) {
+				ETransition transition = null;
+				List<Double> probs = mkAcs.getProbs(i, prePurpose);
+
+				double randomValue = getRandom();
+				int choice = Roulette.choice(probs, randomValue);
+				transition = mkAcs.getTransition(choice);
+				
+				EPurpose purpose = transition.getPurpose();
+				
+				if (transition != ETransition.STAY) {
+					// choice destination
+					if (transition == ETransition.HOME) {
+						curloc = home;
+					}else if (transition == ETransition.OFFICE) {
+						curloc = person.hasOffice() ? person.getOffice() : choiceOffice(home, gender); 
+						person.setOffice(curloc);
+					}else {
+						transition = freeTransitionFilter(transition);
+						curloc = choiceFreeDestination(curloc, transition, senior, gender, person.getLabor());
+					}
+					if (curloc == null) {
+						person.getActivities().clear();
+						person.addAcitivity(homeAct);
+						return 3;
+					}
+					
+					// Create an activity
+					preAct = Commuter.createActivity(preAct, curloc, i, 3600*24, purpose);
+					person.getActivities().add(preAct);
+					
+					prePurpose = purpose;
+				}
+			}					
+			return 0;
+		}
+		
+		private void process(HouseHold household) {
+			for (Person person : household.getListPersons()) {
+				int res = createActivities(household, person);
+				if (res == 0) {
+					int motif = setMotif(person);
+					synchronized(mapMotif) {
+						int vol = mapMotif.containsKey(motif) ? mapMotif.get(motif) : 0;
+						mapMotif.put(motif, vol + 1);
+					}
+				}else {
+					this.error++;
+				}
+				this.total++;
+			}
+		}
+
+		@Override
+		public Integer call() throws Exception {
+			try {
+				for (HouseHold household : households) {
+					process(household);		
+				}
+			}catch(Exception e) {
+				e.printStackTrace();
+			}
+			System.out.println(String.format("[%d]-%d-%d",id, error, total));
+			return 0;
+		}
+	}
+	
+	protected Callable<Integer> createTask(Map<Integer, Integer> mapMotif, int id, List<HouseHold> households){
+		return new ActivityTask(id, households, mapMotif);
+	}
+
+	public static void main(String[] args) {
+		
+		Japan japan = new Japan();
+		
+		System.out.println("start");
+
+		String root = "/home/ubuntu/Data/pseudo/";
+		String inputDir = "/home/ubuntu/Data/pseudo/processing/";
+		
+		// load data
+		String stationFile = String.format("%sbase_station.csv", inputDir);
+		Network station = DataAccessor.loadLocationData(stationFile);
+		japan.setStation(station);
+		
+		String cityFile = String.format("%scity_boundary.csv", inputDir);
+		DataAccessor.loadCityData(cityFile, japan);
+	
+		String censusFile = String.format("%scity_census_od.csv", inputDir);
+		CensusODAccessor odAcs = new CensusODAccessor(censusFile, japan);
+		
+		String hospitalFile = String.format("%scity_hospital.csv", inputDir);
+		DataAccessor.loadHospitalData(hospitalFile, japan);
+				
+		String meshFile = String.format("%smesh_ecensus.csv", inputDir);
+		DataAccessor.loadEconomiｃCensus(meshFile, japan);
+				
+		// load data after ecensus
+		String tatemonFile = String.format("%scity_tatemono.csv", inputDir);
+		DataAccessor.loadZenrinTatemono(tatemonFile, japan, 1);
+
+		// load markov chains
+		Map<EMarkov,Map<EGender,MkChainAccessor>> mrkMap = new HashMap<>();
+		{
+			String maleFile = String.format("%s/markov/tky2008_trip_01-10_labor_male_prob.csv", inputDir);
+			String femaleFile = String.format("%s/markov/tky2008_trip_01-10_labor_female_prob.csv", inputDir);
+			Map<EGender, MkChainAccessor> map = new HashMap<>();
+			map.put(EGender.MALE, new MkChainAccessor(maleFile));
+			map.put(EGender.FEMALE, new MkChainAccessor(femaleFile));
+			mrkMap.put(EMarkov.LABOR, map);
+		}		
+		
+		// load MNL parmaters
+		String mnlFile = String.format("%s/mnl/labor_params.csv", inputDir);
+		MNLParamAccessor mnlAcs = new MNLParamAccessor();
+		mnlAcs.add(mnlFile, ELabor.WORKER);
+		
+		int mfactor = 1;
+		
+		// create activities
+		Commuter worker = new Commuter(japan, mrkMap, mnlAcs, odAcs);
+		String outputDir = String.format("%s/activity/", root);
+
+
+		long starttime = System.currentTimeMillis();
+		int start = 2;
+		for (int i = start; i <= 2; i++) {
+			// create directory
+			File prefDir = new File(outputDir, String.valueOf(i));
+			System.out.println("Start prefecture:" + i + prefDir.mkdirs());
+			File householdDir = new File(String.format("%s/agent/", root), String.valueOf(i));
+			// String householdDir = String.format("%s/agent/", root);
+
+			for (File file : householdDir.listFiles()) {
+				if (file.getName().contains(".csv")) {
+					List<HouseHold> households = PersonAccessor.load(file.getAbsolutePath(), new ELabor[]{ELabor.WORKER}, mfactor);
+					System.out.println(file.getName() + " " + households.size());
+					worker.assign(households);
+					String resultName = String.format("%s%s%s%s_labor.csv", outputDir, i, "/", file.getName().replaceAll(".csv", ""));
+					PersonAccessor.writeActivities(resultName, households);
+				}
+			}
+			System.out.println("end");
+			long endtime = System.currentTimeMillis();
+			System.out.println(endtime-starttime);
+		}
+	}
+
+}

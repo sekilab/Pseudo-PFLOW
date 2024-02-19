@@ -1,0 +1,108 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>DSPFlow</groupId>
+  <artifactId>DSPFlow</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <geotools.version>26-SNAPSHOT</geotools.version>
+		
+		<java.version>1.8</java.version>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+
+    </properties>
+
+
+   
+  <dependencies>
+<!-- https://mvnrepository.com/artifact/org.geotools/geotools -->
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.geotools</groupId>
+            <artifactId>gt-shapefile</artifactId>
+            <version>${geotools.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.geotools</groupId>
+            <artifactId>gt-swing</artifactId>
+            <version>${geotools.version}</version>
+        </dependency>
+	<dependency>
+		<groupId>com.vividsolutions</groupId>
+		<artifactId>jts</artifactId>
+		<version>1.13</version>
+	</dependency>
+	<!-- https://mvnrepository.com/artifact/commons-lang/commons-lang -->
+	<dependency>
+	    <groupId>commons-lang</groupId>
+	    <artifactId>commons-lang</artifactId>
+	    <version>2.6</version>
+	</dependency>
+			<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-math</artifactId>
+			<version>2.2</version>
+		</dependency>
+		
+	   	<dependency>
+    <groupId>org.json</groupId>
+    <artifactId>json</artifactId>
+    <version>20200518</version>
+   </dependency>
+   
+   <dependency>
+	<groupId>org.opentripplanner</groupId>
+	<artifactId>otp</artifactId>
+	<version>1.4.0</version>
+   </dependency>
+	
+  </dependencies>
+      <repositories>
+      <repository>
+        <id>osgeo</id>
+        <name>OSGeo Release Repository</name>
+        <url>https://repo.osgeo.org/repository/release/</url>
+        <snapshots><enabled>false</enabled></snapshots>
+        <releases><enabled>true</enabled></releases>
+      </repository>
+      <repository>
+        <id>osgeo-snapshot</id>
+        <name>OSGeo Snapshot Repository</name>
+        <url>https://repo.osgeo.org/repository/snapshot/</url>
+        <snapshots><enabled>true</enabled></snapshots>
+        <releases><enabled>false</enabled></releases>
+      </repository>
+    </repositories>
+    
+    <build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.0</version>
+				<configuration>
+					<source>8</source>
+					<target>8</target>
+				</configuration>
+			</plugin>
+			<plugin>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<version>3.1.0</version>
+				<configuration>
+					<descriptorRefs>
+						<descriptorRef>jar-with-dependencies</descriptorRef>
+					</descriptorRefs>
+				</configuration>
+				</plugin>
+		</plugins>
+	</build>
+</project>
