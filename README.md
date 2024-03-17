@@ -1,5 +1,71 @@
 # DSPFlow
 
+# DSPFlow
+
+DSPFlow is a data processing framework designed for converting complex datasets into meaningful insights through a series of processing steps.
+
+## Prerequisites
+
+Before running the program, ensure Maven 3.6.3 is installed as versions after 3.8 might not be compatible with this project. Follow these steps to install Maven 3.6.3:
+
+1. Download Maven 3.6.3:
+
+    ```bash
+    wget https://archive.apache.org/dist/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz
+    ```
+
+2. Extract the archive to `/opt`:
+
+    ```bash
+    sudo tar -xvzf apache-maven-3.6.3-bin.tar.gz -C /opt
+    ```
+
+3. Add Maven to your environment variables:
+
+    ```bash
+    export M2_HOME=/opt/apache-maven-3.6.3
+    export MAVEN_HOME=/opt/apache-maven-3.6.3
+    export PATH=$PATH:$M2_HOME/bin
+    ```
+
+4. Verify the Maven installation:
+
+    ```bash
+    mvn --version
+    ```
+
+### Configuring IntelliJ IDEA to Use Maven 3.6.3
+
+- Open `File > Settings` (or `IntelliJ IDEA > Preferences` on macOS).
+- Navigate to `Build, Execution, Deployment > Build Tools > Maven`.
+- Ensure the `Maven home directory` points to your installed Maven directory (`/opt/apache-maven-3.6.3`).
+- Click `OK` or `Apply` to apply the changes.
+
+### Troubleshooting Maven Environment
+
+If you encounter any issues with Maven configuration or dependencies are not being correctly downloaded, contact the project administrator for a backup of the `.m2/repository` directory, which contains all the necessary dependencies. To use the backup:
+
+1. Extract the backup `.m2/repository` directory.
+2. Copy it into your local `.m2` directory, usually located at `~/.m2/` on UNIX-like systems or `C:\Users\<YourUsername>\.m2\` on Windows.
+3. Merge the directory if it already exists to ensure no existing dependencies are lost.
+
+### Adding `pflowlib.jar` to Libraries
+
+If `pflowlib.jar` needs to be included in the project:
+
+- Open `File > Project Structure` in IntelliJ IDEA.
+- Go to `Libraries` and click the `+` sign to add a new library.
+- Navigate to the location of `pflowlib.jar`, select it, and add it to the project.
+
+## Ensure Correct Run Configuration
+
+If you face issues with Run Configuration:
+
+- Check `Project Structure > Modules` and ensure the `Sources` and `Resources` tags are set correctly for your project directories.
+- Under `Paths`, confirm the `Output path` and `Test output path` are directed to the intended directories, usually `target/classes` and `target/test-classes`.
+
+
+
 ## 0. Data prosessing
 ### Processing steps
 Household data -> Person data-> Activity data -> Trip data -> Trajectory dat -> Aggregated data
