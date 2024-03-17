@@ -2,15 +2,11 @@
 package pseudo.gen;
 
 
-import java.io.File;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.io.*;
+import java.util.*;
 import java.util.concurrent.Callable;
 
 import jp.ac.ut.csis.pflow.routing4.res.Network;
-import network.DrmLoader;
 import pseudo.acs.CensusODAccessor;
 import pseudo.acs.DataAccessor;
 import pseudo.acs.MNLParamAccessor;
@@ -33,7 +29,7 @@ import utils.Roulette;
 
 public class Commuter extends ActGenerator {
 
-	private CensusODAccessor odAcs;
+	private final CensusODAccessor odAcs;
 	
 	public Commuter(Japan japan, 
 			Map<EMarkov,Map<EGender,MkChainAccessor>> mrkAcsMap, 
@@ -44,9 +40,9 @@ public class Commuter extends ActGenerator {
 	}
 	
 	private class ActivityTask implements Callable<Integer> {
-		private int id;
-		private List<HouseHold> households;
-		private Map<Integer, Integer> mapMotif;
+		private final int id;
+		private final List<HouseHold> households;
+		private final Map<Integer, Integer> mapMotif;
 		private int error;
 		private int total;
 
@@ -63,7 +59,7 @@ public class Commuter extends ActGenerator {
 			CensusOD censusOD = odAcs.get(EType.COMMUTER, city.getId());
 			if (censusOD != null) {
 				List<Double> capacities = censusOD.getCapacities(gender);
-				if (capacities.size() > 0) {
+				if (!capacities.isEmpty()) {
 					int choice = Roulette.choice(capacities, getRandom());	
 					boolean isHome = censusOD.isHome(choice);
 					if (isHome) {
@@ -72,7 +68,7 @@ public class Commuter extends ActGenerator {
 						String cityName = censusOD.getDestination(gender, choice);
 						City dcity = japan.getCity(cityName);
 						if (dcity != null) {
-							if (city.getId().equals(dcity.getId()) != true) {
+							if (!city.getId().equals(dcity.getId())) {
 								return choiceDestination(dcity, ETransition.OFFICE, gender);
 							}else {
 								return choiceDestination2(home, dcity, ETransition.OFFICE, gender);
@@ -156,7 +152,7 @@ public class Commuter extends ActGenerator {
 				if (res == 0) {
 					int motif = setMotif(person);
 					synchronized(mapMotif) {
-						int vol = mapMotif.containsKey(motif) ? mapMotif.get(motif) : 0;
+						int vol = mapMotif.getOrDefault(motif, 0);
 						mapMotif.put(motif, vol + 1);
 					}
 				}else {
@@ -175,7 +171,7 @@ public class Commuter extends ActGenerator {
 			}catch(Exception e) {
 				e.printStackTrace();
 			}
-			System.out.println(String.format("[%d]-%d-%d",id, error, total));
+			System.out.printf("[%d]-%d-%d%n",id, error, total);
 			return 0;
 		}
 	}
@@ -184,81 +180,93 @@ public class Commuter extends ActGenerator {
 		return new ActivityTask(id, households, mapMotif);
 	}
 
-	public static void main(String[] args) {
-		
-		Japan japan = new Japan();
-		
-		System.out.println("start");
+	public static void main(String[] args) throws IOException {
 
-		String root = "/home/ubuntu/Data/pseudo/";
-		String inputDir = "/home/ubuntu/Data/pseudo/processing/";
-		
-		// load data
-		String stationFile = String.format("%sbase_station.csv", inputDir);
-		Network station = DataAccessor.loadLocationData(stationFile);
-		japan.setStation(station);
-		
-		String cityFile = String.format("%scity_boundary.csv", inputDir);
-		DataAccessor.loadCityData(cityFile, japan);
-	
-		String censusFile = String.format("%scity_census_od.csv", inputDir);
-		CensusODAccessor odAcs = new CensusODAccessor(censusFile, japan);
-		
-		String hospitalFile = String.format("%scity_hospital.csv", inputDir);
-		DataAccessor.loadHospitalData(hospitalFile, japan);
-				
-		String meshFile = String.format("%smesh_ecensus.csv", inputDir);
-		DataAccessor.loadEconomiｃCensus(meshFile, japan);
-				
-		// load data after ecensus
-		String tatemonFile = String.format("%scity_tatemono.csv", inputDir);
-		DataAccessor.loadZenrinTatemono(tatemonFile, japan, 1);
+        Japan japan = new Japan();
 
-		// load markov chains
-		Map<EMarkov,Map<EGender,MkChainAccessor>> mrkMap = new HashMap<>();
-		{
-			String maleFile = String.format("%s/markov/tky2008_trip_01-10_labor_male_prob.csv", inputDir);
-			String femaleFile = String.format("%s/markov/tky2008_trip_01-10_labor_female_prob.csv", inputDir);
-			Map<EGender, MkChainAccessor> map = new HashMap<>();
-			map.put(EGender.MALE, new MkChainAccessor(maleFile));
-			map.put(EGender.FEMALE, new MkChainAccessor(femaleFile));
-			mrkMap.put(EMarkov.LABOR, map);
-		}		
-		
-		// load MNL parmaters
-		String mnlFile = String.format("%s/mnl/labor_params.csv", inputDir);
-		MNLParamAccessor mnlAcs = new MNLParamAccessor();
-		mnlAcs.add(mnlFile, ELabor.WORKER);
-		
-		int mfactor = 1;
-		
-		// create activities
-		Commuter worker = new Commuter(japan, mrkMap, mnlAcs, odAcs);
-		String outputDir = String.format("%s/activity/", root);
+        System.out.println("start");
 
+		String inputDir = null;
+		String root = null;
 
-		long starttime = System.currentTimeMillis();
-		int start = 2;
-		for (int i = start; i <= 2; i++) {
-			// create directory
-			File prefDir = new File(outputDir, String.valueOf(i));
-			System.out.println("Start prefecture:" + i + prefDir.mkdirs());
-			File householdDir = new File(String.format("%s/agent/", root), String.valueOf(i));
-			// String householdDir = String.format("%s/agent/", root);
-
-			for (File file : householdDir.listFiles()) {
-				if (file.getName().contains(".csv")) {
-					List<HouseHold> households = PersonAccessor.load(file.getAbsolutePath(), new ELabor[]{ELabor.WORKER}, mfactor);
-					System.out.println(file.getName() + " " + households.size());
-					worker.assign(households);
-					String resultName = String.format("%s%s%s%s_labor.csv", outputDir, i, "/", file.getName().replaceAll(".csv", ""));
-					PersonAccessor.writeActivities(resultName, households);
-				}
-			}
-			System.out.println("end");
-			long endtime = System.currentTimeMillis();
-			System.out.println(endtime-starttime);
+		InputStream inputStream = Commuter.class.getClassLoader().getResourceAsStream("config.properties");
+		if (inputStream == null) {
+			throw new FileNotFoundException("config.properties file not found in the classpath");
 		}
-	}
+		Properties prop = new Properties();
+		prop.load(inputStream);
+
+		root = prop.getProperty("root");
+		inputDir = prop.getProperty("inputDir");
+		System.out.println("Root Directory: " + root);
+		System.out.println("Input Directory: " + inputDir);
+
+        // load data
+        String stationFile = String.format("%sbase_station.csv", inputDir);
+        Network station = DataAccessor.loadLocationData(stationFile);
+        japan.setStation(station);
+
+        String cityFile = String.format("%scity_boundary.csv", inputDir);
+        DataAccessor.loadCityData(cityFile, japan);
+
+        String censusFile = String.format("%scity_census_od.csv", inputDir);
+        CensusODAccessor odAcs = new CensusODAccessor(censusFile, japan);
+
+        String hospitalFile = String.format("%scity_hospital.csv", inputDir);
+        DataAccessor.loadHospitalData(hospitalFile, japan);
+
+        String meshFile = String.format("%smesh_ecensus.csv", inputDir);
+        DataAccessor.loadEconomiｃCensus(meshFile, japan);
+
+        // load data after economic census
+        String tatemonFile = String.format("%scity_tatemono.csv", inputDir);
+        DataAccessor.loadZenrinTatemono(tatemonFile, japan, 1);
+
+        // load markov chains
+        Map<EMarkov, Map<EGender, MkChainAccessor>> mrkMap = new HashMap<>();
+        {
+            String maleFile = String.format("%s/markov/tky2008_trip_01-10_labor_male_prob.csv", inputDir);
+            String femaleFile = String.format("%s/markov/tky2008_trip_01-10_labor_female_prob.csv", inputDir);
+            Map<EGender, MkChainAccessor> map = new HashMap<>();
+            map.put(EGender.MALE, new MkChainAccessor(maleFile));
+            map.put(EGender.FEMALE, new MkChainAccessor(femaleFile));
+            mrkMap.put(EMarkov.LABOR, map);
+        }
+
+        // load MNL parmaters
+        String mnlFile = String.format("%s/mnl/labor_params.csv", inputDir);
+        MNLParamAccessor mnlAcs = new MNLParamAccessor();
+        mnlAcs.add(mnlFile, ELabor.WORKER);
+
+        int mfactor = 1;
+
+        // create activities
+        Commuter worker = new Commuter(japan, mrkMap, mnlAcs, odAcs);
+        String outputDir = String.format("%s/activity/", root);
+
+
+        long starttime = System.currentTimeMillis();
+        int start = 2;
+        for (int i = start; i <= 2; i++) {
+            // create directory
+            File prefDir = new File(outputDir, String.valueOf(i));
+            System.out.println("Start prefecture:" + i + prefDir.mkdirs());
+            File householdDir = new File(String.format("%s/agent/", root), String.valueOf(i));
+            // String householdDir = String.format("%s/agent/", root);
+
+            for (File file : householdDir.listFiles()) {
+                if (file.getName().contains(".csv")) {
+                    List<HouseHold> households = PersonAccessor.load(file.getAbsolutePath(), new ELabor[]{ELabor.WORKER}, mfactor);
+                    System.out.println(file.getName() + " " + households.size());
+                    worker.assign(households);
+                    String resultName = String.format("%s%s%s%s_labor.csv", outputDir, i, "/", file.getName().replaceAll(".csv", ""));
+                    PersonAccessor.writeActivities(resultName, households);
+                }
+            }
+            System.out.println("end");
+            long endtime = System.currentTimeMillis();
+            System.out.println(endtime - starttime);
+        }
+    }
 
 }

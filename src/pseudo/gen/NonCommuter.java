@@ -1,9 +1,13 @@
 package pseudo.gen;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.Callable;
 
 import jp.ac.ut.csis.pflow.routing4.res.Network;
@@ -141,14 +145,26 @@ public class NonCommuter extends ActGenerator {
 		return new ActivityTask(id, households, mapMotif);
 	}
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 
 		Japan japan = new Japan();
 
 		System.out.println("start");
 
-		String root = "/home/ubuntu/Data/pseudo/";
-		String inputDir = "/home/ubuntu/Data/pseudo/processing/";
+		String inputDir = null;
+		String root = null;
+
+		InputStream inputStream = Commuter.class.getClassLoader().getResourceAsStream("config.properties");
+		if (inputStream == null) {
+			throw new FileNotFoundException("config.properties file not found in the classpath");
+		}
+		Properties prop = new Properties();
+		prop.load(inputStream);
+
+		root = prop.getProperty("root");
+		inputDir = prop.getProperty("inputDir");
+		System.out.println("Root Directory: " + root);
+		System.out.println("Input Directory: " + inputDir);
 
 		// load data
 		String stationFile = String.format("%sbase_station.csv", inputDir);

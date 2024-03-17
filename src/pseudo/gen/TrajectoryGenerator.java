@@ -1,6 +1,9 @@
 package pseudo.gen;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -237,9 +240,19 @@ public class TrajectoryGenerator {
 		return node;
 	}
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 
-		String dir = "/home/ubuntu/Data/pseudo/";
+		String dir;
+
+		InputStream inputStream = Commuter.class.getClassLoader().getResourceAsStream("config.properties");
+		if (inputStream == null) {
+			throw new FileNotFoundException("config.properties file not found in the classpath");
+		}
+		Properties prop = new Properties();
+		prop.load(inputStream);
+
+		dir = prop.getProperty("root");
+		System.out.println("Root Directory: " + dir);
 		String roaddir = String.format("%sprocessing/network/", dir);
 		
 		int start = 14;

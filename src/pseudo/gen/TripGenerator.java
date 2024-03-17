@@ -1,8 +1,12 @@
 package pseudo.gen;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -242,13 +246,23 @@ public class TripGenerator {
 	}
 	
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		
 		Japan japan = new Japan();
 		
 		System.out.println("start");
-		
-		String dir = "/home/ubuntu/Data/pseudo/";
+
+		String dir;
+
+		InputStream inputStream = Commuter.class.getClassLoader().getResourceAsStream("config.properties");
+		if (inputStream == null) {
+			throw new FileNotFoundException("config.properties file not found in the classpath");
+		}
+		Properties prop = new Properties();
+		prop.load(inputStream);
+
+		dir = prop.getProperty("root");
+		System.out.println("Root Directory: " + dir);
 		
 		int mfactor = 1;
 		
