@@ -178,7 +178,7 @@ public class NonCommuter extends ActGenerator {
 		DataAccessor.loadHospitalData(hospitalFile, japan);
 
 		String meshFile = String.format("%smesh_ecensus.csv", inputDir);
-		DataAccessor.loadEconomiｃCensus(meshFile, japan);
+		DataAccessor.loadEconomicCensus(meshFile, japan);
 
 		// load data after ecensus
 		String tatemonFile = String.format("%scity_tatemono.csv", inputDir);

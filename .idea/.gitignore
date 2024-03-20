@@ -1,3 +1,6 @@
 # Default ignored files
 /shelf/
 /workspace.xml
+/src/main/resources/config.properties
+/target/
+pom.xml

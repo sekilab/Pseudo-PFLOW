@@ -216,7 +216,7 @@ public class Commuter extends ActGenerator {
         DataAccessor.loadHospitalData(hospitalFile, japan);
 
         String meshFile = String.format("%smesh_ecensus.csv", inputDir);
-        DataAccessor.loadEconomiｃCensus(meshFile, japan);
+        DataAccessor.loadEconomicCensus(meshFile, japan);
 
         // load data after economic census
         String tatemonFile = String.format("%scity_tatemono.csv", inputDir);
@@ -225,8 +225,10 @@ public class Commuter extends ActGenerator {
         // load markov chains
         Map<EMarkov, Map<EGender, MkChainAccessor>> mrkMap = new HashMap<>();
         {
-            String maleFile = String.format("%s/markov/tky2008_trip_01-10_labor_male_prob.csv", inputDir);
-            String femaleFile = String.format("%s/markov/tky2008_trip_01-10_labor_female_prob.csv", inputDir);
+//            String maleFile = String.format("%s/markov/tokyo2018_trip_labor_male_prob.csv", inputDir);
+//            String femaleFile = String.format("%s/markov/tokyo2018_trip_labor_female_prob.csv", inputDir);
+			String maleFile = String.format("%s/markov/tky2008_trip_01-10_labor_male_prob.csv", inputDir);
+			String femaleFile = String.format("%s/markov/tky2008_trip_01-10_labor_female_prob.csv", inputDir);
             Map<EGender, MkChainAccessor> map = new HashMap<>();
             map.put(EGender.MALE, new MkChainAccessor(maleFile));
             map.put(EGender.FEMALE, new MkChainAccessor(femaleFile));
@@ -244,10 +246,9 @@ public class Commuter extends ActGenerator {
         Commuter worker = new Commuter(japan, mrkMap, mnlAcs, odAcs);
         String outputDir = String.format("%s/activity/", root);
 
-
         long starttime = System.currentTimeMillis();
-        int start = 2;
-        for (int i = start; i <= 2; i++) {
+        int start = 8;
+        for (int i = start; i <= 9; i++) {
             // create directory
             File prefDir = new File(outputDir, String.valueOf(i));
             System.out.println("Start prefecture:" + i + prefDir.mkdirs());

@@ -22,14 +22,14 @@ public class DataAccessor {
 	
 	public static Network loadLocationData(String filename){
 		Network res = new Network();
-		try (BufferedReader br = new BufferedReader(new FileReader(filename));){
+		try (BufferedReader br = new BufferedReader(new FileReader(filename))){
             String line;
             br.readLine();
             while ((line = br.readLine()) != null) {
             	String[] items = line.split(",");
             	String id = items[0];
-            	double x = Double.valueOf(items[1]);
-            	double y = Double.valueOf(items[2]);
+            	double x = Double.parseDouble(items[1]);
+            	double y = Double.parseDouble(items[2]);
                 res.addNode(new Node(id, x, y));
             }
         } catch (Exception e) {
@@ -39,15 +39,15 @@ public class DataAccessor {
 	}
 	
 	public static int loadPreSchoolData(String filename, Japan japan){
-		try (BufferedReader br = new BufferedReader(new FileReader(filename));){
+		try (BufferedReader br = new BufferedReader(new FileReader(filename))){
             String line;
             br.readLine();
             while ((line = br.readLine()) != null) {
             	String[] items = line.split(",");
             	String gcode = items[0];
-            	int id = Integer.valueOf(items[1]);
-            	double x = Double.valueOf(items[2]);
-            	double y = Double.valueOf(items[3]);
+            	int id = Integer.parseInt(items[1]);
+            	double x = Double.parseDouble(items[2]);
+            	double y = Double.parseDouble(items[3]);
             	Facility school = new Facility(id, x, y, gcode, 300);
                 City city = japan.getCity(gcode);
                 if (city != null) {
@@ -61,16 +61,16 @@ public class DataAccessor {
 	}
 	
 	public static int loadSchoolData(String filename, Japan japan){
-		try (BufferedReader br = new BufferedReader(new FileReader(filename));){
+		try (BufferedReader br = new BufferedReader(new FileReader(filename))){
             String line;
             br.readLine();
             while ((line = br.readLine()) != null) {
             	String[] items = line.split(",");
-            	int id = Integer.valueOf(items[0]);
+            	int id = Integer.parseInt(items[0]);
             	String gcode = items[1];
             	String type = items[2];
-            	double x = Double.valueOf(items[3]);
-            	double y = Double.valueOf(items[4]);
+            	double x = Double.parseDouble(items[3]);
+            	double y = Double.parseDouble(items[4]);
             	Facility school = new Facility(id, x, y, gcode, 0);
                 City city = japan.getCity(gcode);
                 if (city != null) {
@@ -99,21 +99,21 @@ public class DataAccessor {
             while ((line = br.readLine()) != null) {
             	String[] items = line.split(",");
             	String gcode = items[0];
-            	boolean daitoshi = Boolean.valueOf(items[1]);
+            	boolean daitoshi = Boolean.parseBoolean(items[1]);
             	EPTCity ptcity = daitoshi ? EPTCity.BIG3 : EPTCity.NO_BIG3;
         
-            	double city_pop = Double.valueOf(items[2]);
+            	double city_pop = Double.parseDouble(items[2]);
             	ECity type = ECity.UNDER10;
             	if (city_pop >= 500000) {
             		type = ECity.UPPER50;
             	}else if (city_pop >= 100000) {
             		type = ECity.UPPER10; // UPPER50->UPPER10
             	}
-            	double area = Double.valueOf(items[3]);
-            	double pop_ratio = Double.valueOf(items[4]);
-            	double office_ratio = Double.valueOf(items[5]);
-            	double lon = Double.valueOf(items[6]);
-            	double lat = Double.valueOf(items[7]);
+            	double area = Double.parseDouble(items[3]);
+            	double pop_ratio = Double.parseDouble(items[4]);
+            	double office_ratio = Double.parseDouble(items[5]);
+            	double lon = Double.parseDouble(items[6]);
+            	double lat = Double.parseDouble(items[7]);
             	new City(japan, gcode, ptcity, 
             			type, area, pop_ratio, office_ratio,
             			new LonLat(lon, lat));
@@ -183,8 +183,8 @@ public class DataAccessor {
 		return 1;
 	}
 	
-	public static int loadEconomiｃCensus(String filename, Japan japan){
-		try (BufferedReader br = new BufferedReader(new FileReader(filename));){
+	public static int loadEconomicCensus(String filename, Japan japan){
+		try (BufferedReader br = new BufferedReader(new FileReader(filename))){
             String line;
             br.readLine();
             while ((line = br.readLine()) != null) {
@@ -201,7 +201,7 @@ public class DataAccessor {
             	City city = japan.getCity(gcode);
                	if (city != null) {
                		GMesh gmesh = japan.hasMesh(mcode) ? japan.getMesh(mcode) : new GMesh(mesh);
-               		if (!(gmesh.getEconomics().size() > 0)) {
+               		if (gmesh.getEconomics().isEmpty()) {
                			gmesh.setEconomics(values);
                		}
                		city.addMesh(gmesh);
