@@ -313,7 +313,7 @@ public class Student extends ActGenerator {
 		DataAccessor.loadSchoolData(schoolFile, japan);
 				
 		String meshFile = String.format("%smesh_ecensus.csv", inputDir);
-		DataAccessor.loadEconomiｃCensus(meshFile, japan);
+		DataAccessor.loadEconomicCensus(meshFile, japan);
 
 		// load data after ecensus
 		String tatemonFile = String.format("%scity_tatemono.csv", inputDir);

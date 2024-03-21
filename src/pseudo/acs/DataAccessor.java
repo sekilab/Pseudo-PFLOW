@@ -183,7 +183,7 @@ public class DataAccessor {
 		return 1;
 	}
 	
-	public static int loadEconomiｃCensus(String filename, Japan japan){
+	public static int loadEconomicCensus(String filename, Japan japan){
 		try (BufferedReader br = new BufferedReader(new FileReader(filename));){
             String line;
             br.readLine();
