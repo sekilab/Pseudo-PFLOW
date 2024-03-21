@@ -261,7 +261,7 @@ public abstract class ActGenerator {
 		int stepSize = listSize / taskNum + (listSize % taskNum != 0 ? 1 : 0);
 		for (int i = 0; i < listSize; i+= stepSize){
 			int end = i + stepSize;
-			end = (listSize < end) ? listSize : end;
+			end = Math.min(listSize, end);
 			List<HouseHold> subList = household.subList(i, end);
 			listTasks.add(createTask(mapMotif, i/stepSize, subList));
 		}

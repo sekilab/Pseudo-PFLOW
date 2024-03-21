@@ -225,10 +225,10 @@ public class Commuter extends ActGenerator {
         // load markov chains
         Map<EMarkov, Map<EGender, MkChainAccessor>> mrkMap = new HashMap<>();
         {
-//            String maleFile = String.format("%s/markov/tokyo2018_trip_labor_male_prob.csv", inputDir);
-//            String femaleFile = String.format("%s/markov/tokyo2018_trip_labor_female_prob.csv", inputDir);
-			String maleFile = String.format("%s/markov/tky2008_trip_01-10_labor_male_prob.csv", inputDir);
-			String femaleFile = String.format("%s/markov/tky2008_trip_01-10_labor_female_prob.csv", inputDir);
+            String maleFile = String.format("%s/markov/tokyo2018_trip_labor_male_prob.csv", inputDir);
+            String femaleFile = String.format("%s/markov/tokyo2018_trip_labor_female_prob.csv", inputDir);
+//			String maleFile = String.format("%s/markov/tky2008_trip_01-10_labor_male_prob.csv", inputDir);
+//			String femaleFile = String.format("%s/markov/tky2008_trip_01-10_labor_female_prob.csv", inputDir);
             Map<EGender, MkChainAccessor> map = new HashMap<>();
             map.put(EGender.MALE, new MkChainAccessor(maleFile));
             map.put(EGender.FEMALE, new MkChainAccessor(femaleFile));
@@ -266,6 +266,7 @@ public class Commuter extends ActGenerator {
             }
             System.out.println("end");
             long endtime = System.currentTimeMillis();
+			System.out.println(worker.mapMotif);
             System.out.println(endtime - starttime);
         }
     }

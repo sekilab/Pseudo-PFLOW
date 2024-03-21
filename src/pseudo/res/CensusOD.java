@@ -63,7 +63,7 @@ public class CensusOD {
 	}
 	public List<Double> getCapacities(EGender gender){
 		List<Double> values = new ArrayList<>();
-		values.add(home.containsKey(gender) ? home.get(gender) : 0.0);
+		values.add(home.getOrDefault(gender, 0.0));
 		if (cities.containsKey(gender)) {
 			values.addAll(cities.get(gender).values());
 		}
