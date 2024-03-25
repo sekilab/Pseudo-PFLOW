@@ -9,12 +9,12 @@ import jp.ac.ut.csis.pflow.geom2.ILonLat;
 import jp.ac.ut.csis.pflow.routing4.res.Network;
 import jp.ac.ut.csis.pflow.routing4.res.Node;
 
-public class Japan {
+public class Country{
 	private Network cities;
 	private Network station;
 	private Map<String, GMesh> meshes;
 	
-	public Japan() {
+	public Country() {
 		super();
 		this.cities = new Network();
 		this.station = null;

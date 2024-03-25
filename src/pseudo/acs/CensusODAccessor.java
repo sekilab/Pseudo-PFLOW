@@ -9,7 +9,7 @@ import jp.ac.ut.csis.pflow.geom2.DistanceUtils;
 import pseudo.res.City;
 import pseudo.res.CensusOD;
 import pseudo.res.EGender;
-import pseudo.res.Japan;
+import pseudo.res.Country;
 
 public class CensusODAccessor {
 	private Map<EType, Map<String, CensusOD>> data = new HashMap<>();
@@ -41,7 +41,7 @@ public class CensusODAccessor {
 	}
 	
 	
-	public CensusODAccessor(String filename, Japan japan) {
+	public CensusODAccessor(String filename, Country japan) {
 		super();
 		this.load(filename, japan);
 	}
@@ -54,7 +54,7 @@ public class CensusODAccessor {
 		return null;
 	}
 	
-	private void load(String filename, Japan japan){
+	private void load(String filename, Country japan){
 		try (BufferedReader br = new BufferedReader(new FileReader(filename));){
             String line;
             br.readLine();

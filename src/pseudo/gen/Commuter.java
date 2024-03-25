@@ -22,7 +22,7 @@ import pseudo.res.EMarkov;
 import pseudo.res.EPurpose;
 import pseudo.res.ETransition;
 import pseudo.res.HouseHold;
-import pseudo.res.Japan;
+import pseudo.res.Country;
 import pseudo.res.GLonLat;
 import pseudo.res.Person;
 import utils.Roulette;
@@ -31,10 +31,10 @@ public class Commuter extends ActGenerator {
 
 	private final CensusODAccessor odAcs;
 	
-	public Commuter(Japan japan, 
-			Map<EMarkov,Map<EGender,MkChainAccessor>> mrkAcsMap, 
-			MNLParamAccessor mnlAcs,
-			CensusODAccessor odAcs) {
+	public Commuter(Country japan,
+					Map<EMarkov,Map<EGender,MkChainAccessor>> mrkAcsMap,
+					MNLParamAccessor mnlAcs,
+					CensusODAccessor odAcs) {
 		super(japan, mnlAcs, mrkAcsMap);
 		this.odAcs = odAcs;
 	}
@@ -182,7 +182,7 @@ public class Commuter extends ActGenerator {
 
 	public static void main(String[] args) throws IOException {
 
-        Japan japan = new Japan();
+        Country country = new Country();
 
         System.out.println("start");
 
@@ -204,31 +204,37 @@ public class Commuter extends ActGenerator {
         // load data
         String stationFile = String.format("%sbase_station.csv", inputDir);
         Network station = DataAccessor.loadLocationData(stationFile);
-        japan.setStation(station);
+        country.setStation(station);
 
         String cityFile = String.format("%scity_boundary.csv", inputDir);
-        DataAccessor.loadCityData(cityFile, japan);
+        DataAccessor.loadCityData(cityFile, country);
 
         String censusFile = String.format("%scity_census_od.csv", inputDir);
-        CensusODAccessor odAcs = new CensusODAccessor(censusFile, japan);
+        CensusODAccessor odAcs = new CensusODAccessor(censusFile, country);
 
         String hospitalFile = String.format("%scity_hospital.csv", inputDir);
-        DataAccessor.loadHospitalData(hospitalFile, japan);
+        DataAccessor.loadHospitalData(hospitalFile, country);
+
+		String restaurantFile = String.format("%scity_restaurant.csv", inputDir);
+		DataAccessor.loadRestaurantData(restaurantFile, country);
+
+		String retailFile = String.format("%scity_retail.csv", inputDir);
+		DataAccessor.loadRetailData(retailFile, country);
 
         String meshFile = String.format("%smesh_ecensus.csv", inputDir);
-        DataAccessor.loadEconomicCensus(meshFile, japan);
+        DataAccessor.loadEconomicCensus(meshFile, country);
 
         // load data after economic census
         String tatemonFile = String.format("%scity_tatemono.csv", inputDir);
-        DataAccessor.loadZenrinTatemono(tatemonFile, japan, 1);
+        DataAccessor.loadZenrinTatemono(tatemonFile, country, 1);
 
         // load markov chains
         Map<EMarkov, Map<EGender, MkChainAccessor>> mrkMap = new HashMap<>();
         {
-            String maleFile = String.format("%s/markov/tokyo2018_trip_labor_male_prob.csv", inputDir);
-            String femaleFile = String.format("%s/markov/tokyo2018_trip_labor_female_prob.csv", inputDir);
-//			String maleFile = String.format("%s/markov/tky2008_trip_01-10_labor_male_prob.csv", inputDir);
-//			String femaleFile = String.format("%s/markov/tky2008_trip_01-10_labor_female_prob.csv", inputDir);
+//            String maleFile = String.format("%s/markov/tokyo2018_trip_labor_male_prob.csv", inputDir);
+//            String femaleFile = String.format("%s/markov/tokyo2018_trip_labor_female_prob.csv", inputDir);
+			String maleFile = String.format("%s/markov/tky2008_trip_01-10_labor_male_prob.csv", inputDir);
+			String femaleFile = String.format("%s/markov/tky2008_trip_01-10_labor_female_prob.csv", inputDir);
             Map<EGender, MkChainAccessor> map = new HashMap<>();
             map.put(EGender.MALE, new MkChainAccessor(maleFile));
             map.put(EGender.FEMALE, new MkChainAccessor(femaleFile));
@@ -243,12 +249,12 @@ public class Commuter extends ActGenerator {
         int mfactor = 1;
 
         // create activities
-        Commuter worker = new Commuter(japan, mrkMap, mnlAcs, odAcs);
+        Commuter worker = new Commuter(country, mrkMap, mnlAcs, odAcs);
         String outputDir = String.format("%s/activity/", root);
 
         long starttime = System.currentTimeMillis();
-        int start = 8;
-        for (int i = start; i <= 9; i++) {
+        int start = 13;
+        for (int i = start; i <= 13; i++) {
             // create directory
             File prefDir = new File(outputDir, String.valueOf(i));
             System.out.println("Start prefecture:" + i + prefDir.mkdirs());

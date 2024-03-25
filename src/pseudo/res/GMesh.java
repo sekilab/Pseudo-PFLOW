@@ -12,13 +12,17 @@ public class GMesh{
 	private List<Facility> facilities;
 	private List<Double> economics;
 	private List<Facility> hospitals;
-	
+	private List<Facility> restaurants;
+	private List<Facility> retails;
+
 	public GMesh(String id, ILonLat lonlat) {
 		this.id = id;
 		this.lonlat = lonlat;
 		this.economics = new ArrayList<>();
 		this.facilities = new ArrayList<>();
 		this.hospitals = new ArrayList<>();
+		this.restaurants = new ArrayList<>();
+		this.retails = new ArrayList<>();
 	}
 	
 	public GMesh(Mesh mesh) {
@@ -55,6 +59,18 @@ public class GMesh{
 	
 	public void addHospital(Facility facility) {
 		this.hospitals.add(facility);
+	}
+	public void addRestaurant(Facility facility) {
+		this.restaurants.add(facility);
+	}
+	public List<Facility> getRestaurants(){
+		return this.restaurants;
+	}
+	public void addRetail(Facility facility){
+		this.retails.add(facility);
+	}
+	public List<Facility> getRetails(){
+		return this.retails;
 	}
 
 	public double getHospitalCapacity(){

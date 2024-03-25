@@ -26,7 +26,7 @@ import pseudo.res.EPurpose;
 import pseudo.res.ETransition;
 import pseudo.res.Facility;
 import pseudo.res.HouseHold;
-import pseudo.res.Japan;
+import pseudo.res.Country;
 import pseudo.res.GLonLat;
 import pseudo.res.Person;
 import utils.Roulette;
@@ -37,11 +37,11 @@ public class Student extends ActGenerator {
 	private SchoolRefAccessor schRefAcs;
 	private static final double SCHOOL_MAX_DISTANCE = 5000;
 	
-	public Student(Japan japan, 
-			Map<EMarkov,Map<EGender,MkChainAccessor>> mrkAcsMap, 
-			MNLParamAccessor mnlAcs,
-			CensusODAccessor odAcs,
-			SchoolRefAccessor schRefAcs) {
+	public Student(Country japan,
+				   Map<EMarkov,Map<EGender,MkChainAccessor>> mrkAcsMap,
+				   MNLParamAccessor mnlAcs,
+				   CensusODAccessor odAcs,
+				   SchoolRefAccessor schRefAcs) {
 		super(japan, mnlAcs,mrkAcsMap);
 		
 		this.odAcs = odAcs;
@@ -273,7 +273,7 @@ public class Student extends ActGenerator {
 	
 	public static void main(String[] args) throws IOException {
 		
-		Japan japan = new Japan();
+		Country japan = new Country();
 		
 		System.out.println("start");
 
@@ -357,8 +357,8 @@ public class Student extends ActGenerator {
 		Student worker = new Student(japan, mrkMap, mnlAcs, odAcs, schAcs);
 		String outputDir = String.format("%s/activity/", root);
 
-		int start = 1;
-		for (int i = start; i <= 47; i++) {
+		int start = 13;
+		for (int i = start; i <= 13; i++) {
 			// create directory
 			File prefDir = new File(outputDir, String.valueOf(i));
 			System.out.println("Start prefecture:" + i + prefDir.mkdirs());

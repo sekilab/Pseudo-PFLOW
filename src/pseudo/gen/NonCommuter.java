@@ -22,16 +22,16 @@ import pseudo.res.EMarkov;
 import pseudo.res.EPurpose;
 import pseudo.res.ETransition;
 import pseudo.res.HouseHold;
-import pseudo.res.Japan;
+import pseudo.res.Country;
 import pseudo.res.GLonLat;
 import pseudo.res.Person;
 import utils.Roulette;
 
 public class NonCommuter extends ActGenerator {
 
-	public NonCommuter(Japan japan,
-			Map<EMarkov,Map<EGender,MkChainAccessor>> mrkAcsMap,
-			MNLParamAccessor mnlAcs) {
+	public NonCommuter(Country japan,
+					   Map<EMarkov,Map<EGender,MkChainAccessor>> mrkAcsMap,
+					   MNLParamAccessor mnlAcs) {
 		super(japan, mnlAcs, mrkAcsMap);
 	}
 
@@ -91,7 +91,7 @@ public class NonCommuter extends ActGenerator {
 				EPurpose purpose = transition.getPurpose();
 
 				if (transition != ETransition.STAY) {
-					// choice a destiation
+					// choose a destination
 					curloc = transition!=ETransition.HOME ?
 							choiceFreeDestination(curloc, transition, senior, gender, person.getLabor()) : home;
 					if (curloc == null) {
@@ -147,7 +147,7 @@ public class NonCommuter extends ActGenerator {
 
 	public static void main(String[] args) throws IOException {
 
-		Japan japan = new Japan();
+		Country japan = new Country();
 
 		System.out.println("start");
 
@@ -215,8 +215,8 @@ public class NonCommuter extends ActGenerator {
 		String outputDir = String.format("%s/activity/", root);
 
 		long starttime = System.currentTimeMillis();
-		int start = 1;
-		for (int i = start; i <= 1; i++) {
+		int start = 13;
+		for (int i = start; i <= 13; i++) {
 			// create directory
 			File prefDir = new File(outputDir, String.valueOf(i));
 			System.out.println("Start prefecture:" + i + prefDir.mkdirs());

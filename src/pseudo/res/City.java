@@ -19,10 +19,10 @@ public class City extends Node{
 	private double officeRatio;
 	private Set<GMesh> meshs;
 	private Map<ELabor, Map<Integer, Facility>> schools;
-	private Japan parent;
+	private Country parent;
 
-	public City(Japan parent, String code, EPTCity ptType, 
-			ECity type, double area, double popRatio, double officeRatio, ILonLat centroid) {
+	public City(Country parent, String code, EPTCity ptType,
+                ECity type, double area, double popRatio, double officeRatio, ILonLat centroid) {
 		super(code, centroid.getLon(), centroid.getLat());
 		this.parent = parent;
 		this.ptType = ptType;
@@ -90,11 +90,11 @@ public class City extends Node{
 		return null;
 	}
 
-	public Japan getParent() {
+	public Country getParent() {
 		return parent;
 	}
 
-	public void setParent(Japan parent) {
+	public void setParent(Country parent) {
 		this.parent = parent;
 	}
 }

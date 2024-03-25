@@ -24,7 +24,7 @@ import pseudo.res.EMarkov;
 import pseudo.res.EPurpose;
 import pseudo.res.ETransition;
 import pseudo.res.Facility;
-import pseudo.res.Japan;
+import pseudo.res.Country;
 import pseudo.res.GLonLat;
 import pseudo.res.HouseHold;
 import pseudo.res.GMesh;
@@ -34,7 +34,7 @@ import utils.Roulette;
 
 public abstract class ActGenerator {
 	public Map<Integer, Integer> mapMotif = new HashMap<>();
-	protected Japan japan;
+	protected Country japan;
 	protected MNLParamAccessor mnlAcs;
 	protected Map<EMarkov,Map<EGender,MkChainAccessor>> mrkAcsMap;
 	
@@ -46,7 +46,7 @@ public abstract class ActGenerator {
 	protected static final int MAX_SEARCH_DISTANDE = 20000;
 
 	
-	public ActGenerator(Japan japan,
+	public ActGenerator(Country japan,
 						MNLParamAccessor mnlAcs,
 						Map<EMarkov,Map<EGender,MkChainAccessor>> mrkAcsMap) {
 		this.japan = japan;
@@ -132,10 +132,14 @@ public abstract class ActGenerator {
 	}
 	
 	protected List<Facility> getFacilities(ETransition transition, GMesh mesh){
-		if (transition != ETransition.HOSPITAL) {
-			return mesh.getFacilities();
-		}else {
+		if (transition == ETransition.HOSPITAL) {
 			return mesh.getHospitals();
+		}else if(transition==ETransition.SHOPPING){
+			return mesh.getRetails();
+		}else if(transition==ETransition.EATING){
+			return mesh.getRestaurants();
+		}else {
+			return mesh.getFacilities();
 		}
 	}
 	
@@ -143,19 +147,19 @@ public abstract class ActGenerator {
 		List<GMesh> meshes = city.getMeshes();
 		GMesh mesh = null;
 		{
-			List<Double> capcities = getMeshCapacity(transition, meshes, gender);
-			int choice = Roulette.choice(capcities, getRandom());
+			List<Double> capacities = getMeshCapacity(transition, meshes, gender);
+			int choice = Roulette.choice(capacities, getRandom());
 			mesh = meshes.get(choice);
 		}
 		// Search a poi
 		if (mesh != null) {
 			List<Facility> facilities = getFacilities(transition, mesh);
-			List<Double> capcities = new ArrayList<>();
-			if (facilities.size() > 0) {
+			List<Double> capacities = new ArrayList<>();
+			if (!facilities.isEmpty()) {
 				for (Facility f : facilities) {
-					capcities.add(f.getCapacity());
+					capacities.add(f.getCapacity());
 				}
-				int choice = Roulette.choice(capcities, getRandom());
+				int choice = Roulette.choice(capacities, getRandom());
 				Facility fac = facilities.get(choice);
 				return new GLonLat(fac, city.getId());
 			}
@@ -169,10 +173,10 @@ public abstract class ActGenerator {
 		GMesh mesh = null;
 		{
 			List<Double> probs = new ArrayList<>();
-			List<Double> capcities = getMeshCapacity(transition, meshes, gender);
+			List<Double> capacities = getMeshCapacity(transition, meshes, gender);
 			for (int i = 0; i < meshes.size(); i++) {
 				GMesh tmesh = meshes.get(i);
-				double capacity = capcities.get(i);
+				double capacity = capacities.get(i);
 				ILonLat center = tmesh.getCenter();
 				double distance = DistanceUtils.distance(
 						origin.getLon(), origin.getLat(), center.getLon(), center.getLat());
@@ -185,7 +189,7 @@ public abstract class ActGenerator {
 		if (mesh != null) {
 			List<Facility> facilities = getFacilities(transition, mesh);
 			List<Double> capcities = new ArrayList<>();
-			if (facilities.size() > 0) {
+			if (!facilities.isEmpty()) {
 				for (Facility f : facilities) {
 					capcities.add(f.getCapacity());
 				}
@@ -237,7 +241,7 @@ public abstract class ActGenerator {
 		
 		// search a mesh
 		if (dcity != null) {
-			if (city.getId().equals(dcity.getId()) != true) {
+			if (!city.getId().equals(dcity.getId())) {
 				return choiceDestination(dcity, transition, gender);
 			}else {
 				return choiceDestination2(origin, dcity, transition, gender);

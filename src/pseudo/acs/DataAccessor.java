@@ -15,7 +15,7 @@ import pseudo.res.ECity;
 import pseudo.res.ELabor;
 import pseudo.res.EPTCity;
 import pseudo.res.Facility;
-import pseudo.res.Japan;
+import pseudo.res.Country;
 import pseudo.res.GMesh;
 
 public class DataAccessor {
@@ -38,7 +38,7 @@ public class DataAccessor {
 		return res;
 	}
 	
-	public static int loadPreSchoolData(String filename, Japan japan){
+	public static int loadPreSchoolData(String filename, Country japan){
 		try (BufferedReader br = new BufferedReader(new FileReader(filename))){
             String line;
             br.readLine();
@@ -60,7 +60,7 @@ public class DataAccessor {
 		return 1;
 	}
 	
-	public static int loadSchoolData(String filename, Japan japan){
+	public static int loadSchoolData(String filename, Country japan){
 		try (BufferedReader br = new BufferedReader(new FileReader(filename))){
             String line;
             br.readLine();
@@ -92,7 +92,7 @@ public class DataAccessor {
 		return 1;
 	}
 	
-	public static int loadCityData(String filename, Japan japan){
+	public static int loadCityData(String filename, Country japan){
 		try (BufferedReader br = new BufferedReader(new FileReader(filename));){
             String line;
             br.readLine();
@@ -124,16 +124,16 @@ public class DataAccessor {
 		return 1;
 	}
 	
-	public static int loadHospitalData(String filename, Japan japan) {
+	public static int loadHospitalData(String filename, Country japan) {
 		try (BufferedReader br = new BufferedReader(new FileReader(filename));){
             String line;
             br.readLine();
             while ((line = br.readLine()) != null) {
             	String[] items = line.split(",");
             	String gcode = items[0];
-            	double lon = Double.valueOf(items[1]);
-            	double lat = Double.valueOf(items[2]);
-            	int type = Integer.valueOf(items[3]);
+            	double lon = Double.parseDouble(items[1]);
+            	double lat = Double.parseDouble(items[2]);
+            	int type = Integer.parseInt(items[3]);
             	
             	Mesh mesh = MeshUtils.createMesh(3, lon, lat);
             	String mcode = mesh.getCode();
@@ -152,8 +152,70 @@ public class DataAccessor {
         }		
 		return 1;
 	}
-	
-	public static int loadZenrinTatemono(String filename, Japan japan, int scale){ 
+
+	public static int loadRestaurantData(String filename, Country japan){
+		// restaurant data from TelePointDB 2018
+		try(BufferedReader br = new BufferedReader((new FileReader(filename)));){
+			String line;
+			br.readLine();
+			while((line = br.readLine()) != null){
+				String[] items = line.split(",");
+//				poi.rename(columns={0:'DN', 1: 'DN+', 2: 'DNKN', 3: 'TEL', 4: 'TEL-', 5: 'ADD', 6: 'ADDKN', 7: 'ADDCD', 8: 'ADD#', 9: 'ZIP', 10: 'BUSC',
+//						11: 'REP', 12: 'COMP', 13: 'ATR', 14: 'DOE', 15: 'DOP', 16: 'DEL#', 17: 'FLAG', 18: 'PFLAG', 19: 'ACC', 20: 'LON', 21: 'LAT'})
+				String gcode = items[7];  // admin code
+				double lon = Double.parseDouble(items[20]);
+				double lat = Double.parseDouble(items[21]);
+
+				Mesh mesh = MeshUtils.createMesh(3, lon, lat);
+				String mcode = mesh.getCode();
+
+				City city = japan.getCity(gcode);
+				if (city != null) {
+					GMesh gmesh = japan.hasMesh(mcode) ? japan.getMesh(mcode) : new GMesh(mesh);
+					double capacity = 10000; //
+					Facility fac = new Facility(0, lon, lat, gcode, capacity);
+					gmesh.addRestaurant(fac);
+					city.addMesh(gmesh);
+				}
+			};
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return 1;
+	};
+
+	public static int loadRetailData(String filename, Country japan){
+		// restaurant data from TelePointDB 2018
+		try(BufferedReader br = new BufferedReader((new FileReader(filename)));){
+			String line;
+			br.readLine();
+			while((line = br.readLine()) != null){
+				String[] items = line.split(",");
+//				poi.rename(columns={0:'DN', 1: 'DN+', 2: 'DNKN', 3: 'TEL', 4: 'TEL-', 5: 'ADD', 6: 'ADDKN', 7: 'ADDCD', 8: 'ADD#', 9: 'ZIP', 10: 'BUSC',
+//						11: 'REP', 12: 'COMP', 13: 'ATR', 14: 'DOE', 15: 'DOP', 16: 'DEL#', 17: 'FLAG', 18: 'PFLAG', 19: 'ACC', 20: 'LON', 21: 'LAT'})
+				String gcode = items[7];  // admin code
+				double lon = Double.parseDouble(items[20]);
+				double lat = Double.parseDouble(items[21]);
+
+				Mesh mesh = MeshUtils.createMesh(3, lon, lat);
+				String mcode = mesh.getCode();
+
+				City city = japan.getCity(gcode);
+				if (city != null) {
+					GMesh gmesh = japan.hasMesh(mcode) ? japan.getMesh(mcode) : new GMesh(mesh);
+					double capacity = 10000; //
+					Facility fac = new Facility(0, lon, lat, gcode, capacity);
+					gmesh.addRetail(fac);
+					city.addMesh(gmesh);
+				}
+			};
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return 1;
+	};
+
+	public static int loadZenrinTatemono(String filename, Country japan, int scale){
 		try (BufferedReader br = new BufferedReader(new FileReader(filename));){
             String line;
             br.readLine();
@@ -183,7 +245,7 @@ public class DataAccessor {
 		return 1;
 	}
 	
-	public static int loadEconomicCensus(String filename, Japan japan){
+	public static int loadEconomicCensus(String filename, Country japan){
 		try (BufferedReader br = new BufferedReader(new FileReader(filename))){
             String line;
             br.readLine();

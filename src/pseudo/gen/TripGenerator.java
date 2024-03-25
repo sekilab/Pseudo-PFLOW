@@ -28,7 +28,7 @@ import pseudo.res.EPTCity;
 import pseudo.res.EPurpose;
 import pseudo.res.ETransport;
 import pseudo.res.GLonLat;
-import pseudo.res.Japan;
+import pseudo.res.Country;
 import pseudo.res.Person;
 import pseudo.res.Speed;
 import pseudo.res.Trip;
@@ -37,13 +37,13 @@ import utils.Roulette;
 public class TripGenerator {
 
 	private ModeAccessor modeAcs;
-	private Japan japan;
+	private Country japan;
 
 	private static final double MAX_WALK_DISTANCE = 3000;
 	private static final double MAX_SEARCH_STATAION_DISTANCE = 5000;
 	
 	
-	public TripGenerator(Japan japan, ModeAccessor modeAcs) {
+	public TripGenerator(Country japan, ModeAccessor modeAcs) {
 		super();
 		this.japan = japan;
 		this.modeAcs = modeAcs;
@@ -248,7 +248,7 @@ public class TripGenerator {
 
 	public static void main(String[] args) throws IOException {
 		
-		Japan japan = new Japan();
+		Country japan = new Country();
 		
 		System.out.println("start");
 
