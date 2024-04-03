@@ -13,14 +13,28 @@ import utils.Roulette;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
+
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import org.apache.http.client.config.CookieSpecs;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
+import org.apache.http.ssl.SSLContextBuilder;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.HttpResponse;
+import org.apache.http.NameValuePair;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.util.EntityUtils;
+
+import javax.net.ssl.SSLContext;
 
 public class TripGenerator_WebAPI {
 
@@ -228,22 +242,88 @@ public class TripGenerator_WebAPI {
 			exp.printStackTrace();
 		}		
 	}
-	
 
-	public static void main(String[] args) throws IOException {
+	private static SSLContext createSSLContext() throws Exception {
+		return SSLContextBuilder.create()
+				.loadTrustMaterial(new TrustSelfSignedStrategy())
+				.build();
+	}
+
+	private static CloseableHttpClient createHttpClient(SSLContext sslContext) {
+		return HttpClients.custom()
+				.setSslcontext(sslContext)
+				.setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
+				.setDefaultRequestConfig(RequestConfig.custom()
+						.setCookieSpec(CookieSpecs.STANDARD)
+						.build())
+				.build();
+	}
+
+	private static HttpResponse executePostRequest(CloseableHttpClient httpClient, HttpPost postRequest) throws Exception {
+		return httpClient.execute(postRequest);
+	}
+
+	private static String createSession(CloseableHttpClient httpClient) throws Exception {
+		HttpPost createSessionPost = new HttpPost(prop.getProperty("api.createSessionURL"));
+
+		List<NameValuePair> sessionParams = new ArrayList<>();
+		sessionParams.add(new BasicNameValuePair("UserID", prop.getProperty("api.userID")));
+		sessionParams.add(new BasicNameValuePair("Password", prop.getProperty("api.password")));
+		createSessionPost.setEntity(new UrlEncodedFormEntity(sessionParams));
+
+		HttpResponse sessionResponse = executePostRequest(httpClient, createSessionPost);
+		if (sessionResponse.getStatusLine().getStatusCode() == 200) {
+			String sessionResponseBody = EntityUtils.toString(sessionResponse.getEntity());
+			System.out.println("Session created successfully");
+			System.out.println(sessionResponseBody);
+			return sessionResponseBody.split(",")[1].trim().replace("\r", "").replace("\n", "");
+		} else {
+			System.out.println("Failed to create session: " + sessionResponse.getStatusLine().getStatusCode());
+			return "";
+		}
+	}
+
+	private static void getMixedRoute(CloseableHttpClient httpClient, String sessionid, Map<String, String> params) throws Exception {
+		HttpPost mixedRoutePost = new HttpPost(prop.getProperty("api.getMixedRouteURL"));
+
+		List<NameValuePair> mixedRouteParams = new ArrayList<>();
+		for (Map.Entry<String, String> entry : params.entrySet()) {
+			mixedRouteParams.add(new BasicNameValuePair(entry.getKey(), entry.getValue()));
+		}
+
+		mixedRoutePost.setEntity(new UrlEncodedFormEntity(mixedRouteParams));
+		mixedRoutePost.setHeader("Cookie", "WebApiSessionID=" + sessionid);
+
+		HttpResponse mixedRouteResponse = executePostRequest(httpClient, mixedRoutePost);
+
+		if (mixedRouteResponse.getStatusLine().getStatusCode() == 200) {
+			String mixedRouteResponseBody = EntityUtils.toString(mixedRouteResponse.getEntity());
+			System.out.println("Mixed Route Search successfully");
+			System.out.println(mixedRouteResponseBody);
+		} else {
+			System.out.println("Failed to get mixed route: " + mixedRouteResponse.getStatusLine().getStatusCode());
+		}
+	}
+
+	private static Properties prop;
+	private static void loadProperties() throws Exception {
+		InputStream inputStream = Commuter.class.getClassLoader().getResourceAsStream("config.properties");
+		if (inputStream == null) {
+			throw new FileNotFoundException("config.properties file not found in the classpath");
+		}
+		prop = new Properties();
+		prop.load(inputStream);
+	}
+
+	public static void main(String[] args) throws Exception {
 		
 		Country japan = new Country();
 		
 		System.out.println("start");
 
-		String dir;
+		loadProperties();
 
-		InputStream inputStream = Commuter.class.getClassLoader().getResourceAsStream("config.properties");
-		if (inputStream == null) {
-			throw new FileNotFoundException("config.properties file not found in the classpath");
-		}
-		Properties prop = new Properties();
-		prop.load(inputStream);
+		String dir;
 
 		dir = prop.getProperty("root");
 		System.out.println("Root Directory: " + dir);
@@ -265,6 +345,23 @@ public class TripGenerator_WebAPI {
 		TripGenerator_WebAPI worker = new TripGenerator_WebAPI(japan, modeAcs);
 		String inputDir = String.format("%s/activity/", dir);
 		String outputDir = String.format("%s/trip/", dir);
+
+		SSLContext sslContext = createSSLContext();
+		CloseableHttpClient httpClient = createHttpClient(sslContext);
+
+		String sessionid = createSession(httpClient);
+
+		if (!sessionid.isEmpty()) {
+			Map<String, String> params = new HashMap<>();
+			params.put("UnitTypeCode", "2");
+			params.put("StartLongitude", "139.56629225");
+			params.put("StartLatitude", "35.663611996");
+			params.put("GoalLongitude", "139.75884674036305");
+			params.put("GoalLatitude", "35.69638343647759");
+			params.put("TransportCode", "3");
+
+			getMixedRoute(httpClient, sessionid, params);
+		}
 
 		long starttime = System.currentTimeMillis();
 		int start = 1;

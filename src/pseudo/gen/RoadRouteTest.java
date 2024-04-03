@@ -11,7 +11,7 @@ public class RoadRouteTest {
 
     public static void main(String[] args) {
         // Create session and obtain the cookie
-        String sessionUrl = "http://157.82.223.35/webapi/CreateSession";
+        String sessionUrl = "https://157.82.223.35/webapi/CreateSession";
         String sessionParams = "UserID=Pang_Yanbo&Password=Pyb-37167209";
 
         String sessionCookie = createSessionAndGetCookie(sessionUrl, sessionParams);
@@ -21,7 +21,7 @@ public class RoadRouteTest {
         }
 
         // Proceed with road route requests
-        String roadRouteUrl = "http://157.82.223.35/webapi/GetRoadRoute";
+        String roadRouteUrl = "https://157.82.223.35/webapi/GetRoadRoute";
         String roadRouteParams = "UnitTypeCode=2&StartLongitude=139.67727019&StartLatitude=35.66412606&"
                 + "GoalLongitude=138.808493&GoalLatitude=36.017459&WayLongitude=&WayLatitude=&"
                 + "RoadKindCode=&RoadNo=&TransportCode=6&OutputNum=1";
