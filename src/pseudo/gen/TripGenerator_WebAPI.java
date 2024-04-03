@@ -1,5 +1,16 @@
 package pseudo.gen;
 
+import jp.ac.ut.csis.pflow.geom2.DistanceUtils;
+import jp.ac.ut.csis.pflow.routing4.logic.Dijkstra;
+import jp.ac.ut.csis.pflow.routing4.res.Network;
+import jp.ac.ut.csis.pflow.routing4.res.Node;
+import org.jboss.netty.util.internal.ThreadLocalRandom;
+import pseudo.acs.DataAccessor;
+import pseudo.acs.ModeAccessor;
+import pseudo.acs.PersonAccessor;
+import pseudo.res.*;
+import utils.Roulette;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -11,39 +22,16 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.jboss.netty.util.internal.ThreadLocalRandom;
-
-import jp.ac.ut.csis.pflow.geom2.DistanceUtils;
-import jp.ac.ut.csis.pflow.routing4.logic.Dijkstra;
-import jp.ac.ut.csis.pflow.routing4.res.Network;
-import jp.ac.ut.csis.pflow.routing4.res.Node;
-import pseudo.acs.DataAccessor;
-import pseudo.acs.ModeAccessor;
-import pseudo.acs.PersonAccessor;
-import pseudo.res.Activity;
-import pseudo.res.City;
-import pseudo.res.EGender;
-import pseudo.res.ELabor;
-import pseudo.res.EPTCity;
-import pseudo.res.EPurpose;
-import pseudo.res.ETransport;
-import pseudo.res.GLonLat;
-import pseudo.res.Country;
-import pseudo.res.Person;
-import pseudo.res.Speed;
-import pseudo.res.Trip;
-import utils.Roulette;
-
-public class TripGenerator {
+public class TripGenerator_WebAPI {
 
 	private ModeAccessor modeAcs;
 	private Country japan;
 
 	private static final double MAX_WALK_DISTANCE = 3000;
 	private static final double MAX_SEARCH_STATAION_DISTANCE = 5000;
-	
-	
-	public TripGenerator(Country japan, ModeAccessor modeAcs) {
+
+
+	public TripGenerator_WebAPI(Country japan, ModeAccessor modeAcs) {
 		super();
 		this.japan = japan;
 		this.modeAcs = modeAcs;
@@ -274,7 +262,7 @@ public class TripGenerator {
 		ModeAccessor modeAcs = new ModeAccessor(modeFile);
 	
 		// create worker
-		TripGenerator worker = new TripGenerator(japan, modeAcs);
+		TripGenerator_WebAPI worker = new TripGenerator_WebAPI(japan, modeAcs);
 		String inputDir = String.format("%s/activity/", dir);
 		String outputDir = String.format("%s/trip/", dir);
 
