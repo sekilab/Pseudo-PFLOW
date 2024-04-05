@@ -228,19 +228,6 @@ public class Commuter extends ActGenerator {
         String tatemonFile = String.format("%scity_tatemono.csv", inputDir);
         DataAccessor.loadZenrinTatemono(tatemonFile, country, 1);
 
-        // load markov chains
-        Map<EMarkov, Map<EGender, MkChainAccessor>> mrkMap = new HashMap<>();
-        {
-//            String maleFile = String.format("%s/markov/tokyo2018_trip_labor_male_prob.csv", inputDir);
-//            String femaleFile = String.format("%s/markov/tokyo2018_trip_labor_female_prob.csv", inputDir);
-			String maleFile = String.format("%s/markov/tky2008_trip_01-10_labor_male_prob.csv", inputDir);
-			String femaleFile = String.format("%s/markov/tky2008_trip_01-10_labor_female_prob.csv", inputDir);
-            Map<EGender, MkChainAccessor> map = new HashMap<>();
-            map.put(EGender.MALE, new MkChainAccessor(maleFile));
-            map.put(EGender.FEMALE, new MkChainAccessor(femaleFile));
-            mrkMap.put(EMarkov.LABOR, map);
-        }
-
         // load MNL parmaters
         String mnlFile = String.format("%s/mnl/labor_params.csv", inputDir);
         MNLParamAccessor mnlAcs = new MNLParamAccessor();
@@ -249,12 +236,27 @@ public class Commuter extends ActGenerator {
         int mfactor = 1;
 
         // create activities
-        Commuter worker = new Commuter(country, mrkMap, mnlAcs, odAcs);
+
         String outputDir = String.format("%s/activity/", root);
 
         long starttime = System.currentTimeMillis();
-        int start = 13;
-        for (int i = start; i <= 13; i++) {
+        int start = 1;
+        for (int i = start; i <= 47; i++) {
+
+			// load markov chains
+			Map<EMarkov, Map<EGender, MkChainAccessor>> mrkMap = new HashMap<>();
+			{
+				String key = "pref." + i;
+				String relativePath = prop.getProperty(key);
+				String maleFile = inputDir+ relativePath + "_trip_labor_male_prob.csv";
+				String femaleFile = inputDir+ relativePath + "_trip_labor_female_prob.csv";
+				Map<EGender, MkChainAccessor> map = new HashMap<>();
+				map.put(EGender.MALE, new MkChainAccessor(maleFile));
+				map.put(EGender.FEMALE, new MkChainAccessor(femaleFile));
+				mrkMap.put(EMarkov.LABOR, map);
+			}
+			Commuter worker = new Commuter(country, mrkMap, mnlAcs, odAcs);
+
             // create directory
             File prefDir = new File(outputDir, String.valueOf(i));
             System.out.println("Start prefecture:" + i + prefDir.mkdirs());

@@ -184,24 +184,6 @@ public class NonCommuter extends ActGenerator {
 		String tatemonFile = String.format("%scity_tatemono.csv", inputDir);
 		DataAccessor.loadZenrinTatemono(tatemonFile, japan, 1);
 
-		// load markov data
-		Map<EMarkov,Map<EGender,MkChainAccessor>> mrkMap = new HashMap<>();
-		{
-			String maleFile = String.format("%s/markov/tky2008_trip_14-15_nolabor_male_prob.csv", inputDir);
-			String femaleFile = String.format("%s/markov/tky2008_trip_14-15_nolabor_female_prob.csv", inputDir);
-			Map<EGender, MkChainAccessor> map = new HashMap<>();
-			map.put(EGender.MALE, new MkChainAccessor(maleFile));
-			map.put(EGender.FEMALE, new MkChainAccessor(femaleFile));
-			mrkMap.put(EMarkov.NOLABOR_JUNIOR, map);
-		}
-		{
-			String maleFile = String.format("%s/markov/tky2008_trip_14-15_nolabor_male_senior_prob.csv", inputDir);
-			String femaleFile = String.format("%s/markov/tky2008_trip_14-15_nolabor_female_senior_prob.csv", inputDir);
-			Map<EGender, MkChainAccessor> map = new HashMap<>();
-			map.put(EGender.MALE, new MkChainAccessor(maleFile));
-			map.put(EGender.FEMALE, new MkChainAccessor(femaleFile));
-			mrkMap.put(EMarkov.NOLABOR_SENIOR, map);
-		}
 
 		// load MNL parmaters
 		String mnlFile = String.format("%s/mnl/nolabor_params.csv", inputDir);
@@ -211,17 +193,40 @@ public class NonCommuter extends ActGenerator {
 		int mfactor = 1;
 
 		// create activities
-		NonCommuter worker = new NonCommuter(japan, mrkMap, mnlAcs);
 		String outputDir = String.format("%s/activity/", root);
 
 		long starttime = System.currentTimeMillis();
-		int start = 13;
-		for (int i = start; i <= 13; i++) {
+		int start = 1;
+		for (int i = start; i <= 47; i++) {
 			// create directory
 			File prefDir = new File(outputDir, String.valueOf(i));
 			System.out.println("Start prefecture:" + i + prefDir.mkdirs());
 			File householdDir = new File(String.format("%s/agent/", root), String.valueOf(i));
 			// String householdDir = String.format("%s/agent/", root);
+
+			// load markov data
+			Map<EMarkov,Map<EGender,MkChainAccessor>> mrkMap = new HashMap<>();
+			{
+				String key = "pref." + i;
+				String relativePath = prop.getProperty(key);
+				String maleFile = inputDir+ relativePath + "_trip_nolabor_male_prob.csv";
+				String femaleFile = inputDir+ relativePath + "_trip_nolabor_female_prob.csv";
+				Map<EGender, MkChainAccessor> map = new HashMap<>();
+				map.put(EGender.MALE, new MkChainAccessor(maleFile));
+				map.put(EGender.FEMALE, new MkChainAccessor(femaleFile));
+				mrkMap.put(EMarkov.NOLABOR_JUNIOR, map);
+			}
+			{
+				String key = "pref." + i;
+				String relativePath = prop.getProperty(key);
+				String maleFile = inputDir+ relativePath + "_trip_nolabor_male_senior_prob.csv";
+				String femaleFile = inputDir+ relativePath + "_trip_nolabor_female_senior_prob.csv";
+				Map<EGender, MkChainAccessor> map = new HashMap<>();
+				map.put(EGender.MALE, new MkChainAccessor(maleFile));
+				map.put(EGender.FEMALE, new MkChainAccessor(femaleFile));
+				mrkMap.put(EMarkov.NOLABOR_SENIOR, map);
+			}
+			NonCommuter worker = new NonCommuter(japan, mrkMap, mnlAcs);
 
 			for (File file : householdDir.listFiles()) {
 				if (file.getName().contains(".csv")) {

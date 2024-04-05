@@ -318,21 +318,7 @@ public class Student extends ActGenerator {
 		// load data after ecensus
 		String tatemonFile = String.format("%scity_tatemono.csv", inputDir);
 		DataAccessor.loadZenrinTatemono(tatemonFile, japan, 1);
-		
-		// load markov data
-		Map<EMarkov,Map<EGender,MkChainAccessor>> mrkMap = new HashMap<>();
-		{	
-			String maleFile = String.format("%s/markov/tky2008_trip_11-11_student1_prob.csv", inputDir);
-			Map<EGender, MkChainAccessor> map = new HashMap<>();
-			map.put(EGender.MALE, new MkChainAccessor(maleFile));
-			mrkMap.put(EMarkov.STUDENT1, map);
-		}
-		{	
-			String maleFile = String.format("%s/markov/tky2008_trip_12-13_student2_prob.csv", inputDir);
-			Map<EGender, MkChainAccessor> map = new HashMap<>();
-			map.put(EGender.MALE, new MkChainAccessor(maleFile));
-			mrkMap.put(EMarkov.STUDENT2, map);
-		}		
+
 		
 		// load MNL parmaeters
 		MNLParamAccessor mnlAcs = new MNLParamAccessor();
@@ -354,16 +340,36 @@ public class Student extends ActGenerator {
 		String prePref = "";
 		
 		// create activities
-		Student worker = new Student(japan, mrkMap, mnlAcs, odAcs, schAcs);
+
 		String outputDir = String.format("%s/activity/", root);
 
-		int start = 13;
-		for (int i = start; i <= 13; i++) {
+		int start = 1;
+		for (int i = start; i <= 47; i++) {
 			// create directory
 			File prefDir = new File(outputDir, String.valueOf(i));
 			System.out.println("Start prefecture:" + i + prefDir.mkdirs());
 			File householdDir = new File(String.format("%s/agent/", root), String.valueOf(i));
 			// String householdDir = String.format("%s/agent/", root);
+
+			// load markov data
+			Map<EMarkov,Map<EGender,MkChainAccessor>> mrkMap = new HashMap<>();
+			{
+				String key = "pref." + i;
+				String relativePath = prop.getProperty(key);
+				String maleFile = inputDir+ relativePath + "_trip_student1_prob.csv";
+				Map<EGender, MkChainAccessor> map = new HashMap<>();
+				map.put(EGender.MALE, new MkChainAccessor(maleFile));
+				mrkMap.put(EMarkov.STUDENT1, map);
+			}
+			{
+				String key = "pref." + i;
+				String relativePath = prop.getProperty(key);
+				String maleFile = inputDir+ relativePath + "_trip_student2_prob.csv";
+				Map<EGender, MkChainAccessor> map = new HashMap<>();
+				map.put(EGender.MALE, new MkChainAccessor(maleFile));
+				mrkMap.put(EMarkov.STUDENT2, map);
+			}
+			Student worker = new Student(japan, mrkMap, mnlAcs, odAcs, schAcs);
 
 			for (File file : householdDir.listFiles()) {
 				if (file.getName().contains(".csv")) {

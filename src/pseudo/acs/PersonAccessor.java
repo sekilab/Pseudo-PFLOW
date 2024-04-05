@@ -43,7 +43,7 @@ public class PersonAccessor{
 		
 		int counter = 0;
 		try (BufferedReader br = new BufferedReader(new FileReader(filename));){
-            String line;
+            String line = br.readLine();
             HouseHold household = null;
             while ((line = br.readLine()) != null) {	
             	String[] items = line.split(",");
