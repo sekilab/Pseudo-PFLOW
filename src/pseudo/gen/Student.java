@@ -343,8 +343,8 @@ public class Student extends ActGenerator {
 
 		String outputDir = String.format("%s/activity/", root);
 
-		int start = 1;
-		for (int i = start; i <= 47; i++) {
+		int start = 13;
+		for (int i = start; i <= 13; i++) {
 			// create directory
 			File prefDir = new File(outputDir, String.valueOf(i));
 			System.out.println("Start prefecture:" + i + prefDir.mkdirs());
@@ -399,6 +399,8 @@ public class Student extends ActGenerator {
 				}
 			}
 			System.out.println("end");
+			long endtime = System.currentTimeMillis();
+			System.out.println(worker.mapMotif);
 		}
 	}
 }

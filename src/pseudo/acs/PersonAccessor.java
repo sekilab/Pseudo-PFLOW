@@ -11,6 +11,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Random;
 import java.util.TimeZone;
 
 import jp.ac.ut.csis.pflow.geom2.ILonLat;
@@ -29,7 +30,7 @@ import pseudo.res.Trip;
 public class PersonAccessor{
 	
 	private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
-	private static final long DAY_OF_DATE = 1443654000L;  //2015-10-01 00:00:00
+	private static final long DAY_OF_DATE = 1601478000L;  //2020-10-01 00:00:00
 
 	
 	public static List<HouseHold> load(String filename, int mfactor) {
@@ -129,7 +130,7 @@ public class PersonAccessor{
 		}
 	}
 	
-	public static List<Person> loadActivity(String filename, int scale) {
+	public static List<Person> loadActivity(String filename, int scale, Double ratio) {
 		List<Person> res = new ArrayList<>();
 		try (BufferedReader br = new BufferedReader(new FileReader(filename));){
             String line = null;
@@ -145,6 +146,9 @@ public class PersonAccessor{
             	
             	if (nextId != preId) {
             		person = new Person(null, nextId, age, gender, labor);
+					Random random = new Random();
+					Boolean ownership = (age >= 20) && (random.nextDouble() < ratio);
+					person.setCarowner(ownership);
             		if (counter++ % scale == 0) {
             			res.add(person);
             		}

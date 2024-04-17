@@ -9,6 +9,8 @@ public class Person {
 	private EGender gender;
 	private ELabor labor;
 	private HouseHold parent;
+
+	private Boolean carowner;
 	
 	private List<Activity> activities;
 	private List<Trip> trips;
@@ -34,6 +36,7 @@ public class Person {
 		this.trajectory = new ArrayList<>();
 		this.office = null;
 		this.parent = parent;
+		this.carowner = false;
 		
 		if (this.parent != null) {
 			this.parent.addMember(this);
@@ -63,6 +66,8 @@ public class Person {
 	public void setLabor(ELabor labor) {
 		this.labor = labor;
 	}
+
+	public void setCarowner(Boolean ownership){ this.carowner = ownership; }
 
 	public List<Activity> getActivities() {
 		return activities;
@@ -112,5 +117,7 @@ public class Person {
 	public boolean hasOffice() {
 		return (this.office != null);
 	}
+
+	public boolean hasCar(){return this.carowner; }
 
 }

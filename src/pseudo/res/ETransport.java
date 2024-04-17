@@ -5,7 +5,9 @@ public enum ETransport {
 	WALK(1),
 	BICYCLE(2),
 	CAR(3),
-	TRAIN(4);
+	TRAIN(4),
+	BUS(5),
+	MIX(6);
 	
 	private final int id;
 	

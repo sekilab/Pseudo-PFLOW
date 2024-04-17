@@ -142,7 +142,10 @@ public class Commuter extends ActGenerator {
 					
 					prePurpose = purpose;
 				}
-			}					
+			}
+//			if(person.getActivities().size()==1){
+//				System.out.println("===================================================");
+//			}
 			return 0;
 		}
 		
@@ -240,8 +243,8 @@ public class Commuter extends ActGenerator {
         String outputDir = String.format("%s/activity/", root);
 
         long starttime = System.currentTimeMillis();
-        int start = 1;
-        for (int i = start; i <= 47; i++) {
+        int start = 13;
+        for (int i = start; i <= 13; i++) {
 
 			// load markov chains
 			Map<EMarkov, Map<EGender, MkChainAccessor>> mrkMap = new HashMap<>();

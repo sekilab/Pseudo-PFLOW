@@ -40,53 +40,53 @@ public class MotifAnalyzer {
 		int res = -1;
 		int len = locs.size();
 		try {
-		if (locs.get(0) == locs.get(len-1)) {
-			if (len==1) {
-				res = 1;//1
-			}else if (len==3) {
-				res = 2;//1-2-1
-			}else if (len==4) {
-				res = 4;//1-2-3-1
-			}else if (len==5) {
-				if (locs.get(2) == locs.get(0)) {
-					// 1-2-1-3-1
-					return 3;
-				}else if (locs.get(1) == locs.get(3)) {
-					// 1-2-3-2-1
-					return 5;
+			if (locs.get(0) == locs.get(len-1)) {
+				if (len==1) {
+					res = 1;//1
+				}else if (len==3) {
+					res = 2;//1-2-1
+				}else if (len==4) {
+					res = 4;//1-2-3-1
+				}else if (len==5) {
+					if (locs.get(2) == locs.get(0)) {
+						// 1-2-1-3-1
+						return 3;
+					}else if (locs.get(1) == locs.get(3)) {
+						// 1-2-3-2-1
+						return 5;
+					}else {
+						// 1-2-3-4-1
+						return 7;
+					}
+				}else if (len==6) {
+					if (locs.get(4)==5) {
+						//1-2-3-4-5-1
+						return 11;
+					}else {
+						//1-2-3-1-4-1, 1-2-1-3-4-1
+						return 6;
+					}
+				}else if (len==7){
+					if (locs.contains(6)) {
+						// 1-2-3-4-5-6-1
+						return 15;
+					}else if (locs.get(3)==1) {
+						// 1-2-3-1-4-5-1
+						return 13;
+					}else if (locs.contains(5)) {
+						// 1-2-3-4-1-5-1
+						return 10;
+					}else if (locs.get(2)==1 && locs.get(4)==1) {
+						// 1-2-1-3-1-4-1
+						return 8;
+					}else {
+						//1-2-3-4-3-2-1
+						return 9;
+					}
 				}else {
-					// 1-2-3-4-1
-					return 7;
+					return 99;
 				}
-			}else if (len==6) {
-				if (locs.get(4)==5) {
-					//1-2-3-4-5-1
-					return 11;
-				}else {
-					//1-2-3-1-4-1, 1-2-1-3-4-1
-					return 6;
-				}
-			}else if (len==7){
-				if (locs.contains(6)) {
-					// 1-2-3-4-5-6-1
-					return 15;
-				}else if (locs.get(3)==1) {
-					// 1-2-3-1-4-5-1
-					return 13;
-				}else if (locs.contains(5)) {
-					// 1-2-3-4-1-5-1
-					return 10;
-				}else if (locs.get(2)==1 && locs.get(4)==1) {
-					// 1-2-1-3-1-4-1
-					return 8;
-				}else {
-					//1-2-3-4-3-2-1
-					return 9;
-				}
-			}else {
-				return 99;
 			}
-		}
 		}catch(Exception e) {
 			System.out.println(id);
 			e.printStackTrace();

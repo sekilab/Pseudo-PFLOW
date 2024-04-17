@@ -4,6 +4,7 @@ import jp.ac.ut.csis.pflow.geom2.DistanceUtils;
 import jp.ac.ut.csis.pflow.routing4.logic.Dijkstra;
 import jp.ac.ut.csis.pflow.routing4.res.Network;
 import jp.ac.ut.csis.pflow.routing4.res.Node;
+import org.geojson.FeatureCollection;
 import org.jboss.netty.util.internal.ThreadLocalRandom;
 import pseudo.acs.DataAccessor;
 import pseudo.acs.ModeAccessor;
@@ -34,6 +35,9 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.util.EntityUtils;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import javax.net.ssl.SSLContext;
 
 public class TripGenerator_WebAPI {
@@ -41,15 +45,63 @@ public class TripGenerator_WebAPI {
 	private ModeAccessor modeAcs;
 	private Country japan;
 
+	private SSLContext sslContext;
+	private CloseableHttpClient httpClient;
+	private String sessionId;
+
 	private static final double MAX_WALK_DISTANCE = 3000;
 	private static final double MAX_SEARCH_STATAION_DISTANCE = 5000;
 
 
-	public TripGenerator_WebAPI(Country japan, ModeAccessor modeAcs) {
+	public TripGenerator_WebAPI(Country japan, ModeAccessor modeAcs) throws Exception {
 		super();
 		this.japan = japan;
 		this.modeAcs = modeAcs;
-	}	
+		this.sslContext = createSSLContext();
+		this.httpClient = createHttpClient();
+		this.sessionId = createSession();
+	}
+
+	private SSLContext createSSLContext() throws Exception {
+		return SSLContextBuilder.create()
+				.loadTrustMaterial(new TrustSelfSignedStrategy())
+				.build();
+	}
+
+	private CloseableHttpClient createHttpClient() {
+		return HttpClients.custom().setSSLContext(this.sslContext)
+				.setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
+				.setDefaultRequestConfig(RequestConfig.custom()
+						.setCookieSpec(CookieSpecs.STANDARD)
+						.build())
+				.build();
+	}
+
+	private static HttpResponse executePostRequest(CloseableHttpClient httpClient, HttpPost postRequest) throws Exception {
+		return httpClient.execute(postRequest);
+	}
+
+	public String createSession() throws Exception{
+
+		HttpPost createSessionPost = new HttpPost(prop.getProperty("api.createSessionURL"));
+
+		List<NameValuePair> sessionParams = new ArrayList<>();
+		sessionParams.add(new BasicNameValuePair("UserID", prop.getProperty("api.userID")));
+		sessionParams.add(new BasicNameValuePair("Password", prop.getProperty("api.password")));
+		createSessionPost.setEntity(new UrlEncodedFormEntity(sessionParams));
+
+		HttpResponse sessionResponse = executePostRequest(this.httpClient, createSessionPost);
+		if (sessionResponse.getStatusLine().getStatusCode() == 200) {
+			String sessionResponseBody = EntityUtils.toString(sessionResponse.getEntity());
+			System.out.println("Session created successfully");
+			System.out.println(sessionResponseBody);
+			return sessionResponseBody.split(",")[1].trim().replace("\r", "").replace("\n", "");
+		} else {
+			System.out.println("Failed to create session: " + sessionResponse.getStatusLine().getStatusCode());
+			return "";
+		}
+	}
+
 	
 	protected synchronized double getRandom() {
 		return ThreadLocalRandom.current().nextDouble();
@@ -89,7 +141,7 @@ public class TripGenerator_WebAPI {
 		}
 		
 		
-		private int process(Person person) {
+		private int process(Person person) throws Exception {
 			List<Activity> activities = person.getActivities();
 			Activity pre = activities.get(0);
 			EGender gender = person.getGender();
@@ -108,19 +160,99 @@ public class TripGenerator_WebAPI {
 				person.addTrip(new Trip(ETransport.NOT_DEFINED, EPurpose.HOME, 0, pre.getLocation(), pre.getLocation()));
 			}else {
 				for (int i = 1; i < activities.size(); i++) {
+
 					Activity next = activities.get(i);
 					GLonLat oll = pre.getLocation();
 					GLonLat dll = next.getLocation();
 					
 					EPurpose purpose = next.getPurpose();
-					
 					double distance = DistanceUtils.distance(oll, dll);
+
 					if (distance > 0) {
+						ETransport nextMode = null;
+
+						Map<String, String> params = new HashMap<>();
+						params.put("UnitTypeCode", "2");
+						params.put("StartLongitude", String.valueOf(oll.getLon()));
+						params.put("StartLatitude", String.valueOf(oll.getLat()));
+						params.put("GoalLongitude", String.valueOf(dll.getLon()));
+						params.put("GoalLatitude", String.valueOf(dll.getLat()));
+						// params.put("TransportCode", "3");
+
+						Map<String, String> carparams = new HashMap<>(params);
+						carparams.put("TransportCode", "6");
+						carparams.put("OutputNum", "1");
+
+						Map<String, String> mixedparams = new HashMap<>(params);
+						mixedparams.put("TransportCode", "3");
+
+						// Map<String, String> walkparams = new HashMap<>(params);
+						// walkparams.put("TransportCode", "1");
+
+//						long starttime = System.currentTimeMillis();
+						JsonNode mixedResults = getMixedRoute(httpClient, sessionId, mixedparams);
+						double mixedfare = mixedResults.get("fare").asDouble();
+						// System.out.println(mixedfare);
+						double mixedtime = mixedResults.get("total_time").asDouble();
+						Double mixedcost = mixedfare + mixedtime / 60 * 1000.0;
+
+						JsonNode roadResults = getRoadRoute(httpClient, sessionId, carparams);
+						double roadfare = roadResults.get("features").get(0).get("properties").get("fare").asDouble();
+						// System.out.println(roadfare);
+						double roadtime = roadResults.get("features").get(0).get("properties").get("required_time").asDouble();
+						Double roadcost = roadfare + roadtime / 60 * 1000.0;
+
+						// JsonNode walkResults = getRoadRoute(httpClient, sessionId, walkparams);
+						double walktime = roadtime * 10;
+						Double walkcost = walktime / 60 * 1000.0;
+
+
+//						long endtime = System.currentTimeMillis();
+//						System.out.println(endtime +" :"+ (endtime-starttime));
+						// String features = results.get("features");
+						// JsonNode routes = results.get("features");
+						// for(JsonNode feature: routes){
+								// System.out.println(feature);
+						// };
+
 						// choice mode
+
+						if (purpose != EPurpose.HOME){
+							Map<ETransport, Double> choices = new LinkedHashMap<>();
+							choices.put(ETransport.MIX, mixedcost);
+							choices.put(ETransport.WALK, walkcost);
+							if(person.hasCar()){
+								choices.put(ETransport.CAR, roadcost);
+							}
+							nextMode = choices.entrySet()
+									.stream()
+									.min(Comparator.comparing(Map.Entry::getValue))
+									.map(Map.Entry::getKey)
+									.orElse(ETransport.NOT_DEFINED);
+							if(i==1&&nextMode==ETransport.CAR){
+								primaryMode = nextMode;
+							}
+						}else{
+							if(primaryMode!=null){
+								nextMode = primaryMode;
+							}else {
+								Map<ETransport, Double> choices = new LinkedHashMap<>();
+								choices.put(ETransport.MIX, mixedcost);
+								choices.put(ETransport.WALK, walkcost);
+								if (person.hasCar()) {
+									choices.put(ETransport.CAR, roadcost);
+								}
+								nextMode = choices.entrySet()
+										.stream()
+										.min(Comparator.comparing(Map.Entry::getValue))
+										.map(Map.Entry::getKey)
+										.orElse(ETransport.NOT_DEFINED);
+							}
+						}
+
 						Node station1 = routing.getNearestNode(station, oll.getLon(), oll.getLat(), MAX_SEARCH_STATAION_DISTANCE);
 						Node station2 = routing.getNearestNode(station, dll.getLon(), dll.getLat(), MAX_SEARCH_STATAION_DISTANCE);
-						ETransport nextMode = null;
-						
+
 						if (purpose != EPurpose.HOME) {
 							List<Double> modeProbs = modeAcs.get(type, gender, purpose, age, distance);
 							if (station1 == null || station2 == null || station1.getNodeID().equals(station2.getNodeID())){
@@ -136,62 +268,62 @@ public class TripGenerator_WebAPI {
 								nextMode = ETransport.CAR;
 							}
 						}
-							
+
 						// store primary mode
 						if (purpose == EPurpose.OFFICE || purpose == EPurpose.SCHOOL) {
 							primaryMode = nextMode;
 						}else {
 							primaryMode = nextMode;
 						}
-						
+
 						// create trip or sub trips
-						if (nextMode != ETransport.TRAIN) {
-							// single mode
-							long travelTime = (long)(distance/Speed.get(nextMode));
-							long depTime = next.getStartTime() - travelTime;
-							person.addTrip(new Trip(nextMode, purpose, depTime, oll, dll));
-						}else {
-							long travelTime = 0;
-							long time1 = 0;
-							long time2 = 0;
-							ETransport accMode, egrMode;
-							// access time
-							{
-								EPurpose t_purpose = purpose != EPurpose.HOME ? purpose : convertHomeMode(labor);
-								distance = DistanceUtils.distance(oll, station1);
-								List<Double> probs = modeAcs.get(type, gender, t_purpose, age, distance);
-								probs = probs.subList(0, probs.size()-1);
-								int tindex = Roulette.choice(probs, getRandom());
-								accMode = modeAcs.getCode(tindex);
-
-								travelTime += (long)(distance / Speed.get(accMode));
-								time1 = travelTime;
-							}
-							// trip time
-							{
-								distance = DistanceUtils.distance(station1, station2);
-								travelTime += (long)(distance / Speed.get(nextMode));
-								time2 = travelTime;
-							}
-							// egress time
-							{
-								EPurpose t_purpose = purpose != EPurpose.HOME ? purpose : convertHomeMode(labor);
-								distance = DistanceUtils.distance(station2, dll);
-								List<Double> probs = modeAcs.get(type, gender, t_purpose, age, distance);
-								probs = probs.subList(0, probs.size()-1);
-								int tindex = Roulette.choice(probs, getRandom());
-								egrMode = modeAcs.getCode(tindex);
-								travelTime += (long)(distance / Speed.get(egrMode));
-							}
-							// create sub trips 
-							long depTime = next.getStartTime()-travelTime;
-
-							person.addTrip(new Trip(accMode, purpose, depTime, oll, station1));
-							person.addTrip(new Trip(nextMode, purpose, depTime+time1, station1, station2));
-							person.addTrip(new Trip(egrMode, purpose, depTime+time2, station2, dll));
-						}
+//						if (nextMode != ETransport.TRAIN) {
+//							// single mode
+//							long travelTime = (long)(distance/Speed.get(nextMode));
+//							long depTime = next.getStartTime() - travelTime;
+//							person.addTrip(new Trip(nextMode, purpose, depTime, oll, dll));
+//						}else {
+//							long travelTime = 0;
+//							long time1 = 0;
+//							long time2 = 0;
+//							ETransport accMode, egrMode;
+//							// access time
+//							{
+//								EPurpose t_purpose = purpose != EPurpose.HOME ? purpose : convertHomeMode(labor);
+//								distance = DistanceUtils.distance(oll, station1);
+//								List<Double> probs = modeAcs.get(type, gender, t_purpose, age, distance);
+//								probs = probs.subList(0, probs.size()-1);
+//								int tindex = Roulette.choice(probs, getRandom());
+//								accMode = modeAcs.getCode(tindex);
+//
+//								travelTime += (long)(distance / Speed.get(accMode));
+//								time1 = travelTime;
+//							}
+//							// trip time
+//							{
+//								distance = DistanceUtils.distance(station1, station2);
+//								travelTime += (long)(distance / Speed.get(nextMode));
+//								time2 = travelTime;
+//							}
+//							// egress time
+//							{
+//								EPurpose t_purpose = purpose != EPurpose.HOME ? purpose : convertHomeMode(labor);
+//								distance = DistanceUtils.distance(station2, dll);
+//								List<Double> probs = modeAcs.get(type, gender, t_purpose, age, distance);
+//								probs = probs.subList(0, probs.size()-1);
+//								int tindex = Roulette.choice(probs, getRandom());
+//								egrMode = modeAcs.getCode(tindex);
+//								travelTime += (long)(distance / Speed.get(egrMode));
+//							}
+//							// create sub trips
+//							long depTime = next.getStartTime()-travelTime;
+//
+//							person.addTrip(new Trip(accMode, purpose, depTime, oll, station1));
+//							person.addTrip(new Trip(nextMode, purpose, depTime+time1, station1, station2));
+//							person.addTrip(new Trip(egrMode, purpose, depTime+time2, station2, dll));
+//						}
 					}
-					pre = next;
+					// pre = next;
 				}
 			}
 			return 0;
@@ -243,47 +375,27 @@ public class TripGenerator_WebAPI {
 		}		
 	}
 
-	private static SSLContext createSSLContext() throws Exception {
-		return SSLContextBuilder.create()
-				.loadTrustMaterial(new TrustSelfSignedStrategy())
-				.build();
-	}
+//	private static String createSession(CloseableHttpClient httpClient) throws Exception {
+//		HttpPost createSessionPost = new HttpPost(prop.getProperty("api.createSessionURL"));
+//
+//		List<NameValuePair> sessionParams = new ArrayList<>();
+//		sessionParams.add(new BasicNameValuePair("UserID", prop.getProperty("api.userID")));
+//		sessionParams.add(new BasicNameValuePair("Password", prop.getProperty("api.password")));
+//		createSessionPost.setEntity(new UrlEncodedFormEntity(sessionParams));
+//
+//		HttpResponse sessionResponse = executePostRequest(httpClient, createSessionPost);
+//		if (sessionResponse.getStatusLine().getStatusCode() == 200) {
+//			String sessionResponseBody = EntityUtils.toString(sessionResponse.getEntity());
+//			System.out.println("Session created successfully");
+//			System.out.println(sessionResponseBody);
+//			return sessionResponseBody.split(",")[1].trim().replace("\r", "").replace("\n", "");
+//		} else {
+//			System.out.println("Failed to create session: " + sessionResponse.getStatusLine().getStatusCode());
+//			return "";
+//		}
+//	}
 
-	private static CloseableHttpClient createHttpClient(SSLContext sslContext) {
-		return HttpClients.custom()
-				.setSslcontext(sslContext)
-				.setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
-				.setDefaultRequestConfig(RequestConfig.custom()
-						.setCookieSpec(CookieSpecs.STANDARD)
-						.build())
-				.build();
-	}
-
-	private static HttpResponse executePostRequest(CloseableHttpClient httpClient, HttpPost postRequest) throws Exception {
-		return httpClient.execute(postRequest);
-	}
-
-	private static String createSession(CloseableHttpClient httpClient) throws Exception {
-		HttpPost createSessionPost = new HttpPost(prop.getProperty("api.createSessionURL"));
-
-		List<NameValuePair> sessionParams = new ArrayList<>();
-		sessionParams.add(new BasicNameValuePair("UserID", prop.getProperty("api.userID")));
-		sessionParams.add(new BasicNameValuePair("Password", prop.getProperty("api.password")));
-		createSessionPost.setEntity(new UrlEncodedFormEntity(sessionParams));
-
-		HttpResponse sessionResponse = executePostRequest(httpClient, createSessionPost);
-		if (sessionResponse.getStatusLine().getStatusCode() == 200) {
-			String sessionResponseBody = EntityUtils.toString(sessionResponse.getEntity());
-			System.out.println("Session created successfully");
-			System.out.println(sessionResponseBody);
-			return sessionResponseBody.split(",")[1].trim().replace("\r", "").replace("\n", "");
-		} else {
-			System.out.println("Failed to create session: " + sessionResponse.getStatusLine().getStatusCode());
-			return "";
-		}
-	}
-
-	private static void getMixedRoute(CloseableHttpClient httpClient, String sessionid, Map<String, String> params) throws Exception {
+	private static JsonNode getMixedRoute(CloseableHttpClient httpClient, String sessionid, Map<String, String> params) throws Exception {
 		HttpPost mixedRoutePost = new HttpPost(prop.getProperty("api.getMixedRouteURL"));
 
 		List<NameValuePair> mixedRouteParams = new ArrayList<>();
@@ -295,15 +407,41 @@ public class TripGenerator_WebAPI {
 		mixedRoutePost.setHeader("Cookie", "WebApiSessionID=" + sessionid);
 
 		HttpResponse mixedRouteResponse = executePostRequest(httpClient, mixedRoutePost);
+		ObjectMapper mapper = new ObjectMapper();
 
 		if (mixedRouteResponse.getStatusLine().getStatusCode() == 200) {
 			String mixedRouteResponseBody = EntityUtils.toString(mixedRouteResponse.getEntity());
-			System.out.println("Mixed Route Search successfully");
-			System.out.println(mixedRouteResponseBody);
+			return mapper.readTree(mixedRouteResponseBody);
 		} else {
 			System.out.println("Failed to get mixed route: " + mixedRouteResponse.getStatusLine().getStatusCode());
+			return mapper.readTree("");
 		}
 	}
+
+	private static JsonNode getRoadRoute(CloseableHttpClient httpClient, String sessionid, Map<String, String> params) throws Exception {
+		HttpPost roadRoutePost = new HttpPost(prop.getProperty("api.getRoadRouteURL"));
+
+		List<NameValuePair> roadRouteParams = new ArrayList<>();
+		for (Map.Entry<String, String> entry : params.entrySet()) {
+			roadRouteParams.add(new BasicNameValuePair(entry.getKey(), entry.getValue()));
+		}
+
+		roadRoutePost.setEntity(new UrlEncodedFormEntity(roadRouteParams));
+		roadRoutePost.setHeader("Cookie", "WebApiSessionID=" + sessionid);
+
+		HttpResponse roadRouteResponse = executePostRequest(httpClient, roadRoutePost);
+		ObjectMapper mapper = new ObjectMapper();
+
+		if (roadRouteResponse.getStatusLine().getStatusCode() == 200) {
+			String roadRouteResponseBody = EntityUtils.toString(roadRouteResponse.getEntity());
+			return mapper.readTree(roadRouteResponseBody);
+		} else {
+			System.out.println("Failed to get road route: " + roadRouteResponse.getStatusLine().getStatusCode());
+			return mapper.readTree("");
+		}
+	}
+
+
 
 	private static Properties prop;
 	private static void loadProperties() throws Exception {
@@ -323,64 +461,72 @@ public class TripGenerator_WebAPI {
 
 		loadProperties();
 
-		String dir;
+		String inputDir = null;
+		String root = null;
 
-		dir = prop.getProperty("root");
-		System.out.println("Root Directory: " + dir);
+		InputStream inputStream = Commuter.class.getClassLoader().getResourceAsStream("config.properties");
+		if (inputStream == null) {
+			throw new FileNotFoundException("config.properties file not found in the classpath");
+		}
+		Properties prop = new Properties();
+		prop.load(inputStream);
+
+		root = prop.getProperty("root");
+		inputDir = prop.getProperty("inputDir");
+		System.out.println("Root Directory: " + root);
+		System.out.println("Input Directory: " + inputDir);
 		
 		int mfactor = 1;
 		
 		// load data
-		String cityFile = String.format("%s/processing/city_boundary.csv", dir);
+		String cityFile = String.format("%scity_boundary.csv", inputDir);
 		DataAccessor.loadCityData(cityFile, japan);
 		
-		String stationFile = String.format("%s/processing/base_station.csv", dir);
+		String stationFile = String.format("%sbase_station.csv", inputDir);
 		Network station = DataAccessor.loadLocationData(stationFile);
 		japan.setStation(station);
 	
-		String modeFile = String.format("%s/processing/act_transport.csv", dir);
+		String modeFile = String.format("%sact_transport.csv", inputDir);
 		ModeAccessor modeAcs = new ModeAccessor(modeFile);
 	
 		// create worker
 		TripGenerator_WebAPI worker = new TripGenerator_WebAPI(japan, modeAcs);
-		String inputDir = String.format("%s/activity/", dir);
-		String outputDir = String.format("%s/trip/", dir);
+		String outputDir = String.format("%s/trip/", root);
 
-		SSLContext sslContext = createSSLContext();
-		CloseableHttpClient httpClient = createHttpClient(sslContext);
+//		if (!worker.sessionId.isEmpty()) {
+//			Map<String, String> params = new HashMap<>();
+//			params.put("UnitTypeCode", "2");
+//			params.put("StartLongitude", "139.56629225");
+//			params.put("StartLatitude", "35.663611996");
+//			params.put("GoalLongitude", "139.75884674036305");
+//			params.put("GoalLatitude", "35.69638343647759");
+//			params.put("TransportCode", "3");
+//
+//			getMixedRoute(worker.httpClient, worker.sessionId, params);
+//		}
 
-		String sessionid = createSession(httpClient);
 
-		if (!sessionid.isEmpty()) {
-			Map<String, String> params = new HashMap<>();
-			params.put("UnitTypeCode", "2");
-			params.put("StartLongitude", "139.56629225");
-			params.put("StartLatitude", "35.663611996");
-			params.put("GoalLongitude", "139.75884674036305");
-			params.put("GoalLatitude", "35.69638343647759");
-			params.put("TransportCode", "3");
-
-			getMixedRoute(httpClient, sessionid, params);
-		}
-
-		long starttime = System.currentTimeMillis();
 		int start = 1;
 		for (int i = 13; i <= 13; i++){
 			File prefDir = new File(outputDir, String.valueOf(i));
 			System.out.println("Start prefecture:" + i + prefDir.mkdirs());
+			Double ratio = Double.parseDouble(prop.getProperty("car." + i));
 
-			File actDir = new File(inputDir, String.valueOf(i));
+			File actDir = new File(String.format("%s/activity/", root), String.valueOf(i));
 			for(File file: actDir.listFiles()){
 				if (file.getName().contains(".csv")) {
-					List<Person> agents = PersonAccessor.loadActivity(file.getAbsolutePath(), mfactor);
+					long starttime = System.currentTimeMillis();
+					List<Person> agents = PersonAccessor.loadActivity(file.getAbsolutePath(), mfactor, ratio);
 					System.out.println(String.format("%s", file.getName()));
 					worker.generate(agents);
 					PersonAccessor.writeTrips(new File(outputDir+ i + "/trip_"+ file.getName().substring(9,14) + ".csv").getAbsolutePath(), agents);
+					long endtime = System.currentTimeMillis();
+					System.out.println(file.getName() + ": " + (endtime - starttime));
 				}
 			}
 		}
 		System.out.println("end");
-		long endtime = System.currentTimeMillis();
-		System.out.println(endtime-starttime);
+		System.out.println(System.currentTimeMillis());
+
 	}	
 }

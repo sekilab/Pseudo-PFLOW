@@ -261,11 +261,11 @@ public class TrajectoryGenerator {
 
 		Network railway = RailLoader.load(railFile);
 
-		String inputDir = String.format("%strip/", dir);
+		String inputDir = String.format("%sTrip/", dir);
 		String outputDir = String.format("%strajectory/", dir);
 
 		// create trajectories
-		for (int i = start; i <= 48; i++) {
+		for (int i = 13; i <= 13; i++) {
 			// create directory
 			File prefDir = new File(outputDir, String.valueOf(i));
 			System.out.println("Start prefecture:"+i+prefDir.mkdirs());
@@ -292,7 +292,7 @@ public class TrajectoryGenerator {
 				System.out.print(e.getKey());
 				long starttime = System.currentTimeMillis();
 				TrajectoryGenerator worker = new TrajectoryGenerator(road, railway);
-				String header = String.format("%strajectory_%s", outputDir+String.valueOf(i)+"/", e.getKey());
+				String header = String.format("%strajectory_%s", outputDir+ i +"/", e.getKey());
 				// String header = String.format("%sperson_%s", outputDir, e.getKey());
 				Path p = Paths.get(header+"_0001_000000.csv");
 				if (Files.exists(p)){
