@@ -3,8 +3,10 @@ package pseudo.gen;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jp.ac.ut.csis.pflow.geom2.DistanceUtils;
+import jp.ac.ut.csis.pflow.geom2.TrajectoryUtils;
 import jp.ac.ut.csis.pflow.routing4.logic.Dijkstra;
 import jp.ac.ut.csis.pflow.routing4.res.Network;
+import jp.ac.ut.csis.pflow.routing4.res.Node;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.config.CookieSpecs;
@@ -205,10 +207,6 @@ public class TripGenerator_WebAPI_Test {
 						Map<String, String> mixedparams = new HashMap<>(params);
 						mixedparams.put("TransportCode", "3");
 
-//						JsonNode mixedResults = getMixedRoute(httpClient, sessionId, mixedparams);
-//						double mixedfare = mixedResults.get("fare").asDouble();
-//						double mixedtime = mixedResults.get("total_time").asDouble();
-//						Double mixedcost = mixedfare + mixedtime / 60 * 1000.0;
 						double mixedtime = 0;
 
 						JsonNode roadResults = getRoadRoute(httpClient, sessionId, carparams);
@@ -266,7 +264,7 @@ public class TripGenerator_WebAPI_Test {
 										.orElse(ETransport.NOT_DEFINED);
 							}
 						}
-						// create trip or sub-trip
+						// create trip or sub-trip, add routes to person.trajectory
 						long travelTime = 0;
 						if (nextMode== ETransport.WALK){
 							travelTime = (long) walktime * 60;

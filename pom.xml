@@ -18,6 +18,28 @@
 
    
   <dependencies>
+      <!-- GeoTools Core Modules -->
+      <dependency>
+          <groupId>org.geotools</groupId>
+          <artifactId>gt-main</artifactId>
+          <version>25.1</version>  <!-- Use the latest version available -->
+      </dependency>
+      <dependency>
+          <groupId>org.geotools</groupId>
+          <artifactId>gt-metadata</artifactId>
+          <version>25.1</version>
+      </dependency>
+      <dependency>
+          <groupId>org.geotools</groupId>
+          <artifactId>gt-referencing</artifactId>
+          <version>25.1</version>
+      </dependency>
+      <!-- EPSG Support -->
+      <dependency>
+          <groupId>org.geotools</groupId>
+          <artifactId>gt-epsg-hsql</artifactId>
+          <version>25.1</version>
+      </dependency>
 <!-- https://mvnrepository.com/artifact/org.geotools/geotools -->
         <dependency>
             <groupId>junit</groupId>

@@ -1,63 +1,50 @@
 package pseudo.gen;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jp.ac.ut.csis.pflow.geom2.DistanceUtils;
 import jp.ac.ut.csis.pflow.geom2.ILonLat;
 import jp.ac.ut.csis.pflow.geom2.LonLat;
 import jp.ac.ut.csis.pflow.geom2.TrajectoryUtils;
 import jp.ac.ut.csis.pflow.routing4.logic.Dijkstra;
 import jp.ac.ut.csis.pflow.routing4.logic.linkcost.LinkCost;
-import jp.ac.ut.csis.pflow.routing4.logic.transport.DrmTransport;
-import jp.ac.ut.csis.pflow.routing4.logic.transport.ITransport;
-import jp.ac.ut.csis.pflow.routing4.logic.transport.Transport;
 import jp.ac.ut.csis.pflow.routing4.res.Link;
 import jp.ac.ut.csis.pflow.routing4.res.Network;
 import jp.ac.ut.csis.pflow.routing4.res.Node;
 import jp.ac.ut.csis.pflow.routing4.res.Route;
 import network.DrmLoader;
+import org.apache.http.HttpResponse;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.config.CookieSpecs;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpPost;
 import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
-import org.geojson.FeatureCollection;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.ssl.SSLContextBuilder;
+import org.apache.http.util.EntityUtils;
 import org.jboss.netty.util.internal.ThreadLocalRandom;
 import pseudo.acs.DataAccessor;
 import pseudo.acs.ModeAccessor;
 import pseudo.acs.PersonAccessor;
 import pseudo.res.*;
-import utils.Roulette;
 
+import javax.net.ssl.SSLContext;
 import java.io.*;
-
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.locks.ReentrantLock;
 
-import org.apache.http.client.config.CookieSpecs;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
-import org.apache.http.ssl.SSLContextBuilder;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.util.EntityUtils;
+public class TripGenerator_WebAPI_refactor {
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import javax.net.ssl.SSLContext;
-
-import static org.apache.axis.management.ServiceAdmin.getTransport;
-
-public class TripGenerator_WebAPI {
-
-	private final ModeAccessor modeAcs;
 	private final Country japan;
 
 	private final Network drm;
@@ -68,13 +55,16 @@ public class TripGenerator_WebAPI {
 	private final String sessionId;
 
 	private static final double MAX_WALK_DISTANCE = 1000;
-	private static final double MAX_SEARCH_STATAION_DISTANCE = 1000;
+	private static final double MAX_SEARCH_STATION_DISTANCE = 1000;
+	private static final double FARE_PER_KILOMETER = 51; // Japanese yen, only for vehicle
+	private static final double FARE_PER_HOUR = 1000; // Japanese yen, all modes, possible to extend to prefecture level
+	private static final double FARE_INIT = 150; // Japanese yen, only for vehicle
+	private static final double CAR_AVAILABILITY = 0.2; // Parameter for explain people using car without ownership
 
 
-	public TripGenerator_WebAPI(Country japan, ModeAccessor modeAcs, Network drm) throws Exception {
+	public TripGenerator_WebAPI_refactor(Country japan, Network drm) throws Exception {
 		super();
 		this.japan = japan;
-		this.modeAcs = modeAcs;
 		this.drm = drm;
 		this.sslContext = createSSLContext();
 		this.connManager = createConnManager();
@@ -228,6 +218,78 @@ public class TripGenerator_WebAPI {
 				default:		return ETransport.CAR;
 			}
 		}
+
+		private int calculateMultiplier(ETransport mode) {
+			switch (mode) {
+				case WALK: return 6;
+				case BICYCLE: return 3;
+				case CAR: return 1;
+				default: return 1;
+			}
+		}
+
+		private void configureCalendar(Calendar calendar, Date date) {
+			TimeZone timeZone = TimeZone.getTimeZone("Asia/Tokyo");
+			calendar.setTime(date);
+			calendar.setTimeZone(timeZone);
+			calendar.add(Calendar.MILLISECOND, -timeZone.getOffset(calendar.getTimeInMillis()));
+			calendar.add(Calendar.YEAR, 45);
+			calendar.add(Calendar.MONTH, 9);
+		}
+
+		private ETransport determineTransportMode(Person person, LonLat oll, LonLat dll, double distance, Route route, Map<String, String> mixedparams, JsonNode mixedResults){
+			ETransport nextMode;
+
+			double roadtime = 1000000;
+			double roadcost = 1000000;
+			double walkcost = 1000000;
+
+			if(route!=null){
+				roadtime = route.getCost(); // seconds
+				double roadfare = FARE_INIT + route.getLength() / 1000 * FARE_PER_KILOMETER; // length in meters, 150 as initial cost to avoid short distance car travel
+				roadcost = roadfare + roadtime / 3600 * FARE_PER_HOUR;
+
+				double walktime = roadtime * 10; // walk takes 10 times slower than vehicle
+				walkcost = walktime / 3600 * FARE_PER_HOUR;
+			}
+			Map<ETransport, Double> choices = new LinkedHashMap<>();
+
+			if(distance>MAX_WALK_DISTANCE){
+				Node station1 = routing.getNearestNode(japan.getStation(), oll.getLon(), oll.getLat(), MAX_SEARCH_STATION_DISTANCE);
+				Node station2 = routing.getNearestNode(japan.getStation(), dll.getLon(), dll.getLat(), MAX_SEARCH_STATION_DISTANCE);
+				if(station1!=null && station2!=null){
+					mixedResults = getMixedRoute(httpClient, sessionId, mixedparams);
+					boolean publicTransit = mixedResults.path("num_station").asInt() > 0;
+					if (publicTransit) {
+						double mixedfare = mixedResults.get("fare").asDouble();
+						double mixedtime = mixedResults.get("total_time").asDouble(); // Travel time from WebAPI is in minute
+						double mixedcost = mixedfare + mixedtime / 60 * FARE_PER_HOUR;
+						choices.put(ETransport.MIX, mixedcost);
+					}
+				}else{
+					double biketime = roadtime * 3;
+					double bikecost = biketime / 3600 * FARE_PER_HOUR;
+					choices.put(ETransport.BICYCLE, bikecost);
+				}
+			}else{
+				choices.put(ETransport.WALK, walkcost);
+			}
+
+			if((route!=null)){
+				if(person.hasCar() || getRandom() < CAR_AVAILABILITY){
+					choices.put(ETransport.CAR, roadcost);
+				}
+			}
+
+			nextMode = choices.entrySet()
+					.stream()
+					.min(Comparator.comparing(Map.Entry::getValue))
+					.map(Map.Entry::getKey)
+					.orElse(ETransport.NOT_DEFINED);
+
+			return nextMode;
+		}
+
 		private int process(Person person) {
 			List<SPoint> points = new ArrayList<>();
 
@@ -254,7 +316,7 @@ public class TripGenerator_WebAPI {
 					double distance = DistanceUtils.distance(oll, dll);
 
 					if (distance > 0) {
-						ETransport nextMode = null;
+						ETransport nextMode;
 
 						Map<String, String> params = new HashMap<>();
 						params.put("UnitTypeCode", "2");
@@ -265,56 +327,13 @@ public class TripGenerator_WebAPI {
 
 						Map<String, String> mixedparams = new HashMap<>(params);
 						mixedparams.put("TransportCode", "3");
+
 						JsonNode mixedResults = null;
 
-						double biketime = 1000000;
-						double mixedtime = 1000000;
-						double roadtime = 1000000;
-						double roadfare = 1000000;
-						double roadcost = 1000000;
-						double walktime = 1000000;
-						double walkcost = 1000000;
-
 						Route route = routing.getRoute(drm,	oll.getLon(), oll.getLat(), dll.getLon(), dll.getLat());
-						if(route!=null){
-							roadtime = route.getCost(); // seconds
-							roadfare = 150 + route.getLength() / 1000 * 51; // length in meters, 150 as initial cost to avoid short distance car travel
-							roadcost = roadfare + roadtime / 3600 * 1000.0;
 
-							walktime = roadtime * 10;
-							walkcost = walktime / 3600 * 1000.0;
-						}
-
-						// choice mode
-						Map<ETransport, Double> choices = new LinkedHashMap<>();
 						if (purpose != EPurpose.HOME){
-							if(distance>MAX_WALK_DISTANCE){
-								Node station1 = routing.getNearestNode(station, oll.getLon(), oll.getLat(), MAX_SEARCH_STATAION_DISTANCE);
-								Node station2 = routing.getNearestNode(station, dll.getLon(), dll.getLat(), MAX_SEARCH_STATAION_DISTANCE);
-								if(station1!=null&station2!=null){
-									mixedResults = getMixedRoute(httpClient, sessionId, mixedparams);
-									boolean publicTransit = mixedResults.path("num_station").asInt() > 0;
-									if(publicTransit){
-										double mixedfare = mixedResults.get("fare").asDouble();
-										mixedtime = mixedResults.get("total_time").asDouble();
-										Double mixedcost = mixedfare + mixedtime / 60 * 1000.0;
-										choices.put(ETransport.MIX, mixedcost);
-									}
-								}else{
-									biketime = roadtime * 3;
-									double bikecost = biketime / 60 * 1000.0;
-									choices.put(ETransport.BICYCLE, bikecost);
-								}
-							}
-							choices.put(ETransport.WALK, walkcost);
-							if(person.hasCar()&&(route!=null)){
-								choices.put(ETransport.CAR, roadcost);
-							}
-							nextMode = choices.entrySet()
-									.stream()
-									.min(Comparator.comparing(Map.Entry::getValue))
-									.map(Map.Entry::getKey)
-									.orElse(ETransport.NOT_DEFINED);
+							nextMode = determineTransportMode(person, oll, dll, distance, route, mixedparams, mixedResults);
 							if(i==1&&nextMode==ETransport.CAR){
 								primaryMode = nextMode;
 							}
@@ -322,55 +341,20 @@ public class TripGenerator_WebAPI {
 							if(primaryMode!=null){
 								nextMode = primaryMode;
 							}else {
-								if(distance>MAX_WALK_DISTANCE){
-									Node station1 = routing.getNearestNode(station, oll.getLon(), oll.getLat(), MAX_SEARCH_STATAION_DISTANCE);
-									Node station2 = routing.getNearestNode(station, dll.getLon(), dll.getLat(), MAX_SEARCH_STATAION_DISTANCE);
-									if(station1!=null&station2!=null){
-										mixedResults = getMixedRoute(httpClient, sessionId, mixedparams);
-										boolean publicTransit = mixedResults.path("num_station").asInt() > 0;
-										if(publicTransit){
-											double mixedfare = mixedResults.get("fare").asDouble();
-											mixedtime = mixedResults.get("total_time").asDouble();
-											Double mixedcost = mixedfare + mixedtime / 60 * 1000.0;
-											choices.put(ETransport.MIX, mixedcost);
-										}
-									}else{
-										biketime = roadtime * 3;
-										double bikecost = biketime / 60 * 1000.0;
-										choices.put(ETransport.BICYCLE, bikecost);
-									}
-								}
-								choices.put(ETransport.WALK, walkcost);
-								if (person.hasCar()) {
-									choices.put(ETransport.CAR, roadcost);
-								}
-								nextMode = choices.entrySet()
-										.stream()
-										.min(Comparator.comparing(Map.Entry::getValue))
-										.map(Map.Entry::getKey)
-										.orElse(ETransport.NOT_DEFINED);
+								nextMode = determineTransportMode(person, oll, dll, distance, route, mixedparams, mixedResults);
 							}
 						}
 						// create trip or sub-trip
-						int multiplier = 1;
-						switch (nextMode) {
-							case WALK:
-								multiplier = 6;
-								break;
-							case BICYCLE:
-								multiplier = 3;
-								break;
-							case CAR:
-								multiplier = 1;
-								break;
-						}
+						int multiplier = calculateMultiplier(nextMode);
 
 						long travelTime = 0;
+
+
 						if (nextMode == ETransport.WALK || nextMode==ETransport.BICYCLE || nextMode==ETransport.CAR){
 							if(route!=null){
 								travelTime = (long) route.getCost() * multiplier;
 							}else{
-								travelTime = (long) mixedtime * 60;
+								travelTime = (long) 3600;
 							}
 
 							endTime += travelTime;
@@ -383,12 +367,8 @@ public class TripGenerator_WebAPI {
                             for (ILonLat node : nodes) {
                                 Date date = timeMap.get(node);
                                 Calendar cl = Calendar.getInstance();
-                                cl.setTime(date);
-								TimeZone timeZone = TimeZone.getTimeZone("Asia/Tokyo");
-								cl.setTimeZone(timeZone);
-								cl.add(Calendar.MILLISECOND, (int) -timeZone.getOffset(cl.getTimeInMillis()));
-                                cl.add(Calendar.YEAR, 45);
-                                cl.add(Calendar.MONTH, 9);
+                                configureCalendar(cl, date);
+
                                 date = cl.getTime();
 
                                 SPoint point = new SPoint(node.getLon(), node.getLat()
@@ -405,8 +385,9 @@ public class TripGenerator_WebAPI {
 							person.addTrip(new Trip(nextMode, purpose, depTime, oll, dll));
 
 						} else if (nextMode==ETransport.MIX && mixedResults != null){
-							endTime += mixedResults.path("total_time").asLong() * 60;
-							travelTime = (long) mixedtime * 60;
+							long mixedtime = mixedResults.path("total_time").asLong() * 60;
+							endTime += mixedtime;
+							travelTime = mixedtime;
 							long depTime = next.getStartTime() - travelTime;
 
 							List<Node> nodes = new ArrayList<>();
@@ -462,12 +443,8 @@ public class TripGenerator_WebAPI {
                             for (ILonLat node : nodes) {
                                 Date date = timeMap.get(node);
                                 Calendar cl = Calendar.getInstance();
-                                cl.setTime(date);
-								TimeZone timeZone = TimeZone.getTimeZone("Asia/Tokyo");
-								cl.setTimeZone(timeZone);
-								cl.add(Calendar.MILLISECOND, (int) -timeZone.getOffset(cl.getTimeInMillis()));
-                                cl.add(Calendar.YEAR, 45);
-                                cl.add(Calendar.MONTH, 9);
+                                configureCalendar(cl, date);
+
                                 date = cl.getTime();
 
                                 SPoint point = new SPoint(node.getLon(), node.getLat()
@@ -639,16 +616,13 @@ public class TripGenerator_WebAPI {
 		String stationFile = String.format("%sbase_station.csv", inputDir);
 		Network station = DataAccessor.loadLocationData(stationFile);
 		japan.setStation(station);
-	
-		String modeFile = String.format("%sact_transport.csv", inputDir);
-		ModeAccessor modeAcs = new ModeAccessor(modeFile);
 
 		String outputDir = "/large/PseudoPFLOW/";
 
 		ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
 //				16, 31, 32, 39, 36, 18, 41, 1, 40, 46, 47, 6, 5, 37, 30, 3, 19, 38, 7, 45, 17, 42, 44, 2,
 //				29, 25, 33, 24, 15, 10, 35, 4, 43, 20, 21, 9, 8, 22, 34, 26, 12, 28, 11, 14, 23, 27, 13
-				43, 20, 21, 9, 8, 22, 34, 26, 12, 28, 11, 14, 23, 27, 13
+				4, 43, 20, 21, 9, 8, 22, 34, 26, 12, 28, 11, 14, 23, 27, 13
 		));
 
 		for (int i: prefectureCodes){
@@ -668,7 +642,7 @@ public class TripGenerator_WebAPI {
 			for(File file: actDir.listFiles()){
 				if (file.getName().contains(".csv")) {
 					long starttime = System.currentTimeMillis();
-					TripGenerator_WebAPI worker = new TripGenerator_WebAPI(japan, modeAcs, road);
+					TripGenerator_WebAPI_refactor worker = new TripGenerator_WebAPI_refactor(japan, road);
 					List<Person> agents = PersonAccessor.loadActivity(file.getAbsolutePath(), mfactor, ratio);
 					System.out.printf("%s%n", file.getName());
 					worker.generate(agents);

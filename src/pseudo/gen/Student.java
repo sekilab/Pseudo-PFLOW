@@ -153,10 +153,6 @@ public class Student extends ActGenerator {
 			GLonLat home = new GLonLat(household.getHome(), household.getGcode());
 			EGender fixedGender = EGender.MALE;	// Fixed value
 			EGender gender = person.getGender();
-		
-			if (person.getId() == 352750) {
-				System.out.println("aa");
-			}
 			
 			// Markov Accessor
 			ELabor labor = person.getLabor();
@@ -343,8 +339,8 @@ public class Student extends ActGenerator {
 
 		String outputDir = String.format("%s/activity/", root);
 
-		int start = 13;
-		for (int i = start; i <= 13; i++) {
+		int start = 1;
+		for (int i = start; i <= 47; i++) {
 			// create directory
 			File prefDir = new File(outputDir, String.valueOf(i));
 			System.out.println("Start prefecture:" + i + prefDir.mkdirs());
