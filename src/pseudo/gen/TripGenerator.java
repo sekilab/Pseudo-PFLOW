@@ -287,7 +287,7 @@ public class TripGenerator {
 			File actDir = new File(inputDir, String.valueOf(i));
 			for(File file: actDir.listFiles()){
 				if (file.getName().contains(".csv")) {
-					List<Person> agents = PersonAccessor.loadActivity(file.getAbsolutePath(), mfactor, 0.4);
+					List<Person> agents = PersonAccessor.loadActivity(file.getAbsolutePath(), mfactor, 0.4, 0.4);
 					System.out.println(String.format("%s", file.getName()));
 					worker.generate(agents);
 					PersonAccessor.writeTrips(new File(outputDir+ i + "/trip_"+ file.getName().substring(9,14) + ".csv").getAbsolutePath(), agents);

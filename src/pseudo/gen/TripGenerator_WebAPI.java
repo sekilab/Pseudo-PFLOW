@@ -669,7 +669,7 @@ public class TripGenerator_WebAPI {
 				if (file.getName().contains(".csv")) {
 					long starttime = System.currentTimeMillis();
 					TripGenerator_WebAPI worker = new TripGenerator_WebAPI(japan, modeAcs, road);
-					List<Person> agents = PersonAccessor.loadActivity(file.getAbsolutePath(), mfactor, ratio);
+					List<Person> agents = PersonAccessor.loadActivity(file.getAbsolutePath(), mfactor, ratio, ratio);
 					System.out.printf("%s%n", file.getName());
 					worker.generate(agents);
 					PersonAccessor.writeTrips(new File(outputDir + "trip/" + i + "/trip_"+ file.getName().substring(9,14) + ".csv").getAbsolutePath(), agents);
