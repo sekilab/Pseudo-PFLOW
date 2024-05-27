@@ -103,7 +103,7 @@ public class TripGenerator_WebAPI_refactor {
 						.build());
 
 		connManager.setMaxTotal(32); // Adjust based on your expected total number of concurrent connections
-		connManager.setDefaultMaxPerRoute(32); // Adjust per route limits based on your API and use case
+		connManager.setDefaultMaxPerRoute(100); // Adjust per route limits based on your API and use case
 
 		return connManager;
 	}
@@ -411,16 +411,22 @@ public class TripGenerator_WebAPI_refactor {
 						mixedparams.put("AppTime", convertSecondsToHHMM(startTime));
 
 						Map<String, String> roadparams = new HashMap<>(params);
-						// roadparams.put();
 
 						JsonNode[] mixedResultsHolder = new JsonNode[1];
 
 						Route route = routing.getRoute(drm,	oll.getLon(), oll.getLat(), dll.getLon(), dll.getLat());
 
+
+
 						// Check if the purpose is not HOME
 						if (purpose != EPurpose.HOME) {
-							// Determine the next transport mode using the determineTransportMode method
-							nextMode = determineTransportMode(person, distance, route, mixedparams, mixedResultsHolder);
+							if(route==null || route.listNodes().size() > 5000 || route.listNodes().size()==2){
+								mixedResultsHolder[0] = getMixedRoute(httpClient, sessionId, mixedparams);
+								nextMode = ETransport.MIX;
+							}else{
+								// Determine the next transport mode using the determineTransportMode method
+								nextMode = determineTransportMode(person, distance, route, mixedparams, mixedResultsHolder);
+							}
 							// If this is the first iteration and the chosen transport mode is CAR, set it as the primary mode
 							if (i == 1 && nextMode == ETransport.CAR) {
 								primaryMode = nextMode;
@@ -432,7 +438,13 @@ public class TripGenerator_WebAPI_refactor {
 								nextMode = primaryMode;
 							} else {
 								// If primary mode is not set, determine the next transport mode as usual
-								nextMode = determineTransportMode(person, distance, route, mixedparams, mixedResultsHolder);
+								if(route==null || route.listNodes().size() > 5000 || route.listNodes().size()==2){
+									mixedResultsHolder[0] = getMixedRoute(httpClient, sessionId, mixedparams);
+									nextMode = ETransport.MIX;
+								}else{
+									// Determine the next transport mode using the determineTransportMode method
+									nextMode = determineTransportMode(person, distance, route, mixedparams, mixedResultsHolder);
+								}
 							}
 						}
 
@@ -624,7 +636,7 @@ public class TripGenerator_WebAPI_refactor {
 		String outputDir = "/large/PseudoPFLOW/";
 
 		ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
-				0, 16, 31, 32, 39, 36, 18, 41, 1, 40, 46, 47, 6, 5, 37, 30, 3, 19, 38, 7, 45, 17, 42, 44, 2,
+				16, 31, 32, 39, 36, 18, 41, 1, 40, 46, 47, 6, 5, 37, 30, 3, 19, 38, 7, 45, 17, 42, 44, 2,
 				29, 25, 33, 24, 15, 10, 35, 4, 43, 20, 21, 9, 8, 22, 34, 26, 12, 28, 11, 14, 23, 27, 13,
 				4, 43, 20, 21, 9, 8, 22, 34, 26, 12, 28, 11, 14, 23, 27, 13
 		));
@@ -636,12 +648,10 @@ public class TripGenerator_WebAPI_refactor {
 			System.out.println("Start prefecture:" + i +" "+ tripDir.mkdirs() +" "+ trajDir.mkdirs());
 
 			String roadFile = String.format("%sdrm_%02d.tsv", inputDir+"/DRM/", i);
-			if(i==0){
-				roadFile =  String.format("%sdrm_%02d.tsv", inputDir+"/DRM/", 16);
-			}
+
 			Network road = DrmLoader.load(roadFile);
-			Double carRatio = Double.parseDouble(prop.getProperty("car." + 16));
-			Double bikeRatio = Double.parseDouble(prop.getProperty("bike." + 16));
+			Double carRatio = Double.parseDouble(prop.getProperty("car." + i));
+			Double bikeRatio = Double.parseDouble(prop.getProperty("bike." + i));
 
 			// create worker
 			// TripGenerator_WebAPI worker = new TripGenerator_WebAPI(japan, modeAcs, road);
