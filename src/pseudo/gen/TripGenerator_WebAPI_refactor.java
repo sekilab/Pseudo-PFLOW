@@ -45,9 +45,7 @@ import java.util.concurrent.Executors;
 
 public class TripGenerator_WebAPI_refactor {
 
-	private final Country japan;
-
-	private final Network drm;
+    private final Network drm;
 
 	private final SSLContext sslContext;
 	private final PoolingHttpClientConnectionManager connManager;
@@ -66,8 +64,7 @@ public class TripGenerator_WebAPI_refactor {
 
 	public TripGenerator_WebAPI_refactor(Country japan, Network drm) throws Exception {
 		super();
-		this.japan = japan;
-		this.drm = drm;
+        this.drm = drm;
 		this.sslContext = createSSLContext();
 		this.connManager = createConnManager();
 		this.httpClient = createHttpClient();
@@ -381,6 +378,17 @@ public class TripGenerator_WebAPI_refactor {
 			ETransport primaryMode = null;
 			if (activities.size() <= 1) {
 				person.addTrip(new Trip(ETransport.NOT_DEFINED, EPurpose.HOME, 0, pre.getLocation(), pre.getLocation()));
+
+				Calendar cl = Calendar.getInstance();
+				Date startDate = new Date(0);
+				configureCalendar(cl, startDate);
+				startDate = cl.getTime();
+				points.add(new SPoint(pre.getLocation().getLon(), pre.getLocation().getLat(), startDate, ETransport.NOT_DEFINED, EPurpose.HOME));
+				Date endDate = new Date(86399000);
+				configureCalendar(cl, endDate);
+				endDate = cl.getTime();
+				points.add(new SPoint(pre.getLocation().getLon(), pre.getLocation().getLat(), endDate, ETransport.NOT_DEFINED, EPurpose.HOME));
+				person.addTrajectory(points);
 			}else {
 				for (int i = 1; i < activities.size(); i++) {
 					List<SPoint> subpoints = new ArrayList<>();
@@ -416,11 +424,9 @@ public class TripGenerator_WebAPI_refactor {
 
 						Route route = routing.getRoute(drm,	oll.getLon(), oll.getLat(), dll.getLon(), dll.getLat());
 
-
-
 						// Check if the purpose is not HOME
 						if (purpose != EPurpose.HOME) {
-							if(route==null || route.listNodes().size() > 5000 || route.listNodes().size()==2){
+							if(route==null || route.listNodes().size() > 5000){
 								mixedResultsHolder[0] = getMixedRoute(httpClient, sessionId, mixedparams);
 								nextMode = ETransport.MIX;
 							}else{
@@ -438,7 +444,7 @@ public class TripGenerator_WebAPI_refactor {
 								nextMode = primaryMode;
 							} else {
 								// If primary mode is not set, determine the next transport mode as usual
-								if(route==null || route.listNodes().size() > 5000 || route.listNodes().size()==2){
+								if(route==null || route.listNodes().size() > 5000){
 									mixedResultsHolder[0] = getMixedRoute(httpClient, sessionId, mixedparams);
 									nextMode = ETransport.MIX;
 								}else{
@@ -467,6 +473,9 @@ public class TripGenerator_WebAPI_refactor {
 							long depTime = next.getStartTime() - travelTime;
 							person.addTrip(new Trip(nextMode, purpose, depTime, oll, dll));
 						} else if (nextMode == ETransport.MIX) {
+							if(mixedResultsHolder[0].path("features").get(0)==null){
+								System.out.println("empty mixed results!");
+							}
 							handleMixedTransport(nextMode, purpose, mixedResultsHolder, subpoints, points, person, next, route, startTime, endTime, oll, dll);
 						} else {
 							System.out.println("Did not find correct mode!");
@@ -474,7 +483,16 @@ public class TripGenerator_WebAPI_refactor {
 							error++;
 						}
 
+					}else{
+						person.addTrip(new Trip(ETransport.NOT_DEFINED, next.getPurpose(), next.getStartTime(), pre.getLocation(), pre.getLocation()));
+						Calendar cl = Calendar.getInstance();
+						Date startDate = new Date(next.getStartTime());
+						configureCalendar(cl, startDate);
+						startDate = cl.getTime();
+						points.add(new SPoint(pre.getLocation().getLon(), pre.getLocation().getLat(), startDate, ETransport.NOT_DEFINED, next.getPurpose()));
+						person.addTrajectory(points);
 					}
+
 					pre = next;
 				}
 			}
@@ -636,7 +654,8 @@ public class TripGenerator_WebAPI_refactor {
 		String outputDir = "/large/PseudoPFLOW/";
 
 		ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
-				16, 31, 32, 39, 36, 18, 41, 1, 40, 46, 47, 6, 5, 37, 30, 3, 19, 38, 7, 45, 17, 42, 44, 2,
+				// 0, 16, 31, 32, 39, 36, 18, 41, 1, 40,
+				46, 47, 6, 5, 37, 30, 3, 19, 38, 7, 45, 17, 42, 44, 2,
 				29, 25, 33, 24, 15, 10, 35, 4, 43, 20, 21, 9, 8, 22, 34, 26, 12, 28, 11, 14, 23, 27, 13,
 				4, 43, 20, 21, 9, 8, 22, 34, 26, 12, 28, 11, 14, 23, 27, 13
 		));
@@ -647,11 +666,12 @@ public class TripGenerator_WebAPI_refactor {
 			File trajDir = new File(outputDir+"trajectory/", String.valueOf(i));
 			System.out.println("Start prefecture:" + i +" "+ tripDir.mkdirs() +" "+ trajDir.mkdirs());
 
-			String roadFile = String.format("%sdrm_%02d.tsv", inputDir+"/DRM/", i);
+
+			String roadFile = String.format("%sdrm_%02d.tsv", inputDir+"/network/", 16);
 
 			Network road = DrmLoader.load(roadFile);
-			Double carRatio = Double.parseDouble(prop.getProperty("car." + i));
-			Double bikeRatio = Double.parseDouble(prop.getProperty("bike." + i));
+			Double carRatio = Double.parseDouble(prop.getProperty("car." + 16));
+			Double bikeRatio = Double.parseDouble(prop.getProperty("bike." + 16));
 
 			// create worker
 			// TripGenerator_WebAPI worker = new TripGenerator_WebAPI(japan, modeAcs, road);
