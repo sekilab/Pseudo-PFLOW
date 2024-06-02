@@ -189,6 +189,17 @@ public class TripGenerator_WebAPI_refactor {
 			}
 		}
 
+		// use for API travel time
+		private double getTravelSpeed(int mode){
+			switch(mode){
+				case 1:		return 1.39;
+				case 2:		return 16.67;
+				case 3:		return 8.33;
+				case 4:     return 1.39;
+				default:		return 8.33;
+			}
+		}
+
 		private int calculateMultiplier(ETransport mode) {
 			switch (mode) {
 				case WALK: return 6;
@@ -210,19 +221,26 @@ public class TripGenerator_WebAPI_refactor {
 		private ETransport determineTransportMode(Person person, double distance, Route route, Map<String, String> mixedparams, JsonNode[] mixedResultsHolder){
 			ETransport nextMode;
 
-			double roadtime = 1000000;
-			double roadcost = 1000000;
-			double walkcost = 1000000;
+			Map<ETransport, Double> choices = new LinkedHashMap<>();
 
 			if(route!=null){
-				roadtime = route.getCost(); // seconds
+				double roadtime = route.getCost(); // seconds
 				double roadfare = FARE_INIT + route.getLength() / 1000 * FARE_PER_KILOMETER; // length in meters, 150 as initial cost to avoid short distance car travel
-				roadcost = roadfare + roadtime / 3600 * FARE_PER_HOUR;
+				double roadcost = roadfare + roadtime / 3600 * FARE_PER_HOUR;
+				if(person.hasCar() || getRandom() < CAR_AVAILABILITY){
+					choices.put(ETransport.CAR, roadcost);
+				}
 
 				double walktime = roadtime * 10; // walk takes 10 times slower than vehicle
-				walkcost = walktime / 3600 * FARE_PER_HOUR * FATIGUE_INDEX_WALK;
+				double walkcost = walktime / 3600 * FARE_PER_HOUR * FATIGUE_INDEX_WALK;
+				choices.put(ETransport.WALK, walkcost);
+
+				if(person.hasBike()){
+					double biketime = roadtime * 3;
+					double bikecost = biketime / 3600 * FARE_PER_HOUR * FATIGUE_INDEX_BICYCLE;
+					choices.put(ETransport.BICYCLE, bikecost);
+				}
 			}
-			Map<ETransport, Double> choices = new LinkedHashMap<>();
 
 			if(distance>MIN_TRANSIT_DISTANCE){
 				mixedResultsHolder[0] = getMixedRoute(httpClient, sessionId, mixedparams);
@@ -232,19 +250,6 @@ public class TripGenerator_WebAPI_refactor {
 					double mixedtime = mixedResultsHolder[0].get("total_time").asDouble(); // Travel time from WebAPI is in minute
 					double mixedcost = mixedfare + mixedtime / 60 * FARE_PER_HOUR;
 					choices.put(ETransport.MIX, mixedcost);
-					}
-			}
-
-			choices.put(ETransport.WALK, walkcost);
-			if(person.hasBike()){
-				double biketime = roadtime * 3;
-				double bikecost = biketime / 3600 * FARE_PER_HOUR * FATIGUE_INDEX_BICYCLE;
-				choices.put(ETransport.BICYCLE, bikecost);
-			}
-
-			if((route!=null)){
-				if(person.hasCar() || getRandom() < CAR_AVAILABILITY){
-					choices.put(ETransport.CAR, roadcost);
 				}
 			}
 
@@ -322,12 +327,19 @@ public class TripGenerator_WebAPI_refactor {
 		private void processMixedTransportFeatures(JsonNode[] mixedResultsHolder, List<JsonNode> currentSubtrip, int lastMode, boolean publicTransit, long depTime, Person person, EPurpose purpose) {
 			JsonNode routeData = mixedResultsHolder[0].path("features");
 			JsonNode prevNode = null;
+			long currentTime = depTime;
 			for (JsonNode feature : routeData) {
 				int currentMode = feature.path("properties").path("transportation").asInt();
 
 				if (currentMode != lastMode) {
 					if (currentSubtrip.size() > 1) {
-						addTripForSubtrip(currentSubtrip, lastMode, publicTransit, depTime, person, purpose);
+						if(lastMode==1){
+							long traveltime = 300;
+							currentTime += traveltime;
+						}else{
+							currentTime +=  mixedResultsHolder[0].path("total_transport_time").asLong() * 60;
+						}
+						addTripForSubtrip(currentSubtrip, lastMode, publicTransit, currentTime, person, purpose);
 					}
 					currentSubtrip = new ArrayList<>();
 					currentSubtrip.add(prevNode);
@@ -348,8 +360,8 @@ public class TripGenerator_WebAPI_refactor {
 			if (ollCoords.isArray() && dllCoords.isArray()) {
 				LonLat moll = new LonLat(ollCoords.get(0).asDouble(), ollCoords.get(1).asDouble());
 				LonLat mdll = new LonLat(dllCoords.get(0).asDouble(), dllCoords.get(1).asDouble());
+				// depTime += (long) (DistanceUtils.distance(moll, mdll) / getTravelSpeed(mode.getId()));
 				person.addTrip(new Trip(mode, purpose, depTime, moll, mdll));
-				depTime += (long) (DistanceUtils.distance(moll, mdll) / 8.33);
 			} else {
 				System.out.println("No coordinate from API!");
 			}
@@ -375,7 +387,6 @@ public class TripGenerator_WebAPI_refactor {
 			List<Activity> activities = person.getActivities();
 			Activity pre = activities.get(0);
 
-			ETransport primaryMode = null;
 			if (activities.size() <= 1) {
 				person.addTrip(new Trip(ETransport.NOT_DEFINED, EPurpose.HOME, 0, pre.getLocation(), pre.getLocation()));
 
@@ -423,38 +434,8 @@ public class TripGenerator_WebAPI_refactor {
 						JsonNode[] mixedResultsHolder = new JsonNode[1];
 
 						Route route = routing.getRoute(drm,	oll.getLon(), oll.getLat(), dll.getLon(), dll.getLat());
+						nextMode = determineTransportMode(person, distance, route, mixedparams, mixedResultsHolder);
 
-						// Check if the purpose is not HOME
-						if (purpose != EPurpose.HOME) {
-							if(route==null || route.listNodes().size() > 5000){
-								mixedResultsHolder[0] = getMixedRoute(httpClient, sessionId, mixedparams);
-								nextMode = ETransport.MIX;
-							}else{
-								// Determine the next transport mode using the determineTransportMode method
-								nextMode = determineTransportMode(person, distance, route, mixedparams, mixedResultsHolder);
-							}
-							// If this is the first iteration and the chosen transport mode is CAR, set it as the primary mode
-							if (i == 1 && nextMode == ETransport.CAR) {
-								primaryMode = nextMode;
-							}
-						} else {
-							// If the purpose is HOME
-							if (primaryMode != null) {
-								// If primary mode is already set, use it as the next transport mode
-								nextMode = primaryMode;
-							} else {
-								// If primary mode is not set, determine the next transport mode as usual
-								if(route==null || route.listNodes().size() > 5000){
-									mixedResultsHolder[0] = getMixedRoute(httpClient, sessionId, mixedparams);
-									nextMode = ETransport.MIX;
-								}else{
-									// Determine the next transport mode using the determineTransportMode method
-									nextMode = determineTransportMode(person, distance, route, mixedparams, mixedResultsHolder);
-								}
-							}
-						}
-
-						// create trip or sub-trip
 						int multiplier = calculateMultiplier(nextMode);
 						long travelTime = 0;
 
@@ -478,9 +459,17 @@ public class TripGenerator_WebAPI_refactor {
 							}
 							handleMixedTransport(nextMode, purpose, mixedResultsHolder, subpoints, points, person, next, route, startTime, endTime, oll, dll);
 						} else {
-							System.out.println("Did not find correct mode!");
-							travelTime = 600;
-							error++;
+							person.addTrip(new Trip(ETransport.NOT_DEFINED, next.getPurpose(), next.getStartTime(), pre.getLocation(), pre.getLocation()));
+							Calendar cl = Calendar.getInstance();
+							Date startDate = new Date(next.getStartTime());
+							configureCalendar(cl, startDate);
+							startDate = cl.getTime();
+							points.add(new SPoint(pre.getLocation().getLon(), pre.getLocation().getLat(), startDate, ETransport.NOT_DEFINED, EPurpose.HOME));
+							Date endDate = new Date(next.getStartTime() + 300);
+							configureCalendar(cl, endDate);
+							endDate = cl.getTime();
+							points.add(new SPoint(pre.getLocation().getLon(), pre.getLocation().getLat(), endDate, ETransport.NOT_DEFINED, EPurpose.HOME));
+							person.addTrajectory(points);
 						}
 
 					}else{
@@ -654,7 +643,7 @@ public class TripGenerator_WebAPI_refactor {
 		String outputDir = "/large/PseudoPFLOW/";
 
 		ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
-				// 0, 16, 31, 32, 39, 36, 18, 41, 1, 40,
+				0, 16, 31, 32, 39, 36, 18, 41, 1, 40,
 				46, 47, 6, 5, 37, 30, 3, 19, 38, 7, 45, 17, 42, 44, 2,
 				29, 25, 33, 24, 15, 10, 35, 4, 43, 20, 21, 9, 8, 22, 34, 26, 12, 28, 11, 14, 23, 27, 13,
 				4, 43, 20, 21, 9, 8, 22, 34, 26, 12, 28, 11, 14, 23, 27, 13
@@ -666,15 +655,11 @@ public class TripGenerator_WebAPI_refactor {
 			File trajDir = new File(outputDir+"trajectory/", String.valueOf(i));
 			System.out.println("Start prefecture:" + i +" "+ tripDir.mkdirs() +" "+ trajDir.mkdirs());
 
-
 			String roadFile = String.format("%sdrm_%02d.tsv", inputDir+"/network/", 16);
 
 			Network road = DrmLoader.load(roadFile);
 			Double carRatio = Double.parseDouble(prop.getProperty("car." + 16));
 			Double bikeRatio = Double.parseDouble(prop.getProperty("bike." + 16));
-
-			// create worker
-			// TripGenerator_WebAPI worker = new TripGenerator_WebAPI(japan, modeAcs, road);
 
 			File actDir = new File(String.format("%s/activity_merge3/", root), String.valueOf(i));
 			for(File file: Objects.requireNonNull(actDir.listFiles())){
