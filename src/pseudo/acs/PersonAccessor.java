@@ -129,47 +129,49 @@ public class PersonAccessor{
 			e.printStackTrace();
 		}
 	}
-	
-	public static List<Person> loadActivity(String filename, int scale, Double ratio) {
+
+	public static List<Person> loadActivity(String filename, int scale, Double carratio, Double bikeratio) {
 		List<Person> res = new ArrayList<>();
 		try (BufferedReader br = new BufferedReader(new FileReader(filename));){
-            String line = null;
-            Person person = null;
-            int preId = 0;
-            int counter = 0;
-            while ((line = br.readLine()) != null) {	
-            	String[] items = line.split(",");	
-            	int nextId = Integer.valueOf(items[0]);
-            	int age = Integer.valueOf(items[1]);
-            	EGender gender = EGender.getType(Integer.valueOf(items[2]));
-            	ELabor labor = ELabor.getType(Integer.valueOf(items[3]));
-            	
-            	if (nextId != preId) {
-            		person = new Person(null, nextId, age, gender, labor);
+			String line = null;
+			Person person = null;
+			int preId = 0;
+			int counter = 0;
+			while ((line = br.readLine()) != null) {
+				String[] items = line.split(",");
+				int nextId = Integer.valueOf(items[0]);
+				int age = Integer.valueOf(items[1]);
+				EGender gender = EGender.getType(Integer.valueOf(items[2]));
+				ELabor labor = ELabor.getType(Integer.valueOf(items[3]));
+
+				if (nextId != preId) {
+					person = new Person(null, nextId, age, gender, labor);
 					Random random = new Random();
-					Boolean ownership = (age >= 20) && (random.nextDouble() < ratio);
-					person.setCarowner(ownership);
-            		if (counter++ % scale == 0) {
-            			res.add(person);
-            		}
-            	}
+					Boolean carownership = (age >= 20) && (random.nextDouble() < carratio);
+					person.setCarOwner(carownership);
+					Boolean bikeownership = random.nextDouble() < bikeratio;
+					person.setBikeOwner(bikeownership);
+					if (counter++ % scale == 0) {
+						res.add(person);
+					}
+				}
 
-            	long startTime = Long.valueOf(items[4]);
-            	long duration = Long.valueOf(items[5]);
-            	EPurpose purpose = EPurpose.getType(Integer.valueOf(items[6]));
-            	double lon = Double.valueOf(items[7]);
-            	double lat = Double.valueOf(items[8]);
-            	String gcode = String.valueOf(items[9]);
+				long startTime = Long.valueOf(items[4]);
+				long duration = Long.valueOf(items[5]);
+				EPurpose purpose = EPurpose.getType(Integer.valueOf(items[6]));
+				double lon = Double.valueOf(items[7]);
+				double lat = Double.valueOf(items[8]);
+				String gcode = String.valueOf(items[9]);
 
-            	Activity activity = new Activity(
-            			new GLonLat(lon, lat, gcode), startTime, duration, purpose);
-            	person.addAcitivity(activity);
-            	
-            	preId = nextId;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+				Activity activity = new Activity(
+						new GLonLat(lon, lat, gcode), startTime, duration, purpose);
+				person.addAcitivity(activity);
+
+				preId = nextId;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		return res;
 	}
 	

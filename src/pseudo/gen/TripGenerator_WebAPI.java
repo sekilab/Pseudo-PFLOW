@@ -110,8 +110,8 @@ public class TripGenerator_WebAPI {
 						.register("https", sslSocketFactory)
 						.build());
 
-		cm.setMaxTotal(100); // Adjust based on your expected total number of concurrent connections
-		cm.setDefaultMaxPerRoute(100); // Adjust per route limits based on your API and use case
+		cm.setMaxTotal(32); // Adjust based on your expected total number of concurrent connections
+		cm.setDefaultMaxPerRoute(32); // Adjust per route limits based on your API and use case
 		return cm;
 	}
 	private CloseableHttpClient createHttpClient() {
@@ -648,7 +648,7 @@ public class TripGenerator_WebAPI {
 		ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
 //				16, 31, 32, 39, 36, 18, 41, 1, 40, 46, 47, 6, 5, 37, 30, 3, 19, 38, 7, 45, 17, 42, 44, 2,
 //				29, 25, 33, 24, 15, 10, 35, 4, 43, 20, 21, 9, 8, 22, 34, 26, 12, 28, 11, 14, 23, 27, 13
-				43, 20, 21, 9, 8, 22, 34, 26, 12, 28, 11, 14, 23, 27, 13
+				0, 43, 20, 21, 9, 8, 22, 34, 26, 12, 28, 11, 14, 23, 27, 13
 		));
 
 		for (int i: prefectureCodes){
@@ -657,9 +657,9 @@ public class TripGenerator_WebAPI {
 			File trajDir = new File(outputDir+"trajectory/", String.valueOf(i));
 			System.out.println("Start prefecture:" + i + tripDir.mkdirs() + trajDir.mkdirs());
 
-			String roadFile = String.format("%sdrm_%02d.tsv", "/home/mdxuser/Data/PseudoPFLOW/processing/DRM/", i);
+			String roadFile = String.format("%sdrm_%02d.tsv", "/home/mdxuser/Data/PseudoPFLOW/processing/DRM/", 16);
 			Network road = DrmLoader.load(roadFile);
-			Double ratio = Double.parseDouble(prop.getProperty("car." + i));
+			Double ratio = Double.parseDouble(prop.getProperty("car." + 16));
 
 			// create worker
 			// TripGenerator_WebAPI worker = new TripGenerator_WebAPI(japan, modeAcs, road);
@@ -669,7 +669,7 @@ public class TripGenerator_WebAPI {
 				if (file.getName().contains(".csv")) {
 					long starttime = System.currentTimeMillis();
 					TripGenerator_WebAPI worker = new TripGenerator_WebAPI(japan, modeAcs, road);
-					List<Person> agents = PersonAccessor.loadActivity(file.getAbsolutePath(), mfactor, ratio);
+					List<Person> agents = PersonAccessor.loadActivity(file.getAbsolutePath(), mfactor, ratio, ratio);
 					System.out.printf("%s%n", file.getName());
 					worker.generate(agents);
 					PersonAccessor.writeTrips(new File(outputDir + "trip/" + i + "/trip_"+ file.getName().substring(9,14) + ".csv").getAbsolutePath(), agents);

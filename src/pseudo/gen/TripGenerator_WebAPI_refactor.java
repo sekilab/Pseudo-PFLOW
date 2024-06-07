@@ -54,12 +54,14 @@ public class TripGenerator_WebAPI_refactor {
 	private final CloseableHttpClient httpClient;
 	private final String sessionId;
 
-	private static final double MAX_WALK_DISTANCE = 1000;
-	private static final double MAX_SEARCH_STATION_DISTANCE = 1000;
+	private static final double MIN_TRANSIT_DISTANCE = 1000;
+	// private static final double MAX_SEARCH_STATION_DISTANCE = 5000;
 	private static final double FARE_PER_KILOMETER = 51; // Japanese yen, only for vehicle
 	private static final double FARE_PER_HOUR = 1000; // Japanese yen, all modes, possible to extend to prefecture level
-	private static final double FARE_INIT = 150; // Japanese yen, only for vehicle
-	private static final double CAR_AVAILABILITY = 0.2; // Parameter for explain people using car without ownership
+	private static final double FATIGUE_INDEX_WALK = 2.5;
+	private static final double FATIGUE_INDEX_BICYCLE = 2;
+	private static final double FARE_INIT = 75; // Japanese yen, only for vehicle
+	private static final double CAR_AVAILABILITY = 0.25; // Parameter for explain people using car without ownership
 
 
 	public TripGenerator_WebAPI_refactor(Country japan, Network drm) throws Exception {
@@ -237,47 +239,38 @@ public class TripGenerator_WebAPI_refactor {
 			calendar.add(Calendar.MONTH, 9);
 		}
 
-		private ETransport determineTransportMode(Person person, LonLat oll, LonLat dll, double distance, Route route, Map<String, String> mixedparams, JsonNode mixedResults){
+		private ETransport determineTransportMode(Person person, double distance, Route route, Map<String, String> mixedparams, JsonNode[] mixedResultsHolder){
 			ETransport nextMode;
 
-			double roadtime = 1000000;
-			double roadcost = 1000000;
-			double walkcost = 1000000;
-
-			if(route!=null){
-				roadtime = route.getCost(); // seconds
-				double roadfare = FARE_INIT + route.getLength() / 1000 * FARE_PER_KILOMETER; // length in meters, 150 as initial cost to avoid short distance car travel
-				roadcost = roadfare + roadtime / 3600 * FARE_PER_HOUR;
-
-				double walktime = roadtime * 10; // walk takes 10 times slower than vehicle
-				walkcost = walktime / 3600 * FARE_PER_HOUR;
-			}
 			Map<ETransport, Double> choices = new LinkedHashMap<>();
 
-			if(distance>MAX_WALK_DISTANCE){
-				Node station1 = routing.getNearestNode(japan.getStation(), oll.getLon(), oll.getLat(), MAX_SEARCH_STATION_DISTANCE);
-				Node station2 = routing.getNearestNode(japan.getStation(), dll.getLon(), dll.getLat(), MAX_SEARCH_STATION_DISTANCE);
-				if(station1!=null && station2!=null){
-					mixedResults = getMixedRoute(httpClient, sessionId, mixedparams);
-					boolean publicTransit = mixedResults.path("num_station").asInt() > 0;
-					if (publicTransit) {
-						double mixedfare = mixedResults.get("fare").asDouble();
-						double mixedtime = mixedResults.get("total_time").asDouble(); // Travel time from WebAPI is in minute
-						double mixedcost = mixedfare + mixedtime / 60 * FARE_PER_HOUR;
-						choices.put(ETransport.MIX, mixedcost);
-					}
-				}else{
-					double biketime = roadtime * 3;
-					double bikecost = biketime / 3600 * FARE_PER_HOUR;
-					choices.put(ETransport.BICYCLE, bikecost);
-				}
-			}else{
-				choices.put(ETransport.WALK, walkcost);
-			}
-
-			if((route!=null)){
+			if(route!=null){
+				double roadtime = route.getCost(); // seconds
+				double roadfare = FARE_INIT + route.getLength() / 1000 * FARE_PER_KILOMETER; // length in meters, 150 as initial cost to avoid short distance car travel
+				double roadcost = roadfare + roadtime / 3600 * FARE_PER_HOUR;
 				if(person.hasCar() || getRandom() < CAR_AVAILABILITY){
 					choices.put(ETransport.CAR, roadcost);
+				}
+
+				double walktime = roadtime * 10; // walk takes 10 times slower than vehicle
+				double walkcost = walktime / 3600 * FARE_PER_HOUR * FATIGUE_INDEX_WALK;
+				choices.put(ETransport.WALK, walkcost);
+
+				if(person.hasBike()){
+					double biketime = roadtime * 3;
+					double bikecost = biketime / 3600 * FARE_PER_HOUR * FATIGUE_INDEX_BICYCLE;
+					choices.put(ETransport.BICYCLE, bikecost);
+				}
+			}
+
+			if(distance>MIN_TRANSIT_DISTANCE){
+				mixedResultsHolder[0] = getMixedRoute(httpClient, sessionId, mixedparams);
+				boolean publicTransit = mixedResultsHolder[0].path("num_station").asInt() > 0 && mixedResultsHolder[0].path("fare").asInt() > 0;
+				if (publicTransit) {
+					double mixedfare = mixedResultsHolder[0].get("fare").asDouble();
+					double mixedtime = mixedResultsHolder[0].get("total_time").asDouble(); // Travel time from WebAPI is in minute
+					double mixedcost = mixedfare + mixedtime / 60 * FARE_PER_HOUR;
+					choices.put(ETransport.MIX, mixedcost);
 				}
 			}
 
@@ -290,17 +283,143 @@ public class TripGenerator_WebAPI_refactor {
 			return nextMode;
 		}
 
+		// Methods to refactor and modularize the code
+		private long calculateTravelTime(Route route, int multiplier) {
+			if (route != null) {
+				return (long) route.getCost() * multiplier;
+			} else {
+				return 3600L;
+			}
+		}
+
+		private void addSubpoints(List<Node> nodes, Map<Node, Date> timeMap, ETransport nextMode, EPurpose purpose, List<SPoint> subpoints) {
+			for (ILonLat node : nodes) {
+				Date date = timeMap.get(node);
+				Calendar cl = Calendar.getInstance();
+				configureCalendar(cl, date);
+				date = cl.getTime();
+				SPoint point = new SPoint(node.getLon(), node.getLat(), date, nextMode, purpose);
+				subpoints.add(point);
+			}
+		}
+
+		private void assignLinksToSubpoints(List<SPoint> subpoints, List<Link> links) {
+			for (int k = 1; k <= links.size(); k++) {
+				subpoints.get(k).setLink(links.get(k - 1).getLinkID());
+			}
+		}
+
+		private void handleMixedTransport(ETransport nextMode, EPurpose purpose, JsonNode[] mixedResultsHolder, List<SPoint> subpoints, List<SPoint> points, Person person, Activity next, Route route, long startTime, long endTime, LonLat oll, LonLat dll) {
+			long mixedTime = mixedResultsHolder[0].path("total_time").asLong() * 60;
+			endTime += mixedTime;
+			long travelTime = mixedTime;
+			long depTime = next.getStartTime() - travelTime;
+
+			List<Node> nodes = extractNodesFromMixedResults(mixedResultsHolder);
+			boolean publicTransit = mixedResultsHolder[0].path("num_station").asInt() > 0;
+			List<JsonNode> currentSubtrip = new ArrayList<>();
+			int lastMode = determineInitialTransportMode(mixedResultsHolder);
+
+			processMixedTransportFeatures(mixedResultsHolder, currentSubtrip, lastMode, publicTransit, depTime, person, purpose);
+			addTimeStampedSubpoints(nodes, startTime, endTime, nextMode, purpose, subpoints);
+			points.addAll(subpoints);
+		}
+
+		private List<Node> extractNodesFromMixedResults(JsonNode[] mixedResultsHolder) {
+			List<Node> nodes = new ArrayList<>();
+			JsonNode routeData = mixedResultsHolder[0].path("features");
+			for (JsonNode feature : routeData) {
+				JsonNode coordinates = feature.path("geometry").path("coordinates");
+				if (coordinates.isArray()) {
+					double lon = coordinates.get(0).asDouble();
+					double lat = coordinates.get(1).asDouble();
+					nodes.add(new Node(feature.path("properties").path("id").toString(), lon, lat));
+				} else {
+					System.out.println("Coordinate from WebAPI is not an array!!");
+				}
+			}
+			return nodes;
+		}
+
+		private int determineInitialTransportMode(JsonNode[] mixedResultsHolder) {
+			return mixedResultsHolder[0].path("features").get(0).path("properties").path("transportation").asInt();
+		}
+
+		private void processMixedTransportFeatures(JsonNode[] mixedResultsHolder, List<JsonNode> currentSubtrip, int lastMode, boolean publicTransit, long depTime, Person person, EPurpose purpose) {
+			JsonNode routeData = mixedResultsHolder[0].path("features");
+			JsonNode prevNode = null;
+			long currentTime = depTime;
+			for (JsonNode feature : routeData) {
+				int currentMode = feature.path("properties").path("transportation").asInt();
+
+				if (currentMode != lastMode) {
+					if (currentSubtrip.size() > 1) {
+						if(lastMode==1){
+							currentTime += 300;
+						}else{
+							currentTime +=  mixedResultsHolder[0].path("total_transport_time").asLong() * 60;
+						}
+						addTripForSubtrip(currentSubtrip, lastMode, publicTransit, currentTime, person, purpose);
+					}
+					currentSubtrip = new ArrayList<>();
+					currentSubtrip.add(prevNode);
+					lastMode = currentMode;
+				}
+				currentSubtrip.add(feature);
+				prevNode = feature;
+			}
+		}
+
+		private void addTripForSubtrip(List<JsonNode> currentSubtrip, int lastMode, boolean publicTransit, long depTime, Person person, EPurpose purpose) {
+			JsonNode ollCoords = currentSubtrip.get(0).path("geometry").path("coordinates");
+			JsonNode dllCoords = currentSubtrip.get(currentSubtrip.size() - 1).path("geometry").path("coordinates");
+			ETransport mode = getTransport(currentSubtrip.get(1).path("properties").path("transportation").asInt());
+			if (mode == ETransport.CAR && publicTransit) {
+				mode = ETransport.WALK;
+			}
+			if (ollCoords.isArray() && dllCoords.isArray()) {
+				LonLat moll = new LonLat(ollCoords.get(0).asDouble(), ollCoords.get(1).asDouble());
+				LonLat mdll = new LonLat(dllCoords.get(0).asDouble(), dllCoords.get(1).asDouble());
+				// depTime += (long) (DistanceUtils.distance(moll, mdll) / getTravelSpeed(mode.getId()));
+				person.addTrip(new Trip(mode, purpose, depTime, moll, mdll));
+			} else {
+				System.out.println("No coordinate from API!");
+			}
+		}
+
+		private void addTimeStampedSubpoints(List<Node> nodes, long startTime, long endTime, ETransport nextMode, EPurpose purpose, List<SPoint> subpoints) {
+			Map<Node, Date> timeMap = TrajectoryUtils.putTimeStamp(nodes, new Date(startTime * 1000), new Date(endTime * 1000));
+			addSubpoints(nodes, timeMap, nextMode, purpose, subpoints);
+		}
+
+		public String convertSecondsToHHMM(double totalSeconds) {
+			// Calculate hours and minutes
+			int hours = (int) (totalSeconds / 3600);
+			int minutes = (int) ((totalSeconds % 3600) / 60);
+
+			// Format hours and minutes to HHMM as WebAPI requests
+			return String.format("%02d%02d", hours, minutes);
+		}
+
 		private int process(Person person) {
 			List<SPoint> points = new ArrayList<>();
 
 			List<Activity> activities = person.getActivities();
 			Activity pre = activities.get(0);
 
-			Network station = japan.getStation();
-
-			ETransport primaryMode = null;
 			if (activities.size() <= 1) {
 				person.addTrip(new Trip(ETransport.NOT_DEFINED, EPurpose.HOME, 0, pre.getLocation(), pre.getLocation()));
+
+				Calendar cl = Calendar.getInstance();
+				Date startDate = new Date(0);
+				configureCalendar(cl, startDate);
+				startDate = cl.getTime();
+				points.add(new SPoint(pre.getLocation().getLon(), pre.getLocation().getLat(), startDate, ETransport.NOT_DEFINED, EPurpose.HOME));
+				Date endDate = new Date(86399000);
+				configureCalendar(cl, endDate);
+				endDate = cl.getTime();
+				points.add(new SPoint(pre.getLocation().getLon(), pre.getLocation().getLat(), endDate, ETransport.NOT_DEFINED, EPurpose.HOME));
+				person.addTrajectory(points);
 			}else {
 				for (int i = 1; i < activities.size(); i++) {
 					List<SPoint> subpoints = new ArrayList<>();
@@ -327,138 +446,62 @@ public class TripGenerator_WebAPI_refactor {
 
 						Map<String, String> mixedparams = new HashMap<>(params);
 						mixedparams.put("TransportCode", "3");
+						mixedparams.put("AppDate", "20240401");
+						mixedparams.put("AppTime", convertSecondsToHHMM(startTime));
 
-						JsonNode mixedResults = null;
+						Map<String, String> roadparams = new HashMap<>(params);
+
+						JsonNode[] mixedResultsHolder = new JsonNode[1];
 
 						Route route = routing.getRoute(drm,	oll.getLon(), oll.getLat(), dll.getLon(), dll.getLat());
+						nextMode = determineTransportMode(person, distance, route, mixedparams, mixedResultsHolder);
 
-						if (purpose != EPurpose.HOME){
-							nextMode = determineTransportMode(person, oll, dll, distance, route, mixedparams, mixedResults);
-							if(i==1&&nextMode==ETransport.CAR){
-								primaryMode = nextMode;
-							}
-						}else{
-							if(primaryMode!=null){
-								nextMode = primaryMode;
-							}else {
-								nextMode = determineTransportMode(person, oll, dll, distance, route, mixedparams, mixedResults);
-							}
-						}
-						// create trip or sub-trip
 						int multiplier = calculateMultiplier(nextMode);
-
 						long travelTime = 0;
 
-
-						if (nextMode == ETransport.WALK || nextMode==ETransport.BICYCLE || nextMode==ETransport.CAR){
-							if(route!=null){
-								travelTime = (long) route.getCost() * multiplier;
-							}else{
-								travelTime = (long) 3600;
-							}
-
+						if (nextMode == ETransport.WALK || nextMode == ETransport.BICYCLE || nextMode == ETransport.CAR) {
+							travelTime = calculateTravelTime(route, multiplier);
 							endTime += travelTime;
 
 							List<Node> nodes = route.listNodes();
+							Map<Node, Date> timeMap = TrajectoryUtils.putTimeStamp(nodes, new Date(startTime * 1000), new Date(endTime * 1000));
+							addSubpoints(nodes, timeMap, nextMode, purpose, subpoints);
 
-							Map<Node,Date> timeMap = TrajectoryUtils.putTimeStamp(
-									nodes, new Date(startTime*1000), new Date(endTime*1000));
-
-                            for (ILonLat node : nodes) {
-                                Date date = timeMap.get(node);
-                                Calendar cl = Calendar.getInstance();
-                                configureCalendar(cl, date);
-
-                                date = cl.getTime();
-
-                                SPoint point = new SPoint(node.getLon(), node.getLat()
-                                        , date, nextMode, purpose);
-                                subpoints.add(point);
-                            }
 							List<Link> links = route.listLinks();
-							for (int k = 1; k <= links.size(); k++) {
-								subpoints.get(k).setLink(links.get(k-1).getLinkID());
-							}
+							assignLinksToSubpoints(subpoints, links);
 							points.addAll(subpoints);
 
 							long depTime = next.getStartTime() - travelTime;
 							person.addTrip(new Trip(nextMode, purpose, depTime, oll, dll));
-
-						} else if (nextMode==ETransport.MIX && mixedResults != null){
-							long mixedtime = mixedResults.path("total_time").asLong() * 60;
-							endTime += mixedtime;
-							travelTime = mixedtime;
-							long depTime = next.getStartTime() - travelTime;
-
-							List<Node> nodes = new ArrayList<>();
-							JsonNode routeData = mixedResults.path("features");
-							boolean publicTransit = mixedResults.path("num_station").asInt() > 0;
-
-							List<JsonNode> currentSubtrip = new ArrayList<>();
-							// Initialize lastMode with the transportation mode of the first feature
-							int lastMode = routeData.get(0).path("properties").path("transportation").asInt();
-							JsonNode prevNode = null;
-
-                            for(JsonNode feature: routeData){
-								int currentMode = feature.path("properties").path("transportation").asInt();
-
-								String pid = feature.path("properties").path("id").toString();
-								JsonNode coordinates = feature.path("geometry").path("coordinates");
-								if(coordinates.isArray()){
-									double lon = coordinates.get(0).asDouble();
-									double lat= coordinates.get(1).asDouble();
-									nodes.add(new Node(pid, lon, lat));
-								}else {
-									System.out.println("Coordinate from WebAPI is Not an Array!!");
-								}
-								if (currentMode != lastMode) {
-//									if(prevNode!=null){
-//										currentSubtrip.add(prevNode);
-//									}
-									if(currentSubtrip.size()>1) {
-										JsonNode oll_coords = currentSubtrip.get(0).path("geometry").path("coordinates");
-										JsonNode dll_coords = currentSubtrip.get(currentSubtrip.size()-1).path("geometry").path("coordinates");
-										ETransport mode = getTransport(currentSubtrip.get(1).path("properties").path("transportation").asInt());
-										if (mode == ETransport.CAR & publicTransit) {
-											mode = ETransport.WALK;
-										}
-										if (oll_coords.isArray() & dll_coords.isArray()) {
-											LonLat moll = new LonLat(oll_coords.get(0).asDouble(), oll_coords.get(1).asDouble());
-											LonLat mdll = new LonLat(dll_coords.get(0).asDouble(), dll_coords.get(1).asDouble());
-											person.addTrip(new Trip(mode, purpose, depTime, moll, mdll));
-											depTime += (long) (DistanceUtils.distance(moll, mdll) / 8.33);
-										}else{
-											System.out.println("no coordinate from API!");
-										}
-									}
-									currentSubtrip = new ArrayList<>(); // Start a new list for the new subtrip
-									currentSubtrip.add(prevNode);
-									lastMode = currentMode; // Update the lastMode to the current mode
-								}
-								currentSubtrip.add(feature);
-								prevNode = feature;
+						} else if (nextMode == ETransport.MIX) {
+							if(mixedResultsHolder[0].path("features").get(0)==null){
+								System.out.println("empty mixed results!");
 							}
-							Map<Node,Date> timeMap = TrajectoryUtils.putTimeStamp(
-									nodes, new Date(startTime*1000), new Date(endTime*1000));
-                            for (ILonLat node : nodes) {
-                                Date date = timeMap.get(node);
-                                Calendar cl = Calendar.getInstance();
-                                configureCalendar(cl, date);
+							handleMixedTransport(nextMode, purpose, mixedResultsHolder, subpoints, points, person, next, route, startTime, endTime, oll, dll);
+						} else {
+							person.addTrip(new Trip(ETransport.NOT_DEFINED, next.getPurpose(), next.getStartTime(), pre.getLocation(), pre.getLocation()));
+							Calendar cl = Calendar.getInstance();
+							Date startDate = new Date(next.getStartTime());
+							configureCalendar(cl, startDate);
+							startDate = cl.getTime();
+							points.add(new SPoint(pre.getLocation().getLon(), pre.getLocation().getLat(), startDate, ETransport.NOT_DEFINED, EPurpose.HOME));
+							Date endDate = new Date(next.getStartTime() + 300);
+							configureCalendar(cl, endDate);
+							endDate = cl.getTime();
+							points.add(new SPoint(pre.getLocation().getLon(), pre.getLocation().getLat(), endDate, ETransport.NOT_DEFINED, EPurpose.HOME));
+							person.addTrajectory(points);
+						}
 
-                                date = cl.getTime();
-
-                                SPoint point = new SPoint(node.getLon(), node.getLat()
-                                        , date, nextMode, purpose);
-                                subpoints.add(point);
-                            }
-							points.addAll(subpoints);
-						} else{
-							System.out.println("Did not find correct mode!");
-							travelTime = 600;
-							error ++;
-                        }
-
+					}else{
+						person.addTrip(new Trip(ETransport.NOT_DEFINED, next.getPurpose(), next.getStartTime(), pre.getLocation(), pre.getLocation()));
+						Calendar cl = Calendar.getInstance();
+						Date startDate = new Date(next.getStartTime());
+						configureCalendar(cl, startDate);
+						startDate = cl.getTime();
+						points.add(new SPoint(pre.getLocation().getLon(), pre.getLocation().getLat(), startDate, ETransport.NOT_DEFINED, next.getPurpose()));
+						person.addTrajectory(points);
 					}
+
 					pre = next;
 				}
 			}
@@ -469,13 +512,13 @@ public class TripGenerator_WebAPI_refactor {
 		@Override
 		public Integer call() throws Exception {
 			try {
-			for (Person p : listAgents) {
-				int res = process(p);
-				if (res < 0) {
-					this.error++;
+				for (Person p : listAgents) {
+					int res = process(p);
+					if (res < 0) {
+						this.error++;
+					}
+					this.total++;
 				}
-				this.total++;
-			}
 			}catch(Exception e) {
 				e.printStackTrace();
 			}
@@ -483,12 +526,12 @@ public class TripGenerator_WebAPI_refactor {
 			return 0;
 		}
 	}
-	
+
 	public void generate(List<Person> agents) {
 		// prepare thread processing
 		int numThreads = Runtime.getRuntime().availableProcessors();
 		System.out.println("NumOfThreads:" + numThreads);
-		
+
 		List<Callable<Integer> > listTasks = new ArrayList<>();
 		int listSize = agents.size();
 		int taskNum = numThreads;
@@ -500,7 +543,7 @@ public class TripGenerator_WebAPI_refactor {
 			listTasks.add(new TripTask(i, subList));
 		}
 		System.out.println("NumOfTasks:" + listTasks.size());
-		
+
 		// execute thread processing
 		ExecutorService es = Executors.newFixedThreadPool(numThreads);
 		try {
@@ -508,7 +551,7 @@ public class TripGenerator_WebAPI_refactor {
 			es.shutdown();
 		} catch (Exception exp) {
 			exp.printStackTrace();
-		}		
+		}
 	}
 
 	private static JsonNode getMixedRoute(CloseableHttpClient httpClient, String sessionid, Map<String, String> params) {
@@ -519,41 +562,41 @@ public class TripGenerator_WebAPI_refactor {
 			mixedRouteParams.add(new BasicNameValuePair(entry.getKey(), entry.getValue()));
 		}
 
-        try {
-            mixedRoutePost.setEntity(new UrlEncodedFormEntity(mixedRouteParams));
-        } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException(e);
-        }
-        mixedRoutePost.setHeader("Cookie", "WebApiSessionID=" + sessionid);
+		try {
+			mixedRoutePost.setEntity(new UrlEncodedFormEntity(mixedRouteParams));
+		} catch (UnsupportedEncodingException e) {
+			throw new RuntimeException(e);
+		}
+		mixedRoutePost.setHeader("Cookie", "WebApiSessionID=" + sessionid);
 
-        HttpResponse mixedRouteResponse = null;
-        try {
-            mixedRouteResponse = executePostRequest(httpClient, mixedRoutePost);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        ObjectMapper mapper = new ObjectMapper();
+		HttpResponse mixedRouteResponse = null;
+		try {
+			mixedRouteResponse = executePostRequest(httpClient, mixedRoutePost);
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+		ObjectMapper mapper = new ObjectMapper();
 
 		if (mixedRouteResponse.getStatusLine().getStatusCode() == 200) {
-            String mixedRouteResponseBody = null;
-            try {
-                mixedRouteResponseBody = EntityUtils.toString(mixedRouteResponse.getEntity());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-            try {
-                return mapper.readTree(mixedRouteResponseBody);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        } else {
+			String mixedRouteResponseBody = null;
+			try {
+				mixedRouteResponseBody = EntityUtils.toString(mixedRouteResponse.getEntity());
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+			try {
+				return mapper.readTree(mixedRouteResponseBody);
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		} else {
 			System.out.println("Failed to get mixed route: " + mixedRouteResponse.getStatusLine().getStatusCode());
-            try {
-                return mapper.readTree("");
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
+			try {
+				return mapper.readTree("");
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
 	}
 
 	private static JsonNode getRoadRoute(CloseableHttpClient httpClient, String sessionid, Map<String, String> params) throws Exception {
@@ -605,7 +648,7 @@ public class TripGenerator_WebAPI_refactor {
 		inputDir = prop.getProperty("inputDir");
 		System.out.println("Root Directory: " + root);
 		System.out.println("Input Directory: " + inputDir);
-		
+
 		int mfactor = 1;
 
 		Country japan = new Country();
@@ -620,30 +663,40 @@ public class TripGenerator_WebAPI_refactor {
 		String outputDir = "/large/PseudoPFLOW/";
 
 		ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
-//				16, 31, 32, 39, 36, 18, 41, 1, 40, 46, 47, 6, 5, 37, 30, 3, 19, 38, 7, 45, 17, 42, 44, 2,
-//				29, 25, 33, 24, 15, 10, 35, 4, 43, 20, 21, 9, 8, 22, 34, 26, 12, 28, 11, 14, 23, 27, 13
-				4, 43, 20, 21, 9, 8, 22, 34, 26, 12, 28, 11, 14, 23, 27, 13
+				// 16, 31, 32, 39, 36, 18, 41, 1, 40, 46, 47, 6, 5, 37, 30, 3, 19, 38, 7, 45, 17, 42, 44, 2,
+				// 29, 25, 33, 24,
+				// 15,
+				// 10,
+				// 35,
+				// 4,
+				// 43, 20, 21, 9, 8, 22, 34, 26,  28, 23, 27
+
+				// 3,
+				// 5, 6,
+				23, 26, 27, 28, 30, 37, 38, 42
 		));
 
 		for (int i: prefectureCodes){
 
 			File tripDir = new File(outputDir+"trip/", String.valueOf(i));
 			File trajDir = new File(outputDir+"trajectory/", String.valueOf(i));
-			System.out.println("Start prefecture:" + i + tripDir.mkdirs() + trajDir.mkdirs());
+			System.out.println("Start prefecture:" + i +" "+ tripDir.mkdirs() +" "+ trajDir.mkdirs());
 
-			String roadFile = String.format("%sdrm_%02d.tsv", "/home/mdxuser/Data/PseudoPFLOW/processing/DRM/", i);
+			String roadFile = String.format("%sdrm_%02d.tsv", inputDir+"/DRM/", i);
+
 			Network road = DrmLoader.load(roadFile);
-			Double ratio = Double.parseDouble(prop.getProperty("car." + i));
+			Double carRatio = Double.parseDouble(prop.getProperty("car." + i));
+			Double bikeRatio = Double.parseDouble(prop.getProperty("bike." + i));
 
 			// create worker
 			// TripGenerator_WebAPI worker = new TripGenerator_WebAPI(japan, modeAcs, road);
 
 			File actDir = new File(String.format("%s/activity_merge3/", root), String.valueOf(i));
-			for(File file: actDir.listFiles()){
+			for(File file: Objects.requireNonNull(actDir.listFiles())){
 				if (file.getName().contains(".csv")) {
 					long starttime = System.currentTimeMillis();
 					TripGenerator_WebAPI_refactor worker = new TripGenerator_WebAPI_refactor(japan, road);
-					List<Person> agents = PersonAccessor.loadActivity(file.getAbsolutePath(), mfactor, ratio);
+					List<Person> agents = PersonAccessor.loadActivity(file.getAbsolutePath(), mfactor, carRatio, bikeRatio);
 					System.out.printf("%s%n", file.getName());
 					worker.generate(agents);
 					PersonAccessor.writeTrips(new File(outputDir + "trip/" + i + "/trip_"+ file.getName().substring(9,14) + ".csv").getAbsolutePath(), agents);
@@ -654,5 +707,5 @@ public class TripGenerator_WebAPI_refactor {
 			}
 		}
 		System.out.println("end");
-	}	
+	}
 }
