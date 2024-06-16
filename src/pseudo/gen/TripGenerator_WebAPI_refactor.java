@@ -643,10 +643,13 @@ public class TripGenerator_WebAPI_refactor {
 		String outputDir = "/large/PseudoPFLOW/";
 
 		ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
-				0, 16, 31, 32, 39, 36, 18, 41, 1, 40,
-				46, 47, 6, 5, 37, 30, 3, 19, 38, 7, 45, 17, 42, 44, 2,
-				29, 25, 33, 24, 15, 10, 35, 4, 43, 20, 21, 9, 8, 22, 34, 26, 12, 28, 11, 14, 23, 27, 13,
-				4, 43, 20, 21, 9, 8, 22, 34, 26, 12, 28, 11, 14, 23, 27, 13
+				// 0, 16, 31, 32, 39, 36, 18, 41, 1, 40, 46,
+				// 13,
+				// 11,
+				14, 12,
+				4, 43, 20, 21, 9, 8, 22, 34, 26, 28, 23, 27,
+				47, 6, 5, 37, 30, 3, 19, 38, 7, 45, 17, 42, 44, 2,
+				29, 25, 33, 24, 15, 10, 35, 1
 		));
 
 		for (int i: prefectureCodes){
@@ -655,26 +658,35 @@ public class TripGenerator_WebAPI_refactor {
 			File trajDir = new File(outputDir+"trajectory/", String.valueOf(i));
 			System.out.println("Start prefecture:" + i +" "+ tripDir.mkdirs() +" "+ trajDir.mkdirs());
 
-			String roadFile = String.format("%sdrm_%02d.tsv", inputDir+"/network/", 16);
+			String roadFile = String.format("%sdrm_%02d.tsv", inputDir+"/network/", i);
 
 			Network road = DrmLoader.load(roadFile);
-			Double carRatio = Double.parseDouble(prop.getProperty("car." + 16));
-			Double bikeRatio = Double.parseDouble(prop.getProperty("bike." + 16));
+			Double carRatio = Double.parseDouble(prop.getProperty("car." + i));
+			Double bikeRatio = Double.parseDouble(prop.getProperty("bike." + i));
 
 			File actDir = new File(String.format("%s/activity_merge3/", root), String.valueOf(i));
 			for(File file: Objects.requireNonNull(actDir.listFiles())){
 				if (file.getName().contains(".csv")) {
+					String tripFileName = outputDir + "trip/" + i + "/trip_" + file.getName().substring(9,14) + ".csv";
+					String trajectoryFileName = outputDir + "trajectory/" + i + "/trajectory_" + file.getName().substring(9,14) + ".csv";
+
+					// Check if the files already exist
+					if (new File(tripFileName).exists() || new File(trajectoryFileName).exists()) {
+						continue; // Skip to the next iteration
+					}
+
 					long starttime = System.currentTimeMillis();
 					TripGenerator_WebAPI_refactor worker = new TripGenerator_WebAPI_refactor(japan, road);
 					List<Person> agents = PersonAccessor.loadActivity(file.getAbsolutePath(), mfactor, carRatio, bikeRatio);
 					System.out.printf("%s%n", file.getName());
 					worker.generate(agents);
-					PersonAccessor.writeTrips(new File(outputDir + "trip/" + i + "/trip_"+ file.getName().substring(9,14) + ".csv").getAbsolutePath(), agents);
-					PersonAccessor.writeTrajectory(new File(outputDir + "trajectory/"+ i + "/trajectory_"+ file.getName().substring(9,14) + ".csv").getAbsolutePath(), agents);
+					PersonAccessor.writeTrips(tripFileName, agents);
+					PersonAccessor.writeTrajectory(trajectoryFileName, agents);
 					long endtime = System.currentTimeMillis();
 					System.out.println(file.getName() + ": " + (endtime - starttime));
 				}
 			}
+
 		}
 		System.out.println("end");
 	}	
