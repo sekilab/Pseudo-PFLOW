@@ -255,7 +255,7 @@ public class TripGenerator_WebAPI_refactor {
 
 			nextMode = choices.entrySet()
 					.stream()
-					.min(Comparator.comparing(Map.Entry::getValue))
+					.min                                                                                                                                                                                                                                                                                                                                                                              (Comparator.comparing(Map.Entry::getValue))
 					.map(Map.Entry::getKey)
 					.orElse(ETransport.NOT_DEFINED);
 
@@ -387,7 +387,7 @@ public class TripGenerator_WebAPI_refactor {
 			List<Activity> activities = person.getActivities();
 			Activity pre = activities.get(0);
 
-			if (activities.size() <= 1) {
+			if (activities.size() == 1) {
 				person.addTrip(new Trip(ETransport.NOT_DEFINED, EPurpose.HOME, 0, pre.getLocation(), pre.getLocation()));
 
 				Calendar cl = Calendar.getInstance();
@@ -417,19 +417,7 @@ public class TripGenerator_WebAPI_refactor {
 					if (distance > 0) {
 						ETransport nextMode;
 
-						Map<String, String> params = new HashMap<>();
-						params.put("UnitTypeCode", "2");
-						params.put("StartLongitude", String.valueOf(oll.getLon()));
-						params.put("StartLatitude", String.valueOf(oll.getLat()));
-						params.put("GoalLongitude", String.valueOf(dll.getLon()));
-						params.put("GoalLatitude", String.valueOf(dll.getLat()));
-
-						Map<String, String> mixedparams = new HashMap<>(params);
-						mixedparams.put("TransportCode", "3");
-						mixedparams.put("AppDate", "20240401");
-						mixedparams.put("AppTime", convertSecondsToHHMM(startTime));
-
-						Map<String, String> roadparams = new HashMap<>(params);
+						Map<String, String> mixedparams = getStringStringMap(oll, dll, startTime);
 
 						JsonNode[] mixedResultsHolder = new JsonNode[1];
 
@@ -487,6 +475,21 @@ public class TripGenerator_WebAPI_refactor {
 			}
 			person.addTrajectory(points);
 			return 0;
+		}
+
+		private Map<String, String> getStringStringMap(GLonLat oll, GLonLat dll, long startTime) {
+			Map<String, String> params = new HashMap<>();
+			params.put("UnitTypeCode", "2");
+			params.put("StartLongitude", String.valueOf(oll.getLon()));
+			params.put("StartLatitude", String.valueOf(oll.getLat()));
+			params.put("GoalLongitude", String.valueOf(dll.getLon()));
+			params.put("GoalLatitude", String.valueOf(dll.getLat()));
+
+			Map<String, String> mixedparams = new HashMap<>(params);
+			mixedparams.put("TransportCode", "3");
+			mixedparams.put("AppDate", "20240401");
+			mixedparams.put("AppTime", convertSecondsToHHMM(startTime));
+			return mixedparams;
 		}
 
 		@Override
@@ -643,13 +646,20 @@ public class TripGenerator_WebAPI_refactor {
 		String outputDir = "/large/PseudoPFLOW/";
 
 		ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
+
+				22
 				// 0, 16, 31, 32, 39, 36, 18, 41, 1, 40, 46,
 				// 13,
 				// 11,
-				14, 12,
-				4, 43, 20, 21, 9, 8, 22, 34, 26, 28, 23, 27,
-				47, 6, 5, 37, 30, 3, 19, 38, 7, 45, 17, 42, 44, 2,
-				29, 25, 33, 24, 15, 10, 35, 1
+				// 14,
+				// 12,
+				// 11, 15,
+				// 4, 43, 20, 21,
+				// 9,
+				// 41, 40, 39, 36, 32, 31, 18, 15,
+				// 8, 24, 25, 29, 33, 34, 35, 44, 45, 47,
+				// 19
+
 		));
 
 		for (int i: prefectureCodes){
