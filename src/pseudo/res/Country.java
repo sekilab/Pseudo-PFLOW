@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import gtfs.*;
+import gtfs.Trip;
 import jp.ac.ut.csis.pflow.geom2.ILonLat;
 import jp.ac.ut.csis.pflow.routing4.res.Network;
 import jp.ac.ut.csis.pflow.routing4.res.Node;
@@ -13,6 +15,8 @@ public class Country{
 	private Network cities;
 	private Network station;
 	private Map<String, GMesh> meshes;
+
+
 	
 	public Country() {
 		super();
