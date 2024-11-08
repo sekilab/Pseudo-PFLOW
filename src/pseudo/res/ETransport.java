@@ -7,7 +7,8 @@ public enum ETransport {
 	CAR(3),
 	TRAIN(4),
 	BUS(5),
-	MIX(6);
+	MIX(6),
+	COMMUNITY(7);
 	
 	private final int id;
 	
