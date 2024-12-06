@@ -1,5 +1,7 @@
 package gtfs;
 
+import jp.ac.ut.csis.pflow.routing4.res.Network;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -7,72 +9,36 @@ import java.time.Duration;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class GTFSRouter {
 
-    public static TripResult planTrip(double actualOriginLat, double actualOriginLon,
-                                  double actualDestinationLat, double actualDestinationLon,
-                                  String userDepartureTime,
-                                  List<Trip> trips, List<StopTime> stopTimes,
-                                  List<Stop> stops, List<FareRule> fareRules,
-                                  List<Fare> fareAttributes) {
-
-        List<Stop> originCandidates = GeoUtils.findNearestStops(stops, actualOriginLat, actualOriginLon, 3);
-        List<Stop> destinationCandidates = GeoUtils.findNearestStops(stops, actualDestinationLat, actualDestinationLon, 3);
-
-        Trip bestTrip = TripFinder.findBestTrip(trips, stopTimes, originCandidates, destinationCandidates, userDepartureTime);
-
-        if (bestTrip != null) {
-
-            Stop originStop = originCandidates.get(0);
-            Stop destinationStop = destinationCandidates.get(0);
-
-            long walkTimeToOriginStation = GeoUtils.calculateWalkingTime(actualOriginLat, actualOriginLon, originStop.getLatitude(), originStop.getLongitude());
-
-            long walkTimeToDestination = GeoUtils.calculateWalkingTime(destinationStop.getLatitude(), destinationStop.getLongitude(), actualDestinationLat, actualDestinationLon);
-
-
-            StopTime originStopTime = findStopTime(stopTimes, bestTrip, originStop);
-
-            long waitingTimeAtStation = calculateWaitingTime(userDepartureTime, originStopTime.getDepartureTime());
-
-            // 选择步行时间和等待时间中的较大值作为用户从实际出发点到公交车站所需的时间
-            long timeToOriginStation = Math.max(walkTimeToOriginStation, waitingTimeAtStation);
-
-            long travelTime = TripFinder.calculateTravelTime(bestTrip, stopTimes, originStop, destinationStop);
-
-            if (travelTime != -1 & travelTime != 0) {
-
-                StopTime destinationStopTime = findStopTime(stopTimes, bestTrip, destinationStop);
-
-                long totalTravelTime = Math.abs(travelTime) + timeToOriginStation + walkTimeToDestination;
-
-                double fare = FareCalculator.calculateFare(bestTrip, fareRules, fareAttributes, originStop, destinationStop);
-                if (fare == -1) {
-                    fare = 0;
-                }
-
-                String result = "Origin Station: " + originStop.getStopName() + "\n" +
-                        "Destination Station: " + destinationStop.getStopName() + "\n" +
-                        "Departure Time: " + originStopTime.getDepartureTime() + "\n" +
-                        "Arrival Time: " + destinationStopTime.getArrivalTime() + "\n" +
-                        "Travel Time (including walking): " + totalTravelTime + " minutes\n" +
-                        "Fare: " + fare + " currency units";
-
-                return new TripResult(
-                        originStop.getStopName(),
-                        destinationStop.getStopName(),
-                        originStopTime.getDepartureTime(),
-                        destinationStopTime.getArrivalTime(),
-                        totalTravelTime,
-                        fare
-                );
-            } else {
-                return null;
+    public static Stop findStopById(List<Stop> stops, String stopId) {
+        for (Stop stop : stops) {
+            if (stop.getStopId().equals(stopId)) {
+                return stop;
             }
-        } else {
-            return null;
         }
+        return null;
+    }
+
+
+    public static TripResult planTrip(Network net, double actualOriginLat, double actualOriginLon,
+                                      double actualDestinationLat, double actualDestinationLon,
+                                      String userDepartureTime,
+                                      List<Trip> trips, List<StopTime> stopTimes,
+                                      List<Stop> stops, List<FareRule> fareRules,
+                                      List<Fare> fareAttributes) {
+
+        List<Stop> originCandidates = GeoUtils.findNearestStops(stops, actualOriginLat, actualOriginLon, 2);
+        List<Stop> destinationCandidates = GeoUtils.findNearestStops(stops, actualDestinationLat, actualDestinationLon, 2);
+
+        TripResult bestTrip = TripFinder.findBestTrip(net, trips, stopTimes, originCandidates, destinationCandidates, userDepartureTime, actualOriginLat, actualOriginLon, actualDestinationLat, actualDestinationLon);
+
+
+        return bestTrip;
     }
 
     public static void main(String[] args) throws IOException {
@@ -105,38 +71,37 @@ public class GTFSRouter {
         List<Stop> destinationCandidates = GeoUtils.findNearestStops(stops, destinationLat, destinationLon, 3);  // 返回最近的3个车站
 
 
-        // Step 2: Find a connecting trip considering the user's departure time
-        // Trip trip = TripFinder.findConnectingTrip(trips, stopTimes, originStop, destinationStop, userDepartureTime);
-        Trip bestTrip = TripFinder.findBestTrip(trips, stopTimes, originCandidates, destinationCandidates, userDepartureTime);
-
-        if (bestTrip != null) {
-            // 计算最佳路径的行程时间
-            Stop originStop = originCandidates.get(0);
-            Stop destinationStop = destinationCandidates.get(0);
-
-            long travelTime = TripFinder.calculateTravelTime(bestTrip, stopTimes, originStop, destinationStop);
-            if (travelTime != -1) {
-                StopTime originStopTime = findStopTime(stopTimes, bestTrip, originStop);
-                StopTime destinationStopTime = findStopTime(stopTimes, bestTrip, destinationStop);
-
-                System.out.println("Origin Station: " + originStop.getStopName());
-                System.out.println("Destination Station: " + destinationStop.getStopName());
-                System.out.println("Departure Time: " + originStopTime.getDepartureTime());
-                System.out.println("Arrival Time: " + destinationStopTime.getArrivalTime());
-                System.out.println("Travel Time: " + travelTime + " minutes");
-
-                double fare = FareCalculator.calculateFare(bestTrip, fareRules, fares, originStop, destinationStop);
-                if (fare != -1) {
-                    System.out.println("Fare: " + fare + " currency units");
-                } else {
-                    System.out.println("No valid fare found.");
-                }
-            } else {
-                System.out.println("Could not calculate travel time.");
-            }
-        } else {
-            System.out.println("No trip found.");
-        }
+//        // Step 2: Find a connecting trip considering the user's departure time
+//        // Trip trip = TripFinder.findConnectingTrip(trips, stopTimes, originStop, destinationStop, userDepartureTime);
+//        Trip bestTrip = TripFinder.findBestTrip(trips, stopTimes, originCandidates, destinationCandidates, userDepartureTime);
+//
+//        if (bestTrip != null) {
+//            Stop originStop = originCandidates.get(0);
+//            Stop destinationStop = destinationCandidates.get(0);
+//
+//            long travelTime = TripFinder.calculateTravelTime(bestTrip, stopTimes, originStop, destinationStop);
+//            if (travelTime != -1) {
+//                StopTime originStopTime = findStopTime(stopTimes, bestTrip, originStop);
+//                StopTime destinationStopTime = findStopTime(stopTimes, bestTrip, destinationStop);
+//
+//                System.out.println("Origin Station: " + originStop.getStopName());
+//                System.out.println("Destination Station: " + destinationStop.getStopName());
+//                System.out.println("Departure Time: " + originStopTime.getDepartureTime());
+//                System.out.println("Arrival Time: " + destinationStopTime.getArrivalTime());
+//                System.out.println("Travel Time: " + travelTime + " minutes");
+//
+//                double fare = FareCalculator.calculateFare(bestTrip, fareRules, fares, originStop, destinationStop);
+//                if (fare != -1) {
+//                    System.out.println("Fare: " + fare + " currency units");
+//                } else {
+//                    System.out.println("No valid fare found.");
+//                }
+//            } else {
+//                System.out.println("Could not calculate travel time.");
+//            }
+//        } else {
+//            System.out.println("No trip found.");
+//        }
 
 //        if (trip != null) {
 //            // Step 3: Get StopTimes for the trip and the stops
@@ -162,12 +127,10 @@ public class GTFSRouter {
         LocalTime userTime = LocalTime.parse(userDepartureTime, formatter);
         LocalTime busTime = LocalTime.parse(busDepartureTime, formatter);
 
-        // 如果公交发车时间早于用户出发时间，说明需要等到第二天的公交
         if (busTime.isBefore(userTime)) {
-            busTime = busTime.plusHours(24); // 加24小时处理跨天情况
+            busTime = busTime.plusHours(24);
         }
 
-        // 计算时间差（以分钟为单位）
         return Math.abs(Duration.between(userTime, busTime).toMinutes());
     }
 

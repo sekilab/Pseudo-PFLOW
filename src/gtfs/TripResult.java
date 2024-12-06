@@ -5,20 +5,20 @@ public class TripResult {
     private String destinationStation;
     private String departureTime;
     private String arrivalTime;
-    private long totalTravelTime;  // 包含步行时间的总行程时间，单位为分钟
+    private long totalTravelTime;
     private double fare;  // 票价
+    private boolean usedTransit;
 
-    // 构造函数
-    public TripResult(String originStation, String destinationStation, String departureTime, String arrivalTime, long totalTravelTime, double fare) {
+    public TripResult(String originStation, String destinationStation, String departureTime, String arrivalTime, long totalTravelTime, double fare, boolean usedTransit) {
         this.originStation = originStation;
         this.destinationStation = destinationStation;
         this.departureTime = departureTime;
         this.arrivalTime = arrivalTime;
         this.totalTravelTime = totalTravelTime;
         this.fare = fare;
+        this.usedTransit = usedTransit;
     }
 
-    // Getter 方法
     public String getOriginStation() {
         return originStation;
     }
@@ -43,5 +43,16 @@ public class TripResult {
         return fare;
     }
 
-    // 你可以根据需要添加更多方法，例如格式化输出等
+    public boolean isUsedTransit() { return usedTransit; }
+
+    @Override
+    public String toString() {
+        return "Origin Station: " + originStation + "\n" +
+                "Destination Station: " + destinationStation + "\n" +
+                "Departure Time: " + departureTime + "\n" +
+                "Arrival Time: " + arrivalTime + "\n" +
+                "Total Time: " + totalTravelTime + " minutes\n" +
+                "Fare: " + fare + " currency units"+
+                "Used Transit: " + usedTransit;
+    }
 }

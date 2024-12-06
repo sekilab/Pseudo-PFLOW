@@ -1,10 +1,18 @@
 package gtfs;
 
+import jp.ac.ut.csis.pflow.routing4.logic.Dijkstra;
+import jp.ac.ut.csis.pflow.routing4.logic.linkcost.LinkCost;
+import jp.ac.ut.csis.pflow.routing4.res.Network;
+import jp.ac.ut.csis.pflow.routing4.res.Route;
+
 import java.time.Duration;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+
+import static gtfs.GTFSRouter.calculateWaitingTime;
+import static gtfs.GTFSRouter.findStopTime;
 
 public class TripFinder {
 
@@ -16,7 +24,6 @@ public class TripFinder {
 //        System.out.println("Origin Stop ID: " + originStop.getStopId());
 //        System.out.println("Destination Stop ID: " + destinationStop.getStopId());
 
-        // Loop over each trip
         for (Trip trip : trips) {
             StopTime originStopTime = null;
             StopTime destinationStopTime = null;
@@ -29,31 +36,25 @@ public class TripFinder {
                 }
             }
 
-            // Normalize the stop IDs before comparison
             String normalizedOriginStopId = originStop.getStopId().trim();
             String normalizedDestinationStopId = destinationStop.getStopId().trim();
 
-            // Step 1: Find the origin stop time
             for (StopTime stopTime : tripStopTimes) {
                 String normalizedStopTimeId = stopTime.getStopId().trim();
 
-                // Check if this stop matches the origin stop
                 if (normalizedStopTimeId.equals(normalizedOriginStopId)) {
                     String normalizedDepartureTime = normalizeTime(stopTime.getDepartureTime());
                     LocalTime stopDepartureTime = LocalTime.parse(normalizedDepartureTime, timeFormatter);
 
-                    // Only consider trips that depart after the user-specified time
                     if (stopDepartureTime.isAfter(userTime)) {
-                        originStopTime = stopTime;
-                        // System.out.println("Origin stop time found: " + originStopTime.getDepartureTime());
-                        // Break out of loop once origin stop is found
-                        // System.out.println("Breaking out of origin stop loop for trip: " + trip.getTripId());
-                        break;
+                        if (originStopTime == null || stopDepartureTime.isBefore(LocalTime.parse(normalizeTime(originStopTime.getDepartureTime()), timeFormatter))) {
+                            originStopTime = stopTime;
+                            // System.out.println("Origin stop time updated: " + originStopTime.getDepartureTime());
+                        }
                     }
                 }
             }
 
-            // Step 2: Find the destination stop time (after the origin stop is found)
             if (originStopTime!=null){
                 for (StopTime _stopTime : tripStopTimes) {
                     String normalizedStopTimeId = _stopTime.getStopId().trim();
@@ -68,8 +69,10 @@ public class TripFinder {
                         LocalTime stopArriveTime = LocalTime.parse(normalizedArriveTime, timeFormatter);
 
                         if(stopArriveTime.isAfter(stopDepartureTime)){
-                            destinationStopTime = _stopTime;
-                            break;
+                            if (destinationStopTime == null || stopArriveTime.isBefore(LocalTime.parse(normalizeTime(destinationStopTime.getDepartureTime()), timeFormatter))) {
+                                destinationStopTime = _stopTime;
+                                // System.out.println("Destination stop time updated: " + destinationStopTime.getDepartureTime());
+                            }
                         }
                         // System.out.println("Destination stop time found: " + destinationStopTime.getArrivalTime() + " for stop ID: " + normalizedStopTimeId);
                         // break; // Break out of loop once destination stop is found
@@ -89,29 +92,77 @@ public class TripFinder {
         return null;  // No valid trip found
     }
 
-    public static Trip findBestTrip(List<Trip> trips, List<StopTime> stopTimes, List<Stop> originCandidates, List<Stop> destinationCandidates, String userDepartureTime) {
+    public static TripResult findBestTrip(Network net, List<Trip> trips, List<StopTime> stopTimes, List<Stop> originCandidates,
+                                          List<Stop> destinationCandidates, String userDepartureTime,
+                                          double actualOriginLat,
+                                          double actualOriginLon,
+                                          double actualDestinationLat,
+                                          double actualDestinationLon) {
         Trip bestTrip = null;
+        Stop bestOriginStop = null;
+        Stop bestDestinationStop = null;
+        StopTime bestOriginStopTime = null;
+        StopTime bestDestinationStopTime = null;
         long shortestTravelTime = Long.MAX_VALUE;
 
         for (Stop originStop : originCandidates) {
-
             for (Stop destinationStop : destinationCandidates) {
-
+                // 查找连接 originStop 和 destinationStop 的 trip
                 Trip trip = TripFinder.findConnectingTrip(trips, stopTimes, originStop, destinationStop, userDepartureTime);
 
                 if (trip != null) {
+                    StopTime originStopTime = findStopTime(stopTimes, trip, originStop);
+                    StopTime destinationStopTime = findStopTime(stopTimes, trip, destinationStop);
 
-                    long travelTime = calculateTravelTime(trip, stopTimes, originStop, destinationStop);
+                    if (originStopTime != null && destinationStopTime != null) {
+                        long travelTime = TripFinder.calculateTravelTime(trip, stopTimes, originStop, destinationStop);
 
-                    if (travelTime < shortestTravelTime) {
-                        shortestTravelTime = travelTime;
-                        bestTrip = trip;
+                        if (travelTime < shortestTravelTime) {
+                            shortestTravelTime = travelTime;
+                            bestTrip = trip;
+                            bestOriginStop = originStop;
+                            bestDestinationStop = destinationStop;
+                            bestOriginStopTime = originStopTime;
+                            bestDestinationStopTime = destinationStopTime;
+                        }
                     }
                 }
             }
         }
 
-        return bestTrip;
+        if (bestTrip != null && bestOriginStopTime != null && bestDestinationStopTime != null) {
+            Stop originStop = bestOriginStop;
+            Stop destinationStop = bestDestinationStop;
+
+            // long walkTimeToOriginStation = GeoUtils.calculateWalkingTime(actualOriginLat, actualOriginLon, originStop.getLatitude(), originStop.getLongitude());
+            LinkCost linkCost = new LinkCost();
+            Dijkstra routing = new Dijkstra(linkCost);
+            Route route1 = routing.getRoute(net,	 actualOriginLon, actualOriginLat, originStop.getLongitude(),  originStop.getLatitude());
+            long walkTimeToOriginStation = (long) (route1.getLength() / 1.38) / 60;
+
+            // long walkTimeToDestination = GeoUtils.calculateWalkingTime(destinationStop.getLatitude(), destinationStop.getLongitude(), actualDestinationLat, actualDestinationLon);
+            Route route2 = routing.getRoute(net,	 destinationStop.getLongitude(), destinationStop.getLatitude(), actualDestinationLon,  actualDestinationLat);
+            long walkTimeToDestination = (long) (route2.getLength() / 1.38) / 60;
+
+            long waitingTimeAtStation = calculateWaitingTime(userDepartureTime, bestOriginStopTime.getDepartureTime());
+
+            long timeToOriginStation = Math.max(walkTimeToOriginStation, waitingTimeAtStation);
+
+            long totalTravelTime = timeToOriginStation + shortestTravelTime + walkTimeToDestination;
+            double fare = 240;
+
+            return new TripResult(
+                    originStop.getStopId()+originStop.getStopName(),
+                    destinationStop.getStopId()+destinationStop.getStopName(),
+                    bestOriginStopTime.getDepartureTime(),
+                    bestDestinationStopTime.getArrivalTime(),
+                    totalTravelTime,
+                    fare,
+                    false
+            );
+        }
+
+        return null;
     }
 
     public static long calculateTravelTime(Trip trip, List<StopTime> stopTimes, Stop originStop, Stop destinationStop) {
@@ -138,7 +189,7 @@ public class TripFinder {
                 arrivalTime = arrivalTime.plusHours(24);
             }
 
-            Duration duration = Duration.between(arrivalTime, departureTime);
+            Duration duration = Duration.between(departureTime, arrivalTime);
             return duration.toMinutes();
         }
 

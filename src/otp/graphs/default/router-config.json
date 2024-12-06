@@ -1,0 +1,7 @@
+{
+  "transferSlack": 60,           // 转乘时间设置为 60 秒
+  "maxWalkDistance": 200,         // 步行距离设为 50 米
+  "maxTransferWaitTime": 1200     // 最大转乘等待时间设为 5 分钟
+}
+
+

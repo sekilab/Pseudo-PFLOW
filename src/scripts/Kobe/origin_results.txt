@@ -1,0 +1,413 @@
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 312_2須磨寺町公園前
+Departure Time: 14:00:00
+Arrival Time: 14:06:00
+Travel Time (including walking): 26 minutes
+Fare: 120.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 307_2グリーンハイツＨ棟前
+Departure Time: 15:01:00
+Arrival Time: 15:13:00
+Travel Time (including walking): 46 minutes
+Fare: 120.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 310_2エフコート前
+Departure Time: 17:00:00
+Arrival Time: 17:08:00
+Travel Time (including walking): 56 minutes
+Fare: 120.0 currency units
+Using Community Bus(terminal)!
+Origin Station: 313_0月見山
+Destination Station: 301_1須磨駅前
+Departure Time: 10:16:00
+Arrival Time: 10:35:00
+Travel Time (including walking): 62 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 308_1ガーデンハイツ前
+Destination Station: 309_1すまいる保育園前
+Departure Time: 14:53:00
+Arrival Time: 14:54:00
+Travel Time (including walking): 31 minutes
+Fare: 120.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 308_2ガーデンハイツ前
+Departure Time: 12:31:00
+Arrival Time: 12:40:00
+Travel Time (including walking): 47 minutes
+Fare: 240.0 currency units
+Using Community Bus(terminal)!
+Origin Station: 318_1一ノ谷町３丁目
+Destination Station: 301_1須磨駅前
+Departure Time: 9:50:00
+Arrival Time: 9:54:00
+Travel Time (including walking): 10 minutes
+Fare: 240.0 currency units
+Using Community Bus(terminal)!
+Origin Station: 301_2須磨駅前
+Destination Station: 318_2一ノ谷町３丁目
+Departure Time: 11:53:00
+Arrival Time: 12:03:00
+Travel Time (including walking): 34 minutes
+Fare: 240.0 currency units
+Using Community Bus(terminal)!
+Origin Station: 301_2須磨駅前
+Destination Station: 315_1須磨浦公園駅前
+Departure Time: 16:23:00
+Arrival Time: 16:25:00
+Travel Time (including walking): 44 minutes
+Fare: 240.0 currency units
+Using Community Bus(terminal)!
+Origin Station: 313_0月見山
+Destination Station: 301_1須磨駅前
+Departure Time: 11:31:00
+Arrival Time: 11:52:00
+Travel Time (including walking): 88 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 307_1グリーンハイツＨ棟前
+Destination Station: 310_1エフコート前
+Departure Time: 9:06:00
+Arrival Time: 9:09:00
+Travel Time (including walking): 29 minutes
+Fare: 120.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 308_2ガーデンハイツ前
+Departure Time: 11:31:00
+Arrival Time: 11:41:00
+Travel Time (including walking): 39 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 311_1ワコーレ須磨前
+Destination Station: 312_1須磨寺町公園前
+Departure Time: 11:26:00
+Arrival Time: 11:28:00
+Travel Time (including walking): 46 minutes
+Fare: 120.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 306_2グリーンハイツＧ棟前
+Departure Time: 14:00:00
+Arrival Time: 14:14:00
+Travel Time (including walking): 39 minutes
+Fare: 120.0 currency units
+Using Community Bus!
+Origin Station: 304_1グリーンハイツB棟前
+Destination Station: 309_1すまいる保育園前
+Departure Time: 14:48:00
+Arrival Time: 14:54:00
+Travel Time (including walking): 25 minutes
+Fare: 120.0 currency units
+Using Community Bus!
+Origin Station: 309_1すまいる保育園前
+Destination Station: 310_1エフコート前
+Departure Time: 16:53:00
+Arrival Time: 16:54:00
+Travel Time (including walking): 41 minutes
+Fare: 120.0 currency units
+Using Community Bus(terminal)!
+Origin Station: 301_2須磨駅前
+Destination Station: 316_2一ノ谷町４丁目下
+Departure Time: 10:36:00
+Arrival Time: 10:39:00
+Travel Time (including walking): 11 minutes
+Fare: 240.0 currency units
+Using Community Bus(terminal)!
+Origin Station: 313_0月見山
+Destination Station: 301_1須磨駅前
+Departure Time: 16:01:00
+Arrival Time: 16:22:00
+Travel Time (including walking): 65 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 309_2すまいる保育園前
+Departure Time: 15:01:00
+Arrival Time: 15:10:00
+Travel Time (including walking): 66 minutes
+Fare: 120.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 309_2すまいる保育園前
+Departure Time: 15:01:00
+Arrival Time: 15:10:00
+Travel Time (including walking): 45 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 308_2ガーデンハイツ前
+Departure Time: 9:16:00
+Arrival Time: 9:24:00
+Travel Time (including walking): 70 minutes
+Fare: 120.0 currency units
+Using Community Bus!
+Origin Station: 310_2エフコート前
+Destination Station: 308_2ガーデンハイツ前
+Departure Time: 14:08:00
+Arrival Time: 14:10:00
+Travel Time (including walking): 25 minutes
+Fare: 120.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 308_2ガーデンハイツ前
+Departure Time: 17:00:00
+Arrival Time: 17:10:00
+Travel Time (including walking): 33 minutes
+Fare: 120.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 312_2須磨寺町公園前
+Departure Time: 12:31:00
+Arrival Time: 12:36:00
+Travel Time (including walking): 12 minutes
+Fare: 120.0 currency units
+Using Community Bus(terminal)!
+Origin Station: 313_0月見山
+Destination Station: 301_1須磨駅前
+Departure Time: 14:00:00
+Arrival Time: 14:21:00
+Travel Time (including walking): 58 minutes
+Fare: 240.0 currency units
+Using Community Bus(terminal)!
+Origin Station: 313_0月見山
+Destination Station: 301_1須磨駅前
+Departure Time: 9:16:00
+Arrival Time: 9:35:00
+Travel Time (including walking): 54 minutes
+Fare: 240.0 currency units
+Using Community Bus(terminal)!
+Origin Station: 301_2須磨駅前
+Destination Station: 319_0一ノ谷町２丁目
+Departure Time: 17:22:00
+Arrival Time: 17:34:00
+Travel Time (including walking): 19 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 310_2エフコート前
+Departure Time: 14:00:00
+Arrival Time: 14:08:00
+Travel Time (including walking): 48 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 309_2すまいる保育園前
+Departure Time: 14:00:00
+Arrival Time: 14:09:00
+Travel Time (including walking): 79 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 306_2グリーンハイツＧ棟前
+Departure Time: 11:31:00
+Arrival Time: 11:45:00
+Travel Time (including walking): 30 minutes
+Fare: 120.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 310_2エフコート前
+Departure Time: 11:31:00
+Arrival Time: 11:39:00
+Travel Time (including walking): 25 minutes
+Fare: 120.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 310_2エフコート前
+Departure Time: 17:00:00
+Arrival Time: 17:08:00
+Travel Time (including walking): 65 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 2_0イオンジェームス山店
+Destination Station: 3_2塩屋中学校南
+Departure Time: 11:33:00
+Arrival Time: 11:34:00
+Travel Time (including walking): -6 minutes
+Fare: 240.0 currency units
+Using Community Bus(terminal)!
+Origin Station: 301_2須磨駅前
+Destination Station: 316_2一ノ谷町４丁目下
+Departure Time: 15:23:00
+Arrival Time: 15:26:00
+Travel Time (including walking): 11 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 311_2ワコーレ須磨前
+Departure Time: 16:01:00
+Arrival Time: 16:08:00
+Travel Time (including walking): 27 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 310_2エフコート前
+Departure Time: 17:00:00
+Arrival Time: 17:08:00
+Travel Time (including walking): 47 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 311_1ワコーレ須磨前
+Destination Station: 313_0月見山
+Departure Time: 11:26:00
+Arrival Time: 11:31:00
+Travel Time (including walking): 46 minutes
+Fare: 120.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 308_2ガーデンハイツ前
+Departure Time: 14:00:00
+Arrival Time: 14:10:00
+Travel Time (including walking): 50 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 306_2グリーンハイツＧ棟前
+Departure Time: 17:00:00
+Arrival Time: 17:14:00
+Travel Time (including walking): 38 minutes
+Fare: 240.0 currency units
+Using Community Bus(terminal)!
+Origin Station: 301_2須磨駅前
+Destination Station: 303_1グリーンハイツA棟前
+Departure Time: 13:45:00
+Arrival Time: 13:47:00
+Travel Time (including walking): 17 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 308_2ガーデンハイツ前
+Departure Time: 15:01:00
+Arrival Time: 15:11:00
+Travel Time (including walking): 28 minutes
+Fare: 240.0 currency units
+Using Community Bus(terminal)!
+Origin Station: 301_2須磨駅前
+Destination Station: 319_0一ノ谷町２丁目
+Departure Time: 17:22:00
+Arrival Time: 17:34:00
+Travel Time (including walking): 19 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 311_2ワコーレ須磨前
+Departure Time: 11:31:00
+Arrival Time: 11:38:00
+Travel Time (including walking): 54 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 2_0イオンジェームス山店
+Destination Station: 3_2塩屋中学校南
+Departure Time: 13:13:00
+Arrival Time: 13:14:00
+Travel Time (including walking): 22 minutes
+Fare: 240.0 currency units
+Using Community Bus(terminal)!
+Origin Station: 301_2須磨駅前
+Destination Station: 316_2一ノ谷町４丁目下
+Departure Time: 14:22:00
+Arrival Time: 14:25:00
+Travel Time (including walking): 12 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 311_2ワコーレ須磨前
+Departure Time: 17:00:00
+Arrival Time: 17:07:00
+Travel Time (including walking): 55 minutes
+Fare: 120.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 310_2エフコート前
+Departure Time: 11:31:00
+Arrival Time: 11:39:00
+Travel Time (including walking): 13 minutes
+Fare: 120.0 currency units
+Using Community Bus(terminal)!
+Origin Station: 313_0月見山
+Destination Station: 301_1須磨駅前
+Departure Time: 15:01:00
+Arrival Time: 15:22:00
+Travel Time (including walking): 60 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 309_2すまいる保育園前
+Departure Time: 16:01:00
+Arrival Time: 16:10:00
+Travel Time (including walking): 79 minutes
+Fare: 240.0 currency units
+Using Community Bus(terminal)!
+Origin Station: 301_2須磨駅前
+Destination Station: 316_2一ノ谷町４丁目下
+Departure Time: 14:22:00
+Arrival Time: 14:25:00
+Travel Time (including walking): 12 minutes
+Fare: 240.0 currency units
+Using Community Bus(terminal)!
+Origin Station: 301_2須磨駅前
+Destination Station: 316_2一ノ谷町４丁目下
+Departure Time: 15:23:00
+Arrival Time: 15:26:00
+Travel Time (including walking): 13 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 310_2エフコート前
+Departure Time: 9:16:00
+Arrival Time: 9:22:00
+Travel Time (including walking): 38 minutes
+Fare: 240.0 currency units
+Using Community Bus(terminal)!
+Origin Station: 301_2須磨駅前
+Destination Station: 311_1ワコーレ須磨前
+Departure Time: 9:00:00
+Arrival Time: 9:10:00
+Travel Time (including walking): 100 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 310_2エフコート前
+Departure Time: 16:01:00
+Arrival Time: 16:09:00
+Travel Time (including walking): 32 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 307_2グリーンハイツＨ棟前
+Departure Time: 14:00:00
+Arrival Time: 14:12:00
+Travel Time (including walking): 37 minutes
+Fare: 240.0 currency units
+Using Community Bus(terminal)!
+Origin Station: 301_2須磨駅前
+Destination Station: 319_0一ノ谷町２丁目
+Departure Time: 12:52:00
+Arrival Time: 13:03:00
+Travel Time (including walking): 19 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 307_2グリーンハイツＨ棟前
+Departure Time: 12:31:00
+Arrival Time: 12:42:00
+Travel Time (including walking): 58 minutes
+Fare: 120.0 currency units
+Using Community Bus!
+Origin Station: 313_0月見山
+Destination Station: 308_2ガーデンハイツ前
+Departure Time: 10:16:00
+Arrival Time: 10:24:00
+Travel Time (including walking): 11 minutes
+Fare: 240.0 currency units
+Using Community Bus!
+Origin Station: 310_2エフコート前
+Destination Station: 306_2グリーンハイツＧ棟前
+Departure Time: 16:09:00
+Arrival Time: 16:15:00
+Travel Time (including walking): 31 minutes
+Fare: 240.0 currency units

@@ -1,0 +1,8 @@
+{
+  "port": 8082,
+  "securePort": 8081,
+  "routerDirectory": "graphs",
+  "timeout": 50,
+  "maxSpeed": 120,
+  "areaVisibility": true
+}
