@@ -1,0 +1,9 @@
+route_id,agency_id,route_short_name,route_long_name,route_desc,route_type,route_color,route_text_color
+1,9000020281000_1,,しおかぜ日中便,,3,C30E23,FFFFFF
+2,9000020281000_1,,しおかぜ夜便（西ルート）,,3,0E6EB8,FFFFFF
+3,9000020281000_1,,しおかぜ夜便（東ルート）,,3,8EC31F,FFFFFF
+11,6140001013659_1,,ヘルマンバス,,3,2F5597,FFFFFF
+21,2140001016566_1,,ふきあい南北バス 神仙寺ルート,,3,1F8BC7,FFFFFF
+22,2140001016566_1,,ふきあい南北バス 熊内ルート,,3,60BB7A,FFFFFF
+31,2140001019172_1,,はまちどり月見山ルート,,3,0071BC,FFFFFF
+32,2140001019172_1,,はまちどり一ノ谷ルート,,3,ED5900,FFFFFF

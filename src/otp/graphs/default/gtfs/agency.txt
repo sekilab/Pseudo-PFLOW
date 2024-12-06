@@ -1,0 +1,5 @@
+agency_id,agency_name,agency_url,agency_timezone,agency_lang,agency_phone
+9000020281000_1,山陽タクシー株式会社,https://sanyo-taxi.jp/community-bus/,Asia/Tokyo,ja,0787530077
+6140001013659_1,東京・日本交通株式会社神戸営業所,https://www.city.kobe.lg.jp/a80014/shise/kekaku/jutakutoshikyoku/sogokotsu/nishiokamoto.html,Asia/Tokyo,ja,0788568930
+2140001016566_1,キクヤ交通株式会社,https://www.city.kobe.lg.jp/a80014/shise/kekaku/jutakutoshikyoku/sogokotsu/chuokutobu.html,Asia/Tokyo,ja,0786517800
+2140001019172_1,スターハイヤー株式会社,https://www.city.kobe.lg.jp/a80014/shise/kekaku/jutakutoshikyoku/sogokotsu/nishisuma.html,Asia/Tokyo,ja,0787473885

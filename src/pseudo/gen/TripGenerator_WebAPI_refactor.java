@@ -647,7 +647,7 @@ public class TripGenerator_WebAPI_refactor {
 
 		ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
 
-				22
+				16
 				// 0, 16, 31, 32, 39, 36, 18, 41, 1, 40, 46,
 				// 13,
 				// 11,
