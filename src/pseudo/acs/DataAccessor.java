@@ -10,6 +10,18 @@ import jp.ac.ut.csis.pflow.geom2.Mesh;
 import jp.ac.ut.csis.pflow.geom2.MeshUtils;
 import jp.ac.ut.csis.pflow.routing4.res.Network;
 import jp.ac.ut.csis.pflow.routing4.res.Node;
+import org.geotools.geometry.jts.JTS;
+import org.geotools.geometry.jts.JTSFactoryFinder;
+import org.geotools.referencing.CRS;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+
+import org.opengis.referencing.FactoryException;
+import org.opengis.referencing.crs.CoordinateReferenceSystem;
+import org.opengis.referencing.operation.MathTransform;
+
+
 import pseudo.res.City;
 import pseudo.res.ECity;
 import pseudo.res.ELabor;
@@ -153,7 +165,13 @@ public class DataAccessor {
 		return 1;
 	}
 
-	public static int loadRestaurantData(String filename, Country japan){
+	public static void loadRestaurantData(String filename, Country japan) throws FactoryException {
+		CoordinateReferenceSystem sourceCRS = CRS.decode("EPSG:4301"); // Replace <sourceCRSCode> with your original CRS code
+		CoordinateReferenceSystem targetCRS = CRS.decode("EPSG:4326");
+		MathTransform transform = CRS.findMathTransform(sourceCRS, targetCRS, true);
+
+		GeometryFactory geometryFactory = (GeometryFactory) JTSFactoryFinder.getGeometryFactory();
+
 		// restaurant data from TelePointDB 2018
 		try(BufferedReader br = new BufferedReader((new FileReader(filename)));){
 			String line;
@@ -166,14 +184,24 @@ public class DataAccessor {
 				double lon = Double.parseDouble(items[20]);
 				double lat = Double.parseDouble(items[21]);
 
-				Mesh mesh = MeshUtils.createMesh(3, lon, lat);
+				Coordinate coord = new Coordinate(lat, lon);
+				Point point = geometryFactory.createPoint(coord);
+
+				// Transform point
+				Point transformedPoint = (Point) JTS.transform(point, transform);
+
+				// Extract transformed coordinates
+				double transformedLon = transformedPoint.getCoordinate().y;
+				double transformedLat = transformedPoint.getCoordinate().x;
+
+				Mesh mesh = MeshUtils.createMesh(3, transformedLon, transformedLat);
 				String mcode = mesh.getCode();
 
 				City city = japan.getCity(gcode);
 				if (city != null) {
 					GMesh gmesh = japan.hasMesh(mcode) ? japan.getMesh(mcode) : new GMesh(mesh);
 					double capacity = 10000; //
-					Facility fac = new Facility(0, lon, lat, gcode, capacity);
+					Facility fac = new Facility(0, transformedLon, transformedLat, gcode, capacity);
 					gmesh.addRestaurant(fac);
 					city.addMesh(gmesh);
 				}
@@ -181,10 +209,14 @@ public class DataAccessor {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		return 1;
 	};
 
-	public static int loadRetailData(String filename, Country japan){
+	public static void loadRetailData(String filename, Country japan) throws FactoryException {
+		CoordinateReferenceSystem sourceCRS = CRS.decode("EPSG:4301"); // Replace <sourceCRSCode> with your original CRS code
+		CoordinateReferenceSystem targetCRS = CRS.decode("EPSG:4326");
+		MathTransform transform = CRS.findMathTransform(sourceCRS, targetCRS, true);
+
+		GeometryFactory geometryFactory = (GeometryFactory) JTSFactoryFinder.getGeometryFactory();
 		// restaurant data from TelePointDB 2018
 		try(BufferedReader br = new BufferedReader((new FileReader(filename)));){
 			String line;
@@ -197,14 +229,22 @@ public class DataAccessor {
 				double lon = Double.parseDouble(items[20]);
 				double lat = Double.parseDouble(items[21]);
 
-				Mesh mesh = MeshUtils.createMesh(3, lon, lat);
+				Point point = geometryFactory.createPoint(new Coordinate(lat, lon));
+				// Transform point to the target CRS
+				Point transformedPoint = (Point) JTS.transform(point, transform);
+
+				// Extract transformed coordinates
+				double transformedLon = transformedPoint.getCoordinate().y;
+				double transformedLat = transformedPoint.getCoordinate().x;
+
+				Mesh mesh = MeshUtils.createMesh(3, transformedLon, transformedLat);
 				String mcode = mesh.getCode();
 
 				City city = japan.getCity(gcode);
 				if (city != null) {
 					GMesh gmesh = japan.hasMesh(mcode) ? japan.getMesh(mcode) : new GMesh(mesh);
 					double capacity = 10000; //
-					Facility fac = new Facility(0, lon, lat, gcode, capacity);
+					Facility fac = new Facility(0, transformedLon, transformedLat, gcode, capacity);
 					gmesh.addRetail(fac);
 					city.addMesh(gmesh);
 				}
@@ -212,7 +252,6 @@ public class DataAccessor {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		return 1;
 	};
 
 	public static int loadZenrinTatemono(String filename, Country japan, int scale){
