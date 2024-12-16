@@ -1,0 +1,15 @@
+Index: .gitignore
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+># Default ignored files\n/shelf/\n/workspace.xml\n/src/main/resources/config.properties\n/target/\npom.xml\nmisc.xml
+===================================================================
+diff --git a/.gitignore b/.gitignore
+--- a/.gitignore	
++++ b/.gitignore	
+@@ -1,5 +1,5 @@
+ # Default ignored files
+-/shelf/
++/.idea/shelf/
+ /workspace.xml
+ /src/main/resources/config.properties
+ /target/

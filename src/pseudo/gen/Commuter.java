@@ -1,6 +1,4 @@
-
 package pseudo.gen;
-
 
 import java.io.*;
 import java.util.*;
@@ -144,9 +142,7 @@ public class Commuter extends ActGenerator {
 					prePurpose = purpose;
 				}
 			}
-//			if(person.getActivities().size()==1){
-//				System.out.println("===================================================");
-//			}
+
 			return 0;
 		}
 		
