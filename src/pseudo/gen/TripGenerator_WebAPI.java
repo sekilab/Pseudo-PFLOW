@@ -140,7 +140,6 @@ public class TripGenerator_WebAPI {
 			}
 		}
 		
-		
 		private int process(Person person) throws Exception {
 			List<Activity> activities = person.getActivities();
 			Activity pre = activities.get(0);

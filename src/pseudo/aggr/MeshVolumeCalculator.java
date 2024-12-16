@@ -19,8 +19,9 @@ public class MeshVolumeCalculator {
 	private static final long TIME_INTERVAL_SECONDS = 360 * 1000;
 	
 	// 改修中
-	private static void calcurate(String filename, Map<String, List<Integer>> data) {
+	private static void calculate(String filename, Map<String, List<Integer>> data) {
 		System.out.println(filename);
+		long startday = 1443625200000L;
 		try (BufferedReader br = new BufferedReader(new FileReader(filename));){
             String line;
             int preid = 0, prestep = 0;
@@ -29,7 +30,7 @@ public class MeshVolumeCalculator {
             while ((line = br.readLine()) != null) {	
             	String[] items = line.split(",");
             	int id = Integer.valueOf(items[0]);
-            	int step = (int)(Long.valueOf(items[1]) / TIME_INTERVAL_SECONDS);
+            	int step = (int)((Long.valueOf(items[1])-startday) / TIME_INTERVAL_SECONDS);
             	double lon = Double.valueOf(items[3]);
             	double lat = Double.valueOf(items[4]);
             	
@@ -48,17 +49,19 @@ public class MeshVolumeCalculator {
             
             	// set value to list
             	if (preid != id) {
+
             		// 0 ~ time
                 	for (int i = 0; i <= step && i < maxSteps; i++) {
                 		vals.set(i, vals.get(i)+1);
                 	}
                 	// time ~ max 
                 	if (prevals != null) {
-                		for (int i = prestep; i < maxSteps; i++) {
+                		for (int i = prestep+1; i < maxSteps; i++) {
                 			prevals.set(i, prevals.get(i)+1);
 	                	}
 						// data.put(code, prevals);
                 	}
+
             	}else {
             		for (int i = prestep+1; i <= step && i < maxSteps; i++) {
                 		vals.set(i, vals.get(i)+1);
@@ -93,24 +96,46 @@ public class MeshVolumeCalculator {
 	}
 
 	public static void main(String[] args) {
-		String input = "/home/ubuntu/Data/pseudo/trajectory/city/";
-		String output = "/home/ubuntu/Data/pseudo/mesh_volume.csv";
-		int start = 1;
-		int end = 47;
-		
-		Map<String, List<Integer>> data = new HashMap<>();
-		File[] files = (new File(input)).listFiles();
-		Arrays.sort(files);
-		
-		int count = 0;
-		for (File file : files) {
-			System.out.println(String.format("%d %d", count++, files.length));
-			int pref = Integer.valueOf(file.getName().substring(7, 9));
-			if (pref >= start && pref <= end) {
-				calcurate(file.getAbsolutePath(), data);
+		int start = 22;
+		int end = 26;
+		for(int i=start; i<=end;i++){
+
+			String input = String.format("/mnt/free/owner/PseudoPFLOW/%02d/", i);
+			String output = String.format("/mnt/free/owner/PseudoPFLOW/mesh_pop/%02d_mesh_volume4.csv", i);
+
+			Map<String, List<Integer>> data = new HashMap<>();
+			File[] files = (new File(input)).listFiles();
+			Arrays.sort(files);
+
+			int count = 0;
+
+			for (File file: files){
+				System.out.println(String.format("%d %d", count++, files.length));
+				calculate(file.getAbsolutePath(), data);
+
 			}
+			write(output, data);
+			System.out.println("end");
 		}
-		write(output, data);
-		System.out.println("end");
+		// String input = "/mnt/free/owner/PseudoPFLOW/14/";
+		// String output = "/mnt/free/owner/PseudoPFLOW/mesh_pop/14_mesh_volume4.csv";
+
+		
+//		Map<String, List<Integer>> data = new HashMap<>();
+//		File[] files = (new File(input)).listFiles();
+//		Arrays.sort(files);
+//
+//		int count = 0;
+//		for (File file : files) {
+//			System.out.println(String.format("%d %d", count++, files.length));
+//			int pref = Integer.valueOf(file.getName().substring(7, 9));
+//			if (pref >= start && pref <= end) {
+//				calcurate(file.getAbsolutePath(), data);
+//			// if(count==2){break;}
+//
+//			}
+//		}
+//		write(output, data);
+//		System.out.println("end");
 	}
 }

@@ -14,16 +14,17 @@ public class LinkVolumeCalculator {
 
 	private static final long TIME_INTERVAL_SECONDS = 3600 *1000;
 
-	private static void calcurate(String filename, Map<String, Map<Long,Integer>> data) {
+	private static void calculate(String filename, Map<String, Map<Long,Integer>> data) {
 		System.out.println(filename);
+		long startday = 1443625200000L;
 		try (BufferedReader br = new BufferedReader(new FileReader(filename));){
             String line;
             while ((line = br.readLine()) != null) {	
             	String[] items = line.split(",", -1);
-            	long time = Long.valueOf(items[1]) / TIME_INTERVAL_SECONDS;
+            	long time = (Long.valueOf(items[1]) - startday) / TIME_INTERVAL_SECONDS;
             	ETransport transport = ETransport.getType(Integer.valueOf(items[5]));
             	String link = String.valueOf(items[8]);
-            	if (link.equals("") !=true && transport != ETransport.TRAIN) {
+            	if (link.equals("") !=true && transport != ETransport.TRAIN && transport != ETransport.WALK) {
             		Map<Long,Integer> vols = data.containsKey(link) ? data.get(link) : new HashMap<>();
             		int volume = vols.containsKey(time) ? vols.get(time) : 0;
             		vols.put(time, volume+1);
@@ -54,20 +55,23 @@ public class LinkVolumeCalculator {
 	}
 	
 	public static void main(String[] args) {
-		String input = "/home/ubuntu/Data/pseudo/trajectory/city/"; //args[0];
-		String output = "/home/ubuntu/Data/pseudo/link_volume.csv";//args[1];
-		int start = 1;//Integer.valueOf(args[2]);
-		int end = 47;//Integer.valueOf(args[3]);
-		
+		String output = "/mnt/free/owner/link_volume_22_multiple_pref_all_mode.csv";//args[1];
+		int start = 13;//Integer.valueOf(args[2]);
+		int end = 23;//Integer.valueOf(args[3]);
+
 		Map<String, Map<Long,Integer>> data = new HashMap<>();
-		File[] files = (new File(input)).listFiles();
-		int count = 0;
-		for (File file : files){
-			int pref = Integer.valueOf(file.getName().substring(7, 9));
-			System.out.println(String.format("%d %d", count++, files.length));
-			if (pref >= start && pref <= end) {
-				calcurate(file.getAbsolutePath(), data);
+		for(int i=start; i<=end;i++){
+
+			String input = String.format("/mnt/large/data/PseudoPFLOW/ver2.0/trajectory/%02d/", i);
+//			Map<String, Map<Long,Integer>> data = new HashMap<>();
+
+			File[] files = (new File(input)).listFiles();
+			int count = 0;
+			for (File file : files){
+				System.out.println(String.format("%d %d", count++, files.length));
+				calculate(file.getAbsolutePath(), data);
 			}
+			// write(output, data);
 		}
 		write(output, data);
 		System.out.println("end");

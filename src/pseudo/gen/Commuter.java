@@ -189,6 +189,7 @@ public class Commuter extends ActGenerator {
 
         System.out.println("start");
 
+		String output = null;
 		String inputDir = null;
 		String root = null;
 
@@ -201,6 +202,7 @@ public class Commuter extends ActGenerator {
 
 		root = prop.getProperty("root");
 		inputDir = prop.getProperty("inputDir");
+		output = prop.getProperty("outputDir");
 		System.out.println("Root Directory: " + root);
 		System.out.println("Input Directory: " + inputDir);
 
@@ -240,11 +242,11 @@ public class Commuter extends ActGenerator {
 
         // create activities
 
-        String outputDir = String.format("%s/activity/", root);
+        String outputDir = String.format("%s/activity/", output);
 
         long starttime = System.currentTimeMillis();
-        int start = 13;
-        for (int i = start; i <= 13; i++) {
+        int start = 1;
+        for (int i = start; i <= 47; i++) {
 
 			// load markov chains
 			Map<EMarkov, Map<EGender, MkChainAccessor>> mrkMap = new HashMap<>();
