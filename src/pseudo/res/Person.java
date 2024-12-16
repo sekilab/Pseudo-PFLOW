@@ -11,6 +11,7 @@ public class Person {
 	private HouseHold parent;
 
 	private Boolean carowner;
+	private Boolean bikeowner;
 	
 	private List<Activity> activities;
 	private List<Trip> trips;
@@ -37,6 +38,7 @@ public class Person {
 		this.office = null;
 		this.parent = parent;
 		this.carowner = false;
+		this.bikeowner = false;
 		
 		if (this.parent != null) {
 			this.parent.addMember(this);
@@ -68,6 +70,8 @@ public class Person {
 	}
 
 	public void setCarowner(Boolean ownership){ this.carowner = ownership; }
+
+	public void setBikeowner(Boolean ownership){ this.bikeowner = ownership; }
 
 	public List<Activity> getActivities() {
 		return activities;

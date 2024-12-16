@@ -130,7 +130,7 @@ public class PersonAccessor{
 		}
 	}
 	
-	public static List<Person> loadActivity(String filename, int scale, Double ratio) {
+	public static List<Person> loadActivity(String filename, int scale, Double carRatio, Double bikeRatio) {
 		List<Person> res = new ArrayList<>();
 		try (BufferedReader br = new BufferedReader(new FileReader(filename));){
             String line = null;
@@ -147,8 +147,10 @@ public class PersonAccessor{
             	if (nextId != preId) {
             		person = new Person(null, nextId, age, gender, labor);
 					Random random = new Random();
-					Boolean ownership = (age >= 20) && (random.nextDouble() < ratio);
-					person.setCarowner(ownership);
+					Boolean carOwnership = (age >= 20) && (random.nextDouble() < carRatio);
+					person.setCarowner(carOwnership);
+					Boolean bikeOwnership = random.nextDouble() < bikeRatio;
+					person.setBikeowner(bikeOwnership);
             		if (counter++ % scale == 0) {
             			res.add(person);
             		}
