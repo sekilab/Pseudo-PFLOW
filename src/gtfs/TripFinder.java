@@ -10,6 +10,8 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static gtfs.GTFSRouter.calculateWaitingTime;
 import static gtfs.GTFSRouter.findStopTime;
@@ -35,6 +37,12 @@ public class TripFinder {
                     tripStopTimes.add(stopTime);
                 }
             }
+
+            // refactor for efficiency
+//            Map<String, List<StopTime>> stopTimesByTrip = stopTimes.stream()
+//                    .collect(Collectors.groupingBy(StopTime::getTripId));
+//            List<StopTime> tripStopTimes = stopTimesByTrip.get(trip.getTripId());
+
 
             String normalizedOriginStopId = originStop.getStopId().trim();
             String normalizedDestinationStopId = destinationStop.getStopId().trim();
@@ -107,7 +115,6 @@ public class TripFinder {
 
         for (Stop originStop : originCandidates) {
             for (Stop destinationStop : destinationCandidates) {
-                // 查找连接 originStop 和 destinationStop 的 trip
                 Trip trip = TripFinder.findConnectingTrip(trips, stopTimes, originStop, destinationStop, userDepartureTime);
 
                 if (trip != null) {
@@ -137,7 +144,7 @@ public class TripFinder {
             // long walkTimeToOriginStation = GeoUtils.calculateWalkingTime(actualOriginLat, actualOriginLon, originStop.getLatitude(), originStop.getLongitude());
             LinkCost linkCost = new LinkCost();
             Dijkstra routing = new Dijkstra(linkCost);
-            Route route1 = routing.getRoute(net,	 actualOriginLon, actualOriginLat, originStop.getLongitude(),  originStop.getLatitude());
+            Route route1 = routing.getRoute(net, actualOriginLon, actualOriginLat, originStop.getLongitude(),  originStop.getLatitude());
             long walkTimeToOriginStation = (long) (route1.getLength() / 1.38) / 60;
 
             // long walkTimeToDestination = GeoUtils.calculateWalkingTime(destinationStop.getLatitude(), destinationStop.getLongitude(), actualDestinationLat, actualDestinationLon);
@@ -148,7 +155,18 @@ public class TripFinder {
 
             long timeToOriginStation = Math.max(walkTimeToOriginStation, waitingTimeAtStation);
 
+//            long timeToOriginStation;
+
+//            if (walkTimeToOriginStation < waitingTimeAtStation) {
+//                // We arrive early => we wait the difference
+//                timeToOriginStation = waitingTimeAtStation;
+//            } else {
+//                // We arrive after the bus was scheduled to depart => can't catch that bus
+//                return null;
+//            }
+
             long totalTravelTime = timeToOriginStation + shortestTravelTime + walkTimeToDestination;
+
             double fare = 240;
 
             return new TripResult(

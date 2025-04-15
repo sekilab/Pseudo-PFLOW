@@ -244,8 +244,8 @@ public class Commuter extends ActGenerator {
         String outputDir = String.format("%s/activity/", root);
 
         long starttime = System.currentTimeMillis();
-        int start = 1;
-        for (int i = start; i <= 47; i++) {
+        int start = 10;
+        for (int i = start; i <= 12; i++) {
 
 			// load markov chains
 			Map<EMarkov, Map<EGender, MkChainAccessor>> mrkMap = new HashMap<>();

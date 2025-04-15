@@ -180,7 +180,7 @@ public abstract class ActGenerator {
 				ILonLat center = tmesh.getCenter();
 				double distance = DistanceUtils.distance(
 						origin.getLon(), origin.getLat(), center.getLon(), center.getLat());
-				probs.add(capacity/Math.pow(distance, 2));
+				probs.add(capacity/Math.pow(distance, 1.5));
 			}
 			int choice = Roulette.choice(probs, getRandom());
 			mesh = meshes.get(choice);

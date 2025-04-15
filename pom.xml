@@ -23,33 +23,28 @@
           <version>1.9.0</version>  <!-- Use the latest version available -->
       </dependency>
 
-      <dependency>
-          <groupId>org.opentripplanner</groupId>
-          <artifactId>otp</artifactId>
-          <version>1.4.0</version>
-      </dependency>
 
       <!-- GeoTools Core Modules -->
       <dependency>
           <groupId>org.geotools</groupId>
           <artifactId>gt-main</artifactId>
-          <version>25.1</version>  <!-- Use the latest version available -->
+          <version>${geotools.version}</version>  <!-- Use the latest version available -->
       </dependency>
       <dependency>
           <groupId>org.geotools</groupId>
           <artifactId>gt-metadata</artifactId>
-          <version>25.1</version>
+          <version>${geotools.version}</version>
       </dependency>
       <dependency>
           <groupId>org.geotools</groupId>
           <artifactId>gt-referencing</artifactId>
-          <version>25.1</version>
+          <version>${geotools.version}</version>
       </dependency>
       <!-- EPSG Support -->
       <dependency>
           <groupId>org.geotools</groupId>
           <artifactId>gt-epsg-hsql</artifactId>
-          <version>25.1</version>
+          <version>${geotools.version}</version>
       </dependency>
 <!-- https://mvnrepository.com/artifact/org.geotools/geotools -->
         <dependency>

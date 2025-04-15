@@ -23,7 +23,7 @@ public class GeoUtils {
                         Math.cos(lat1) * Math.cos(lat2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-        return EARTH_RADIUS * c; // Returns distance in kilometers
+        return EARTH_RADIUS * c; // Returns distance in meters
     }
 
     // Method to find the nearest stop
@@ -42,7 +42,7 @@ public class GeoUtils {
     }
 
     public static List<Stop> findNearestStops(List<Stop> stops, double lat, double lon, int numberOfResults) {
-        double maxDistanceInMeters = 500;
+        double maxDistanceInMeters = 0.5; //km
 
         return stops.stream()
                 .filter(stop -> haversine(stop.getLatitude(), stop.getLongitude(), lat, lon) <= maxDistanceInMeters)

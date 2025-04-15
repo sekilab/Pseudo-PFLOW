@@ -8,11 +8,14 @@ import jp.ac.ut.csis.pflow.geom2.LonLat;
 import jp.ac.ut.csis.pflow.geom2.TrajectoryUtils;
 import jp.ac.ut.csis.pflow.routing4.logic.Dijkstra;
 import jp.ac.ut.csis.pflow.routing4.logic.linkcost.LinkCost;
+import jp.ac.ut.csis.pflow.routing4.logic.transport.ITransport;
+import jp.ac.ut.csis.pflow.routing4.logic.transport.Transport;
 import jp.ac.ut.csis.pflow.routing4.res.Link;
 import jp.ac.ut.csis.pflow.routing4.res.Network;
 import jp.ac.ut.csis.pflow.routing4.res.Node;
 import jp.ac.ut.csis.pflow.routing4.res.Route;
 import network.DrmLoader;
+import network.RailLoader;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.config.CookieSpecs;
@@ -46,6 +49,7 @@ import java.util.concurrent.Executors;
 public class TripGenerator_WebAPI_refactor {
 
     private final Network drm;
+	private final Network railway;
 
 	private final SSLContext sslContext;
 	private final PoolingHttpClientConnectionManager connManager;
@@ -54,17 +58,18 @@ public class TripGenerator_WebAPI_refactor {
 
 	private static final double MIN_TRANSIT_DISTANCE = 1000;
 	// private static final double MAX_SEARCH_STATION_DISTANCE = 5000;
-	private static final double FARE_PER_KILOMETER = 51; // Japanese yen, only for vehicle
+	private static final double FARE_PER_KILOMETER = 10; // Japanese yen, only for vehicle
 	private static final double FARE_PER_HOUR = 1000; // Japanese yen, all modes, possible to extend to prefecture level
-	private static final double FATIGUE_INDEX_WALK = 2.5;
-	private static final double FATIGUE_INDEX_BICYCLE = 2;
-	private static final double FARE_INIT = 75; // Japanese yen, only for vehicle
-	private static final double CAR_AVAILABILITY = 0.25; // Parameter for explain people using car without ownership
+	private static final double FATIGUE_INDEX_WALK = 1.5;
+	private static final double FATIGUE_INDEX_BICYCLE = 1.2;
+	private static final double FARE_INIT = 200; // Japanese yen, only for vehicle
+	private static final double CAR_AVAILABILITY = 0.4; // Parameter for explain people using car without ownership
 
 
-	public TripGenerator_WebAPI_refactor(Country japan, Network drm) throws Exception {
+	public TripGenerator_WebAPI_refactor(Country japan, Network drm, Network railway) throws Exception {
 		super();
         this.drm = drm;
+		this.railway = railway;
 		this.sslContext = createSSLContext();
 		this.connManager = createConnManager();
 		this.httpClient = createHttpClient();
@@ -179,24 +184,13 @@ public class TripGenerator_WebAPI_refactor {
 			}
 		}
 
-		private ETransport getTransport(int mode) {
+		private ETransport getTransport(int mode) { // mode defined by WebAPI
 			switch (mode) {
 				case 4:		return ETransport.WALK;
 				case 3:	return ETransport.BUS;
                 case 2:		return ETransport.TRAIN;
 				case 0: return ETransport.NOT_DEFINED;
 				default:		return ETransport.CAR;
-			}
-		}
-
-		// use for API travel time
-		private double getTravelSpeed(int mode){
-			switch(mode){
-				case 1:		return 1.39;
-				case 2:		return 16.67;
-				case 3:		return 8.33;
-				case 4:     return 1.39;
-				default:		return 8.33;
 			}
 		}
 
@@ -231,12 +225,12 @@ public class TripGenerator_WebAPI_refactor {
 					choices.put(ETransport.CAR, roadcost);
 				}
 
-				double walktime = roadtime * 10; // walk takes 10 times slower than vehicle
+				double walktime = route.getLength() / 1.38;
 				double walkcost = walktime / 3600 * FARE_PER_HOUR * FATIGUE_INDEX_WALK;
 				choices.put(ETransport.WALK, walkcost);
 
 				if(person.hasBike()){
-					double biketime = roadtime * 3;
+					double biketime = walktime / 2;
 					double bikecost = biketime / 3600 * FARE_PER_HOUR * FATIGUE_INDEX_BICYCLE;
 					choices.put(ETransport.BICYCLE, bikecost);
 				}
@@ -255,7 +249,7 @@ public class TripGenerator_WebAPI_refactor {
 
 			nextMode = choices.entrySet()
 					.stream()
-					.min                                                                                                                                                                                                                                                                                                                                                                              (Comparator.comparing(Map.Entry::getValue))
+					.min(Comparator.comparing(Map.Entry::getValue))
 					.map(Map.Entry::getKey)
 					.orElse(ETransport.NOT_DEFINED);
 
@@ -304,18 +298,84 @@ public class TripGenerator_WebAPI_refactor {
 			points.addAll(subpoints);
 		}
 
+//		private List<Node> extractNodesFromMixedResults(JsonNode[] mixedResultsHolder) {
+//			List<Node> nodes = new ArrayList<>();
+//			JsonNode routeData = mixedResultsHolder[0].path("features");
+//			for (JsonNode feature : routeData) {
+//				JsonNode coordinates = feature.path("geometry").path("coordinates");
+//				String stationName =   feature.path("properties").path("station").toString();
+//				if (coordinates.isArray()) {
+//					double lon = coordinates.get(0).asDouble();
+//					double lat = coordinates.get(1).asDouble();
+//					nodes.add(new Node(feature.path("properties").path("id").toString(), lon, lat));
+//				} else {
+//					System.out.println("Coordinate from WebAPI is not an array!!");
+//				}
+//			}
+//			return nodes;
+//		}
+
 		private List<Node> extractNodesFromMixedResults(JsonNode[] mixedResultsHolder) {
 			List<Node> nodes = new ArrayList<>();
+			Node firstStationNode = null; // 记录当前段的第一个站点 Node
+			Node lastStationNode = null;  // 记录当前段的最后一个站点 Node
+
 			JsonNode routeData = mixedResultsHolder[0].path("features");
+			boolean previousHasStation = false; // 记录前一个站点是否有 stationName
+			int previousTransportation = -1;
+
 			for (JsonNode feature : routeData) {
 				JsonNode coordinates = feature.path("geometry").path("coordinates");
-				if (coordinates.isArray()) {
+				String stationName = feature.path("properties").path("station").asText();
+				int currentTransportation = feature.path("properties").path("transportation").asInt();
+				boolean currentHasStation = !"null".equals(stationName);
+
+				if ((previousHasStation && !currentHasStation) ||
+					(previousTransportation != -1 && previousTransportation != currentTransportation)) {
+
+					if (firstStationNode != null && lastStationNode != null && !firstStationNode.equals(lastStationNode)){
+						LinkCost linkCost = new LinkCost(Transport.RAILWAY);
+						Dijkstra routing = new Dijkstra(linkCost);
+						Route route = routing.getRoute(railway,	firstStationNode.getLon(), firstStationNode.getLat(), lastStationNode.getLon(), lastStationNode.getLat());
+
+						if (route != null && route.numNodes() > 0){
+							List<Node> rail_nodes = route.listNodes();
+							nodes.addAll(rail_nodes);
+						}
+					}
+					firstStationNode = null;
+					lastStationNode = null;
+				}
+
+				if (!currentHasStation && coordinates.isArray()) {
 					double lon = coordinates.get(0).asDouble();
 					double lat = coordinates.get(1).asDouble();
-					nodes.add(new Node(feature.path("properties").path("id").toString(), lon, lat));
-				} else {
-					System.out.println("Coordinate from WebAPI is not an array!!");
+					Node node = new Node(feature.path("properties").path("id").asText(), lon, lat);
+					nodes.add(node); // 直接添加该节点
 				}
+
+				if (currentHasStation && coordinates.isArray()) {
+					double lon = coordinates.get(0).asDouble();
+					double lat = coordinates.get(1).asDouble();
+					Node node = new Node(feature.path("properties").path("id").asText(), lon, lat);
+
+					if (firstStationNode == null || previousTransportation != currentTransportation) {
+						firstStationNode = node; // 记录当前段的第一个站点
+					}
+					lastStationNode = node; // 持续更新为最后一个站点
+				}
+
+				previousHasStation = currentHasStation; // 更新状态
+				previousTransportation = currentTransportation;
+			}
+
+		//  处理最后一段站点数据
+		//	if (firstStationNode != null) {
+		//		processStationSegment(firstStationNode, lastStationNode);
+		//	}
+			if (nodes.size()==0){
+				System.out.println("error is here");
+				System.out.println("stop!");
 			}
 			return nodes;
 		}
@@ -353,7 +413,22 @@ public class TripGenerator_WebAPI_refactor {
 		private void addTripForSubtrip(List<JsonNode> currentSubtrip, int lastMode, boolean publicTransit, long depTime, Person person, EPurpose purpose) {
 			JsonNode ollCoords = currentSubtrip.get(0).path("geometry").path("coordinates");
 			JsonNode dllCoords = currentSubtrip.get(currentSubtrip.size() - 1).path("geometry").path("coordinates");
-			ETransport mode = getTransport(currentSubtrip.get(1).path("properties").path("transportation").asInt());
+//			ETransport mode = getTransport(currentSubtrip.get(1).path("properties").path("transportation").asInt());
+
+			// 2025-02-20 feature railway interpolation with 1.2 algorithm
+			int firstMode = currentSubtrip.get(0).path("properties").path("transportation").asInt();
+			boolean allSame = true, hasMode2 = false, hasMode3 = false;
+
+			for (JsonNode node : currentSubtrip) {
+				int transportation = node.path("properties").path("transportation").asInt();
+				if (transportation != firstMode) allSame = false;
+				if (transportation == 2) hasMode2 = true;
+				if (transportation == 3) hasMode3 = true;
+			}
+
+			int finalMode = allSame ? firstMode : (hasMode2 ? 2 : (hasMode3 ? 3 : lastMode));
+			ETransport mode = getTransport(finalMode);
+
 			if (mode == ETransport.CAR && publicTransit) {
 				mode = ETransport.WALK;
 			}
@@ -387,93 +462,98 @@ public class TripGenerator_WebAPI_refactor {
 			List<Activity> activities = person.getActivities();
 			Activity pre = activities.get(0);
 
-			if (activities.size() == 1) {
-				person.addTrip(new Trip(ETransport.NOT_DEFINED, EPurpose.HOME, 0, pre.getLocation(), pre.getLocation()));
+			try {
+				if (activities.size() == 1) {
+					person.addTrip(new Trip(ETransport.NOT_DEFINED, EPurpose.HOME, 0, pre.getLocation(), pre.getLocation()));
 
-				Calendar cl = Calendar.getInstance();
-				Date startDate = new Date(0);
-				configureCalendar(cl, startDate);
-				startDate = cl.getTime();
-				points.add(new SPoint(pre.getLocation().getLon(), pre.getLocation().getLat(), startDate, ETransport.NOT_DEFINED, EPurpose.HOME));
-				Date endDate = new Date(86399000);
-				configureCalendar(cl, endDate);
-				endDate = cl.getTime();
-				points.add(new SPoint(pre.getLocation().getLon(), pre.getLocation().getLat(), endDate, ETransport.NOT_DEFINED, EPurpose.HOME));
-				person.addTrajectory(points);
-			}else {
-				for (int i = 1; i < activities.size(); i++) {
-					List<SPoint> subpoints = new ArrayList<>();
+					Calendar cl = Calendar.getInstance();
+					Date startDate = new Date(0);
+					configureCalendar(cl, startDate);
+					startDate = cl.getTime();
+					points.add(new SPoint(pre.getLocation().getLon(), pre.getLocation().getLat(), startDate, ETransport.NOT_DEFINED, EPurpose.HOME));
+					Date endDate = new Date(86399000);
+					configureCalendar(cl, endDate);
+					endDate = cl.getTime();
+					points.add(new SPoint(pre.getLocation().getLon(), pre.getLocation().getLat(), endDate, ETransport.NOT_DEFINED, EPurpose.HOME));
+					person.addTrajectory(points);
+				} else {
+					for (int i = 1; i < activities.size(); i++) {
+						List<SPoint> subpoints = new ArrayList<>();
 
-					Activity next = activities.get(i);
-					GLonLat oll = pre.getLocation();
-					GLonLat dll = next.getLocation();
+						Activity next = activities.get(i);
+						GLonLat oll = pre.getLocation();
+						GLonLat dll = next.getLocation();
 
-					long startTime = next.getStartTime();
-					long endTime = startTime;
+						long startTime = next.getStartTime();
+						long endTime = startTime;
 
-					EPurpose purpose = next.getPurpose();
-					double distance = DistanceUtils.distance(oll, dll);
+						EPurpose purpose = next.getPurpose();
+						double distance = DistanceUtils.distance(oll, dll);
 
-					if (distance > 0) {
-						ETransport nextMode;
+						if (distance > 0) {
+							ETransport nextMode;
+							Map<String, String> mixedparams = getStringStringMap(oll, dll, startTime);
 
-						Map<String, String> mixedparams = getStringStringMap(oll, dll, startTime);
+							JsonNode[] mixedResultsHolder = new JsonNode[1];
 
-						JsonNode[] mixedResultsHolder = new JsonNode[1];
+							Route route = routing.getRoute(drm, oll.getLon(), oll.getLat(), dll.getLon(), dll.getLat());
+							nextMode = determineTransportMode(person, distance, route, mixedparams, mixedResultsHolder);
 
-						Route route = routing.getRoute(drm,	oll.getLon(), oll.getLat(), dll.getLon(), dll.getLat());
-						nextMode = determineTransportMode(person, distance, route, mixedparams, mixedResultsHolder);
+							int multiplier = calculateMultiplier(nextMode);
+							long travelTime = 0;
 
-						int multiplier = calculateMultiplier(nextMode);
-						long travelTime = 0;
+							if (nextMode == ETransport.WALK || nextMode == ETransport.BICYCLE || nextMode == ETransport.CAR) {
+								travelTime = calculateTravelTime(route, multiplier);
+								endTime += travelTime;
 
-						if (nextMode == ETransport.WALK || nextMode == ETransport.BICYCLE || nextMode == ETransport.CAR) {
-							travelTime = calculateTravelTime(route, multiplier);
-							endTime += travelTime;
+								List<Node> nodes = route.listNodes();
+								Map<Node, Date> timeMap = TrajectoryUtils.putTimeStamp(nodes, new Date(startTime * 1000), new Date(endTime * 1000));
+								addSubpoints(nodes, timeMap, nextMode, purpose, subpoints);
 
-							List<Node> nodes = route.listNodes();
-							Map<Node, Date> timeMap = TrajectoryUtils.putTimeStamp(nodes, new Date(startTime * 1000), new Date(endTime * 1000));
-							addSubpoints(nodes, timeMap, nextMode, purpose, subpoints);
+								List<Link> links = route.listLinks();
+								assignLinksToSubpoints(subpoints, links);
+								points.addAll(subpoints);
 
-							List<Link> links = route.listLinks();
-							assignLinksToSubpoints(subpoints, links);
-							points.addAll(subpoints);
-
-							long depTime = next.getStartTime() - travelTime;
-							person.addTrip(new Trip(nextMode, purpose, depTime, oll, dll));
-						} else if (nextMode == ETransport.MIX) {
-							if(mixedResultsHolder[0].path("features").get(0)==null){
-								System.out.println("empty mixed results!");
+								long depTime = next.getStartTime() - travelTime;
+								person.addTrip(new Trip(nextMode, purpose, depTime, oll, dll));
+							} else if (nextMode == ETransport.MIX) {
+								if (mixedResultsHolder[0].path("features").get(0) == null) {
+									System.out.println("empty mixed results!");
+								}
+								handleMixedTransport(nextMode, purpose, mixedResultsHolder, subpoints, points, person, next, route, startTime, endTime, oll, dll);
+							} else {
+								person.addTrip(new Trip(ETransport.NOT_DEFINED, next.getPurpose(), next.getStartTime(), pre.getLocation(), pre.getLocation()));
+								Calendar cl = Calendar.getInstance();
+								Date startDate = new Date(next.getStartTime());
+								configureCalendar(cl, startDate);
+								startDate = cl.getTime();
+								points.add(new SPoint(pre.getLocation().getLon(), pre.getLocation().getLat(), startDate, ETransport.NOT_DEFINED, EPurpose.HOME));
+								Date endDate = new Date(next.getStartTime() + 300);
+								configureCalendar(cl, endDate);
+								endDate = cl.getTime();
+								points.add(new SPoint(pre.getLocation().getLon(), pre.getLocation().getLat(), endDate, ETransport.NOT_DEFINED, EPurpose.HOME));
+								person.addTrajectory(points);
 							}
-							handleMixedTransport(nextMode, purpose, mixedResultsHolder, subpoints, points, person, next, route, startTime, endTime, oll, dll);
 						} else {
 							person.addTrip(new Trip(ETransport.NOT_DEFINED, next.getPurpose(), next.getStartTime(), pre.getLocation(), pre.getLocation()));
 							Calendar cl = Calendar.getInstance();
 							Date startDate = new Date(next.getStartTime());
 							configureCalendar(cl, startDate);
 							startDate = cl.getTime();
-							points.add(new SPoint(pre.getLocation().getLon(), pre.getLocation().getLat(), startDate, ETransport.NOT_DEFINED, EPurpose.HOME));
-							Date endDate = new Date(next.getStartTime() + 300);
-							configureCalendar(cl, endDate);
-							endDate = cl.getTime();
-							points.add(new SPoint(pre.getLocation().getLon(), pre.getLocation().getLat(), endDate, ETransport.NOT_DEFINED, EPurpose.HOME));
+							points.add(new SPoint(pre.getLocation().getLon(), pre.getLocation().getLat(), startDate, ETransport.NOT_DEFINED, next.getPurpose()));
 							person.addTrajectory(points);
 						}
 
-					}else{
-						person.addTrip(new Trip(ETransport.NOT_DEFINED, next.getPurpose(), next.getStartTime(), pre.getLocation(), pre.getLocation()));
-						Calendar cl = Calendar.getInstance();
-						Date startDate = new Date(next.getStartTime());
-						configureCalendar(cl, startDate);
-						startDate = cl.getTime();
-						points.add(new SPoint(pre.getLocation().getLon(), pre.getLocation().getLat(), startDate, ETransport.NOT_DEFINED, next.getPurpose()));
-						person.addTrajectory(points);
+						pre = next;
 					}
-
-					pre = next;
 				}
+				person.addTrajectory(points);
+			} catch (Exception e){
+				System.err.println("Exception at person: " + person);
+				e.printStackTrace();
+
 			}
-			person.addTrajectory(points);
+
 			return 0;
 		}
 
@@ -486,7 +566,13 @@ public class TripGenerator_WebAPI_refactor {
 			params.put("GoalLatitude", String.valueOf(dll.getLat()));
 
 			Map<String, String> mixedparams = new HashMap<>(params);
-			mixedparams.put("TransportCode", "3");
+//			if(getRandom()>0.5){
+//				mixedparams.put("TransportCode", "1");
+//			}else {
+//				mixedparams.put("TransportCode", "3");
+//			}
+			mixedparams.put("TransportCode", "1");
+
 			mixedparams.put("AppDate", "20240401");
 			mixedparams.put("AppTime", convertSecondsToHHMM(startTime));
 			return mixedparams;
@@ -635,7 +721,12 @@ public class TripGenerator_WebAPI_refactor {
 		int mfactor = 1;
 
 		Country japan = new Country();
+
 		// load data
+		String railFile = String.format("%srailnetwork.tsv", inputDir+"/network/");
+		Network railway = RailLoader.load(railFile);
+
+
 		String cityFile = String.format("%scity_boundary.csv", inputDir);
 		DataAccessor.loadCityData(cityFile, japan);
 
@@ -643,23 +734,16 @@ public class TripGenerator_WebAPI_refactor {
 		Network station = DataAccessor.loadLocationData(stationFile);
 		japan.setStation(station);
 
-		String outputDir = "/large/PseudoPFLOW/";
+		String outputDir = "C:/large/PseudoPFLOW/";
 
 		ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
-
-				16
-				// 0, 16, 31, 32, 39, 36, 18, 41, 1, 40, 46,
-				// 13,
-				// 11,
-				// 14,
-				// 12,
-				// 11, 15,
-				// 4, 43, 20, 21,
-				// 9,
-				// 41, 40, 39, 36, 32, 31, 18, 15,
-				// 8, 24, 25, 29, 33, 34, 35, 44, 45, 47,
-				// 19
-
+				11
+//				22, 16, 28,
+//				13,14,12,11,
+//				1,2,3,5,6,8,10,15,
+//				17,20,21,23,24,25,
+//				30,33,36,37,39,40,41,42,
+//				44,46
 		));
 
 		for (int i: prefectureCodes){
@@ -674,19 +758,26 @@ public class TripGenerator_WebAPI_refactor {
 			Double carRatio = Double.parseDouble(prop.getProperty("car." + i));
 			Double bikeRatio = Double.parseDouble(prop.getProperty("bike." + i));
 
-			File actDir = new File(String.format("%s/activity_merge3/", root), String.valueOf(i));
+			File actDir = new File(String.format("%s/activity_v2/", root), String.valueOf(i));
 			for(File file: Objects.requireNonNull(actDir.listFiles())){
 				if (file.getName().contains(".csv")) {
-					String tripFileName = outputDir + "trip/" + i + "/trip_" + file.getName().substring(9,14) + ".csv";
+					String tripFileName = outputDir + "trip/" + i + "/trip_" + file.getName().substring(9, 14) + ".csv";
+					if(file.getName().substring(9, 14).equals("22101")||file.getName().substring(9, 14).equals("22102")){
+						continue;
+					}
 					String trajectoryFileName = outputDir + "trajectory/" + i + "/trajectory_" + file.getName().substring(9,14) + ".csv";
 
-					// Check if the files already exist
-					if (new File(tripFileName).exists() || new File(trajectoryFileName).exists()) {
-						continue; // Skip to the next iteration
+					if(!file.getName().equals("activity_11217.csv")){
+						continue;
 					}
 
+					// Check if the files already exist
+//					if (new File(tripFileName).exists() || new File(trajectoryFileName).exists()) {
+//						continue; // Skip to the next iteration
+//					}
+
 					long starttime = System.currentTimeMillis();
-					TripGenerator_WebAPI_refactor worker = new TripGenerator_WebAPI_refactor(japan, road);
+					TripGenerator_WebAPI_refactor worker = new TripGenerator_WebAPI_refactor(japan, road, railway);
 					List<Person> agents = PersonAccessor.loadActivity(file.getAbsolutePath(), mfactor, carRatio, bikeRatio);
 					System.out.printf("%s%n", file.getName());
 					worker.generate(agents);
