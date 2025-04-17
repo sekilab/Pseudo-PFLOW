@@ -737,7 +737,8 @@ public class TripGenerator_WebAPI_refactor {
 		String outputDir = "C:/large/PseudoPFLOW/";
 
 		ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
-				11
+				22
+//				11
 //				22, 16, 28,
 //				13,14,12,11,
 //				1,2,3,5,6,8,10,15,
