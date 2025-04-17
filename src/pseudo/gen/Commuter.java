@@ -70,9 +70,9 @@ public class Commuter extends ActGenerator {
 						City dcity = japan.getCity(cityName);
 						if (dcity != null) {
 							if (!city.getId().equals(dcity.getId())) {
-								return choiceDestination(dcity, ETransition.OFFICE, gender);
+								return choiceByFacilityCapacity(dcity, ETransition.OFFICE, gender);
 							}else {
-								return choiceDestination2(home, dcity, ETransition.OFFICE, gender);
+								return choiceByDistanceWeightedCapacity(home, dcity, ETransition.OFFICE, gender);
 							}
 						}
 					}

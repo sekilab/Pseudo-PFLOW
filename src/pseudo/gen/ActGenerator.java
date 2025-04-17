@@ -1,49 +1,30 @@
 package pseudo.gen;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
-import org.jboss.netty.util.internal.ThreadLocalRandom;
+import java.util.*;
+import java.util.concurrent.*;
 
 import jp.ac.ut.csis.pflow.geom.DistanceUtils;
 import jp.ac.ut.csis.pflow.geom2.ILonLat;
 import jp.ac.ut.csis.pflow.routing4.logic.Dijkstra;
 import pseudo.acs.MNLParamAccessor;
 import pseudo.acs.MkChainAccessor;
-import pseudo.res.Activity;
-import pseudo.res.City;
-import pseudo.res.ECity;
-import pseudo.res.EGender;
-import pseudo.res.ELabor;
-import pseudo.res.EMarkov;
-import pseudo.res.EPurpose;
-import pseudo.res.ETransition;
-import pseudo.res.Facility;
-import pseudo.res.Country;
-import pseudo.res.GLonLat;
-import pseudo.res.HouseHold;
-import pseudo.res.GMesh;
-import pseudo.res.Person;
+import pseudo.res.*;
 import pt.MotifAnalyzer;
 import utils.Roulette;
 
 public abstract class ActGenerator {
-	public Map<Integer, Integer> mapMotif = new HashMap<>();
+
 	protected Country japan;
 	protected MNLParamAccessor mnlAcs;
 	protected Map<EMarkov,Map<EGender,MkChainAccessor>> mrkAcsMap;
 	
 	protected static final Dijkstra routing = new Dijkstra();
 	
-	protected static final long TRAIN_SERVICE_START_TIME = 5 * 3600;
+	// protected static final long TRAIN_SERVICE_START_TIME = 5 * 3600;
 	protected static final int timeInterval = 15 * 60;
-	
-	protected static final int MAX_SEARCH_DISTANDE = 20000;
+	protected static final int MAX_SEARCH_DISTANCE = 20000;
+
+    public Map<Integer, Integer> mapMotif = new HashMap<>();
 
 	
 	public ActGenerator(Country japan,
@@ -55,7 +36,7 @@ public abstract class ActGenerator {
 	}
 	
 	protected synchronized double getRandom() {
-		return ThreadLocalRandom.current().nextDouble();
+        return ThreadLocalRandom.current().nextDouble();
 	}
 	
 	protected int formatTime(int time, int interval) {
@@ -64,32 +45,29 @@ public abstract class ActGenerator {
 	
 	protected static Activity createActivity(Activity preActivity, 
 			GLonLat dest, int startTime, int endTime, EPurpose purpose) {
-		
-		// Pre activity
-		long preDuration = startTime - preActivity.getStartTime();
-		preActivity.setDuration(preDuration);
-		
-		// Next activity 
-		int duration = endTime - startTime;
-		Activity res = new Activity(dest,startTime, duration, purpose);
-		return res;
+
+		preActivity.setDuration(startTime - preActivity.getStartTime());
+		return new Activity(dest, startTime, endTime - startTime, purpose);
 	}
 	
 	protected int setMotif(Person person) {
 		List<Activity> acts  = person.getActivities();
-		if (acts.size() > 0) {
+		if (!acts.isEmpty()) {
 			List<Integer> list = new ArrayList<>();
 			int counter = 100;
 			for (Activity a : acts) {
 				EPurpose purpose = a.getPurpose();
-				int loc = 0;
-				if (purpose == EPurpose.HOME || 
-						purpose == EPurpose.OFFICE || 
-						purpose == EPurpose.SCHOOL) {
-					loc = purpose.getId();
-				}else {
-					loc = counter++;
-				}
+				int loc;
+				switch (purpose){
+                    case HOME:
+                    case OFFICE:
+                    case SCHOOL:
+                        loc = purpose.getId();
+                        break;
+                    default:
+                        loc = counter++;
+                        break;
+                }
 				list.add(loc);
 			}
 			list = MotifAnalyzer.compress(list);
@@ -101,24 +79,21 @@ public abstract class ActGenerator {
 	//
 	protected double getMeshCapacity(ETransition transition, GMesh mesh, EGender gender) {
 		List<Double> values = mesh.getEconomics();
-		if (values.size() > 0) {
-			switch (transition) {
-			case OFFICE:
-				return gender!=EGender.FEMALE ? mesh.getEconomics(14) : mesh.getEconomics(15);
-			case SHOPPING:
-				return mesh.getEconomics(4);
-			case EATING:
-				return mesh.getEconomics(new int[]{8,9});
-			case FREE:
-				return mesh.getEconomics(new int[]{5,7,10,12});
-			case BUSINESS:
-				return mesh.getEconomics(0);
-			default:
-				return mesh.getEconomics(0);
-			}
-		}else {
-			return 0;
-		}
+		if (values.isEmpty()) return 0;
+
+        switch (transition) {
+        case OFFICE:
+            return gender!=EGender.FEMALE ? mesh.getEconomics(14) : mesh.getEconomics(15);
+        case SHOPPING:
+            return mesh.getEconomics(4);
+        case EATING:
+            return mesh.getEconomics(new int[]{8,9});
+        case FREE:
+            return mesh.getEconomics(new int[]{5,7,10,12});
+        case BUSINESS:
+        default:
+            return mesh.getEconomics(0);
+        }
 	}
 	
 	protected List<Double> getMeshCapacity(ETransition transition, List<GMesh> meshes, EGender gender) {
@@ -130,20 +105,25 @@ public abstract class ActGenerator {
 		}
 		return res;
 	}
-	
-	protected List<Facility> getFacilities(ETransition transition, GMesh mesh){
-		if (transition == ETransition.HOSPITAL) {
-			return mesh.getHospitals();
-		}else if(transition==ETransition.SHOPPING){
-			return mesh.getRetails();
-		}else if(transition==ETransition.EATING){
-			return mesh.getRestaurants();
-		}else {
-			return mesh.getFacilities();
-		}
-	}
-	
-	protected GLonLat choiceDestination(City city, ETransition transition, EGender gender) {
+
+    protected List<Facility> getFacilities(ETransition transition, GMesh mesh) {
+        switch (transition) {
+            case HOSPITAL:
+                return mesh.getHospitals();
+            case SHOPPING:
+                return mesh.getRetails();
+            case EATING:
+                return mesh.getRestaurants();
+            default:
+                return mesh.getFacilities();
+        }
+    }
+
+    /**
+     * Choose a destination based solely on facility capacity, without considering distance.
+     * This is typically used for leisure or general-purpose activity destination selection.
+     */
+	protected GLonLat choiceByFacilityCapacity(City city, ETransition transition, EGender gender) {
 		List<GMesh> meshes = city.getMeshes();
 		GMesh mesh = null;
 		{
@@ -166,9 +146,9 @@ public abstract class ActGenerator {
 		}
 		return null;
 	}
-	
-	// Only for commute
-	protected GLonLat choiceDestination2(GLonLat origin, City city, ETransition transition, EGender gender) {
+
+	// Only for workplace choice, need to improve
+	protected GLonLat choiceByDistanceWeightedCapacity(GLonLat origin, City city, ETransition transition, EGender gender) {
 		List<GMesh> meshes = city.getMeshes();
 		GMesh mesh = null;
 		{
@@ -180,7 +160,7 @@ public abstract class ActGenerator {
 				ILonLat center = tmesh.getCenter();
 				double distance = DistanceUtils.distance(
 						origin.getLon(), origin.getLat(), center.getLon(), center.getLat());
-				probs.add(capacity/Math.pow(distance, 1.5));
+				probs.add(capacity/Math.pow(distance, 2));
 			}
 			int choice = Roulette.choice(probs, getRandom());
 			mesh = meshes.get(choice);
@@ -212,7 +192,7 @@ public abstract class ActGenerator {
 		}
 		// search a city
 		City dcity = null;
-		List<City> cities = japan.searchCities(MAX_SEARCH_DISTANDE, city);
+		List<City> cities = japan.searchCities(MAX_SEARCH_DISTANCE, city);
 		{
 			List<Double> capcities = new ArrayList<>();
 			double deno = 0;
@@ -242,9 +222,9 @@ public abstract class ActGenerator {
 		// search a mesh
 		if (dcity != null) {
 			if (!city.getId().equals(dcity.getId())) {
-				return choiceDestination(dcity, transition, gender);
+				return choiceByFacilityCapacity(dcity, transition, gender);
 			}else {
-				return choiceDestination2(origin, dcity, transition, gender);
+				return choiceByDistanceWeightedCapacity(origin, dcity, transition, gender);
 			}
 		}
 		return null;
