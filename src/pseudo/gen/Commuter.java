@@ -237,6 +237,7 @@ public class Commuter extends ActGenerator {
         MNLParamAccessor mnlAcs = new MNLParamAccessor();
         mnlAcs.add(mnlFile, ELabor.WORKER);
 
+        // 10 times
         int mfactor = 1;
 
         // create activities
