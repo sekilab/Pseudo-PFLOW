@@ -203,8 +203,9 @@ public class NonCommuter extends ActGenerator {
 		String outputDir = String.format("%s/activity/", root);
 
 		long starttime = System.currentTimeMillis();
-		int start = 1;
-		for (int i = start; i <= 47; i++) {
+		int start = 10;
+        int end = 13;
+		for (int i = start; i <= end; i++) {
 			// create directory
 			File prefDir = new File(outputDir, String.valueOf(i));
 			System.out.println("Start prefecture:" + i + prefDir.mkdirs());

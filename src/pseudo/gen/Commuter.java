@@ -246,7 +246,8 @@ public class Commuter extends ActGenerator {
 
         long starttime = System.currentTimeMillis();
         int start = 10;
-        for (int i = start; i <= 12; i++) {
+        int end = 13;
+        for (int i = start; i <= end; i++) {
 
 			// load markov chains
 			Map<EMarkov, Map<EGender, MkChainAccessor>> mrkMap = new HashMap<>();

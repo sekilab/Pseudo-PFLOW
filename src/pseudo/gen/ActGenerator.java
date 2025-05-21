@@ -189,6 +189,7 @@ public abstract class ActGenerator {
 		
 		if (params == null) {
 			System.out.println(transition);
+            params = Arrays.asList(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
 		}
 		// search a city
 		City dcity = null;
@@ -200,7 +201,8 @@ public abstract class ActGenerator {
 				double dx = ecity.getLon() - city.getLon();
 				double dy = ecity.getLat() - city.getLat();
 				double distance = Math.sqrt(dx*dx+dy*dy);
-				double prob = Math.exp(
+                //assert params != null;
+                double prob = Math.exp(
 						params.get(0)*distance +
 						params.get(1)*(gender!=EGender.MALE?1:0) +
 						params.get(2)*(city.getId().equals(ecity.getId())?1:0) +
