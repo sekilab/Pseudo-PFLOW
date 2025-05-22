@@ -96,8 +96,8 @@ public class TripGenerator_WebAPI_GTFS {
 	// private static final double MAX_SEARCH_STATION_DISTANCE = 5000;
 	private static final double FARE_PER_KILOMETER = 25; // Japanese yen, only for vehicle
 	private static final double FARE_PER_HOUR = 1000; // Japanese yen, all modes, possible to extend to prefecture level
-	private static final double FATIGUE_INDEX_WALK = 2.25;
-	private static final double FATIGUE_INDEX_WALK_SLOPE = 1.3;
+	private static final double FATIGUE_INDEX_WALK = 2.5;
+	private static final double FATIGUE_INDEX_WALK_SLOPE = 1.5;
 	private static final double FATIGUE_INDEX_BICYCLE = 1.2;
 	private static final double FARE_INIT = 250; // Japanese yen, only for vehicle
 	private static final double CAR_AVAILABILITY = 0.3; // Parameter for explain people using car without ownership
@@ -240,17 +240,6 @@ public class TripGenerator_WebAPI_GTFS {
 			}
 		}
 
-		// use for API travel time
-		private double getTravelSpeed(int mode){
-			switch(mode){
-				case 1:
-                case 4:
-                    return 1.39;
-				case 2:		return 16.67;
-                default:		return 8.33;
-			}
-		}
-
 		private int calculateMultiplier(ETransport mode) {
 			switch (mode) {
 				case WALK: return 6;
@@ -273,10 +262,10 @@ public class TripGenerator_WebAPI_GTFS {
 		public double getOccupationCoefficient(ELabor labor) {
 			switch (labor) {
 				case WORKER:
-					return 1.2;
+					return 1.0;
 				case JOBLESS:
                 case NO_LABOR:
-                    return 0.8;
+                    return 0.95;
                 case INFANT:
 				case PRE_SCHOOL:
 				case PRIMARY_SCHOOL:
@@ -303,9 +292,9 @@ public class TripGenerator_WebAPI_GTFS {
 				case HOME:
 				case SHOPPING:
                 case FREE:
-                    return 0.75;
+                    return 0.90;
 				case EATING:
-					return 0.85;
+					return 0.95;
                 default:
 					return 1.0;
 			}
@@ -338,10 +327,6 @@ public class TripGenerator_WebAPI_GTFS {
 				}
 
 				double walktime = route.getLength() / 1.38;
-//				double walkcost = walktime / 3600 * vot * FATIGUE_INDEX_WALK;
-//				if(age>65){
-//					walkcost = walkcost * 1.33;
-//				}
 				double walkcost = calculateWalkCost(route, age, vot);
 				choices.put(ETransport.WALK, walkcost);
 
@@ -367,32 +352,32 @@ public class TripGenerator_WebAPI_GTFS {
 					Double.valueOf(mixedparams.get("GoalLatitude")), Double.valueOf(mixedparams.get("GoalLongitude")), convertTime(mixedparams.get("AppTime")), trips,
 					stopTimes, stops, fareRules, fareAttributes
 			);
-			double gtfsfare = 0;
-			double gtfstime;
-			if(gtfs_result!=null){
-				gtfsfare =  (age > 65) ? 120.0 : 240.0;
-				gtfstime = gtfs_result.getTotalTravelTime();
 
-				if(gtfstime!=0){
-					double bustime = (double) (new SimpleDateFormat("HH:mm:ss").parse(gtfs_result.getArrivalTime()).getTime()
-							- new SimpleDateFormat("HH:mm:ss").parse(gtfs_result.getDepartureTime()).getTime()) / 60000; // minutes
 
-					double gtfscost = gtfsfare + gtfstime / 60 * vot;
-//					if(purpose == EPurpose.OFFICE || purpose == EPurpose.SCHOOL || purpose == EPurpose.BUSINESS){
-//						gtfscost = gtfscost * 1.5;
-//					}
-//					if(purpose == EPurpose.HOME){
-//						gtfscost = gtfscost / 1.5;
-//					}
-//					if(purpose == EPurpose.SHOPPING|| purpose == EPurpose.EATING){
-//						gtfscost = gtfscost / 1.5;
-//					}
-//					if(age<18){
-//						gtfscost = gtfscost * 3;
-//					}
-					choices.put(ETransport.COMMUNITY, gtfscost);
-				}
-			}
+            if(gtfs_result!=null){
+                double gtfscost = calculateGTFSRouteCost(gtfs_result, age, purpose, vot);
+                choices.put(ETransport.COMMUNITY, gtfscost);
+                if(gtfs_result.getDestinationStation().equals("309_2すまいる保育園前"))
+                {
+                    choices.computeIfPresent(ETransport.WALK, (k, v) -> v * 1.2);
+                    choices.computeIfPresent(ETransport.BICYCLE, (k, v) -> v * 1.2);
+                }
+                if(gtfs_result.getDestinationStation().equals("308_1ガーデンハイツ前")||gtfs_result.getOriginStation().equals("308_1ガーデンハイツ前"))
+                    {
+                        choices.computeIfPresent(ETransport.WALK, (k, v) -> v * 1.4);
+                        choices.computeIfPresent(ETransport.BICYCLE, (k, v) -> v * 1.4);
+                    }
+                if(gtfs_result.getDestinationStation().equals("309_1すまいる保育園前")||gtfs_result.getDestinationStation().equals("308_2ガーデンハイツ前")||gtfs_result.getDestinationStation().equals("307_2グリーンハイツＨ棟前"))
+                {
+                    choices.computeIfPresent(ETransport.WALK, (k, v) -> v * 1.5);
+                    choices.computeIfPresent(ETransport.BICYCLE, (k, v) -> v * 1.5);
+                }
+                if(gtfs_result.getDestinationStation().equals("308_2ガーデンハイツ前")||gtfs_result.getDestinationStation().equals("307_2グリーンハイツＨ棟前"))
+                {
+                    choices.computeIfPresent(ETransport.WALK, (k, v) -> v * 1.5);
+                    choices.computeIfPresent(ETransport.BICYCLE, (k, v) -> v * 1.5);
+                }
+            }
 
 			nextMode = choices.entrySet()
 					.stream()
@@ -403,13 +388,24 @@ public class TripGenerator_WebAPI_GTFS {
 			if(nextMode==ETransport.COMMUNITY){
 				String originStation = gtfs_result.getOriginStation();
 				String destinationStation = gtfs_result.getDestinationStation();
+
+                if(originStation.equals(destinationStation)){
+                   return ETransport.WALK;
+                }
+
+                if(originStation.equals("312_2須磨寺町公園前")){
+                    System.out.println("312_2須磨寺町公園前 Check");
+                }
+
+                double fare = age > 65 ? 120.0 : 240.0;
+
 				System.out.println("Using Community Bus!");
 				System.out.println("Origin Station: " + originStation);
 				System.out.println("Destination Station: " + destinationStation);
 				System.out.println("Departure Time: " + gtfs_result.getDepartureTime());
 				System.out.println("Arrival Time: " + gtfs_result.getArrivalTime());
 				System.out.println("Travel Time (including walking): " + gtfs_result.getTotalTravelTime() + " minutes");
-				System.out.println("Fare: " + gtfsfare +  " currency units");
+				System.out.println("Fare: " + fare +  " currency units");
 
 //				String originStation = gtfs_result.getOriginStation();
 //				originStationCount.put(originStation, originStationCount.getOrDefault(originStation, 0) + 1);
@@ -419,7 +415,8 @@ public class TripGenerator_WebAPI_GTFS {
 				stationUsageMap.computeIfAbsent(destinationStation, s -> new StationUsage()).incrementGetOut();
 			}
 			if(nextMode==ETransport.MIX){
-				List<String> stationNames = List.of("須磨", "山陽須磨");
+//				List<String> stationNames = List.of("須磨", "山陽須磨", "月見山", "須磨浦公園");
+                List<String> stationNames = List.of("須磨", "山陽須磨", "月見山");
 				determineTerminalTransportation(mixedResultsHolder[0], mixedparams, stationNames, purpose, age, vot);
 			}
 			return nextMode;
@@ -445,19 +442,6 @@ public class TripGenerator_WebAPI_GTFS {
 			JsonNode firstMatchingStation = null;
 			JsonNode lastMatchingStation = null;
 
-//			for (JsonNode feature : features) {
-//				JsonNode station = feature.at("/properties/station");
-//				if (station != null && !station.isNull()) {
-//					String stationName = station.get("station_name").asText();
-//					if (stationNames.contains(stationName)) {
-//						if (firstMatchingStation == null) {
-//							firstMatchingStation = feature;
-//						}
-//						lastMatchingStation = feature;
-//					}
-//				}
-//			}
-
 			for (JsonNode feature : features) {
 				JsonNode stationNode = feature.at("/properties/station");
 
@@ -465,9 +449,9 @@ public class TripGenerator_WebAPI_GTFS {
 					String stationName = stationNode.get("station_name").asText();
 					if (stationNames.contains(stationName)) {
 						firstMatchingStation = feature;
+                        break;
 					}
-					// 无论匹配与否，都 break，不再继续遍历
-					break;
+
 				}
 			}
 
@@ -478,24 +462,48 @@ public class TripGenerator_WebAPI_GTFS {
 					String stationName = stationNode.get("station_name").asText();
 					if (stationNames.contains(stationName)) {
 						lastMatchingStation = feature;
+                        break;
 					}
-					break; // 只处理最后一个 stationNode 就停止
+
 				}
 			}
 
-			JsonNode firstPointCoordinates = features.get(0).at("/geometry/coordinates");
-			JsonNode lastPointCoordinates = features.get(features.size() - 1).at("/geometry/coordinates");
+            if (firstMatchingStation != null && !firstMatchingStation.isNull())
+            {
+                String lastName  = lastMatchingStation.at("/properties/station").get("station_name").asText();
+                String firstName = firstMatchingStation.at("/properties/station").get("station_name").asText();
 
-            if (firstMatchingStation != null && !firstMatchingStation.isNull()) {
-                processStation(
-                        firstMatchingStation, firstPointCoordinates, mixedParams, age, purpose, vot, "First"
-                );
+                JsonNode firstPointCoordinates = features.get(0).at("/geometry/coordinates");
+
+                processStation(firstMatchingStation, firstPointCoordinates, mixedParams, age, purpose, vot, "First");
             }
-            if (lastMatchingStation != null && !lastMatchingStation.isNull()) {
-                processStation(
-                        lastMatchingStation, lastPointCoordinates, mixedParams, age, purpose, vot, "Last"
-                );
+
+            if (lastMatchingStation != null && !lastMatchingStation.isNull())
+            {
+                String lastName  = lastMatchingStation.at("/properties/station").get("station_name").asText();
+                String firstName = firstMatchingStation.at("/properties/station").get("station_name").asText();
+
+                JsonNode lastPointCoordinates  = features.get(features.size() - 1).at("/geometry/coordinates");
+
+                processStation(lastMatchingStation, lastPointCoordinates, mixedParams, age, purpose, vot, "Last");
             }
+
+
+//            if(!(lastMatchingStation.get("station_name").asText().equals("山陽須磨")&firstMatchingStation.get("station_name").asText().equals("月見山"))&&!(firstMatchingStation.get("station_name").asText().equals("山陽須磨")&lastMatchingStation.get("station_name").asText().equals("月見山"))){
+//                JsonNode firstPointCoordinates = features.get(0).at("/geometry/coordinates");
+//                JsonNode lastPointCoordinates = features.get(features.size() - 1).at("/geometry/coordinates");
+//
+//                if (firstMatchingStation != null && !firstMatchingStation.isNull()) {
+//                    processStation(
+//                        firstMatchingStation, firstPointCoordinates, mixedParams, age, purpose, vot, "First"
+//                    );
+//                }
+//                if (lastMatchingStation != null && !lastMatchingStation.isNull()) {
+//                    processStation(
+//                        lastMatchingStation, lastPointCoordinates, mixedParams, age, purpose, vot, "Last"
+//                    );
+//                }
+//            }
         }
 
 		private void processStation(
@@ -551,32 +559,55 @@ public class TripGenerator_WebAPI_GTFS {
 
 			double walkCost = calculateWalkCost(route, age, vot);
 
-			if(stationType.equals("Last")){
-				walkCost *= FATIGUE_INDEX_WALK_SLOPE;
+			if(stationType.equals("Last")&gtfsResult!=null){
+
+                if(gtfsResult.getDestinationStation().equals("307_2グリーンハイツＨ棟前")||gtfsResult.getDestinationStation().equals("306_2グリーンハイツG棟前")||gtfsResult.getDestinationStation().equals("308_2ガーデンハイツ前"))
+                {
+                    walkCost *= 1.8;
+                }
+                if(gtfsResult.getDestinationStation().equals("309_1すまいる保育園前"))
+                {
+                    walkCost *= 1.6;
+                }
+                if(gtfsResult.getDestinationStation().equals("308_1ガーデンハイツ前")||gtfsResult.getDestinationStation().equals("309_2すまいる保育園前")||gtfsResult.getDestinationStation().equals("307_1グリーンハイツＨ棟前"))
+                {
+                    walkCost *= 1.2;
+                }
 			}
+            if(stationType.equals("First")&gtfsResult!=null){
+                if(gtfsResult.getOriginStation().equals("308_1ガーデンハイツ前")||gtfsResult.getOriginStation().equals("307_1グリーンハイツＨ棟前"))
+                {
+                    walkCost *= 1.5;
+                }
+                if(gtfsResult.getOriginStation().equals("308_2ガーデンハイツ前")||gtfsResult.getOriginStation().equals("309_2すまいる保育園前"))
+                {
+                    walkCost *= 1.4;
+                }
+            }
+            if(gtfsResult!=null){
+                if(!(gtfsResult.getOriginStation().equals("313_0月見山")&gtfsResult.getDestinationStation().equals("301_1須磨駅前"))&!(gtfsResult.getOriginStation().equals("301_2須磨駅前")&gtfsResult.getDestinationStation().equals("313_0月見山"))){
+                    if (gtfsCost < walkCost) {
+                        System.out.printf("Using Community Bus (%s terminal)!%n", stationType);
+                        double fare = age > 65 ? 120.0 : 240.0;
+                        System.out.println("Origin Station: " + gtfsResult.getOriginStation());
+                        System.out.println("Destination Station: " + gtfsResult.getDestinationStation());
+                        System.out.println("Departure Time: " + gtfsResult.getDepartureTime());
+                        System.out.println("Arrival Time: " + gtfsResult.getArrivalTime());
+                        System.out.println("Travel Time (including walking): " + gtfsResult.getTotalTravelTime() + " minutes");
+                        System.out.println("Fare: " + fare + " currency units");
+
+                        String originStation = gtfsResult.getOriginStation();
+                        String destinationStation = gtfsResult.getDestinationStation();
+
+                        // "Get in" at origin, "get out" at destination
+                        stationUsageMap.computeIfAbsent(originStation,  s -> new StationUsage()).incrementGetIn();
+                        stationUsageMap.computeIfAbsent(destinationStation, s -> new StationUsage()).incrementGetOut();
+                    }
+                }
+            }
 
 			// Compare costs and decide the transportation
-			if (gtfsCost < walkCost) {
-				System.out.printf("Using Community Bus (%s terminal)!%n", stationType);
-				if (gtfsResult != null) {
-					System.out.println("Origin Station: " + gtfsResult.getOriginStation());
-					System.out.println("Destination Station: " + gtfsResult.getDestinationStation());
-					System.out.println("Departure Time: " + gtfsResult.getDepartureTime());
-					System.out.println("Arrival Time: " + gtfsResult.getArrivalTime());
-					System.out.println("Travel Time (including walking): " + gtfsResult.getTotalTravelTime() + " minutes");
-					System.out.println("Fare: " + gtfsResult.getFare() + " currency units");
 
-//					String originStation = gtfsResult.getOriginStation();
-//					originStationCount.put(originStation, originStationCount.getOrDefault(originStation, 0) + 1);
-
-					String originStation = gtfsResult.getOriginStation();
-					String destinationStation = gtfsResult.getDestinationStation();
-
-					// "Get in" at origin, "get out" at destination
-					stationUsageMap.computeIfAbsent(originStation,  s -> new StationUsage()).incrementGetIn();
-					stationUsageMap.computeIfAbsent(destinationStation, s -> new StationUsage()).incrementGetOut();
-				}
-			}
 		}
 
 		private double calculateGTFSRouteCost(TripResult gtfsResult, int age, EPurpose purpose, double vot) throws ParseException {
@@ -591,36 +622,35 @@ public class TripGenerator_WebAPI_GTFS {
 				return Double.MAX_VALUE;
 			}
 
-//			double busTime = calculateDuration(gtfsResult.getDepartureTime(), gtfsResult.getArrivalTime()) / 60; // in minutes
-//			double fatigueCost = (busTime + (travelTime - busTime) * FATIGUE_INDEX_WALK) / 60 * FARE_PER_HOUR;
-//
-//			double totalCost = fare + fatigueCost;
-			double totalCost = fare + travelTime / 60 * vot;
+			double busTime = calculateDuration(gtfsResult.getDepartureTime(), gtfsResult.getArrivalTime()); // in minutes
+            if(busTime<=3){
+                return 10000;
+            }
+            double walktime = gtfsResult.getWalkTime();
+			double fatigueCost = ((travelTime - walktime)/ 1.2 + walktime * FATIGUE_INDEX_WALK ) / 60 * vot;
 
-//			if(purpose == EPurpose.OFFICE || purpose == EPurpose.SCHOOL || purpose == EPurpose.BUSINESS){
-//				totalCost = totalCost * 1.5;
-//			}
-//			if(purpose == EPurpose.HOME){
-//				totalCost = totalCost / 1.25;
-//			}
-//			if(purpose == EPurpose.SHOPPING|| purpose == EPurpose.EATING){
-//				totalCost = totalCost / 1.5;
-//			}
+            if(age>65){
+                fatigueCost *= 0.95;
+            }
 
-			return totalCost;
+			double totalCost = fare + fatigueCost;
+
+            return totalCost;
+
+//            return fare + travelTime / 60 * vot;
 		}
 
 		private double calculateWalkCost(Route route, int age, double vot) {
-			double walkTime = route.getLength() / 1.38; // walking speed
+
+			double walkTime = route.getLength() > 300? route.getLength() / 1.38 : 0; // walking speed
 			double walkCost = walkTime / 3600 * vot * FATIGUE_INDEX_WALK;
-			return age > 65 ? walkCost * 1.3 : walkCost;
+			return age > 65 ? walkCost * 1.25 : walkCost;
 		}
 
-		private double calculateDuration(String startTime, String endTime) throws ParseException {
-			SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
-			return (double) (timeFormat.parse(endTime).getTime() - timeFormat.parse(startTime).getTime()) / 60000; // in minutes
-		}
-
+        private double calculateDuration(String startTime, String endTime) throws ParseException {
+            SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
+            return (double) (timeFormat.parse(endTime).getTime() - timeFormat.parse(startTime).getTime()) / 60000; // in minutes
+        }
 
 		// Methods to refactor and modularize the code
 		private long calculateTravelTime(Route route, int multiplier) {
@@ -995,8 +1025,7 @@ public class TripGenerator_WebAPI_GTFS {
 		// 1) Decide which GTFS version to use: original vs. revised
 		//    You can use a boolean, a property, or a command-line argument.
 		// --------------------------------------------------------------------
-		boolean useRevised = true;
-		// or read from properties, e.g.:
+		boolean useRevised = true;		// or read from properties, e.g.:
 		// boolean useRevised = Boolean.parseBoolean(prop.getProperty("gtfs.useRevised"));
 
 		// Build feed folder name based on the choice
@@ -1073,7 +1102,7 @@ public class TripGenerator_WebAPI_GTFS {
 			);
 
 			for (File file : Objects.requireNonNull(actDir.listFiles())) {
-				if(!file.getName().equals("filtered_activity_28107_2nd.csv")){
+				if(!file.getName().equals("filtered_activity_28107_3rd.csv")){
 					continue;
 				}
 				if (file.getName().contains(".csv")) {
@@ -1134,107 +1163,4 @@ public class TripGenerator_WebAPI_GTFS {
 
 		System.out.println("All done.");
 	}
-
-//	public static void main(String[] args) throws Exception {
-//
-//		String inputDir;
-//		String root;
-//
-//		loadProperties();
-//		InputStream inputStream = Commuter.class.getClassLoader().getResourceAsStream("config.properties");
-//		if (inputStream == null) {
-//			throw new FileNotFoundException("config.properties file not found in the classpath");
-//		}
-//		Properties prop = new Properties();
-//		prop.load(inputStream);
-//
-//		root = prop.getProperty("root");
-//		inputDir = prop.getProperty("inputDir");
-//		System.out.println("Root Directory: " + root);
-//		System.out.println("Input Directory: " + inputDir);
-//
-//		int mfactor = 1;
-//
-//		Country japan = new Country();
-//		// load data
-//		String cityFile = String.format("%scity_boundary.csv", inputDir);
-//		DataAccessor.loadCityData(cityFile, japan);
-//
-//		// original GTFS data
-////		List<Stop> stops = GTFSParser.parseStops(String.format("%sfeed_kobecity_kobe-shiokaze_20241001_20240914083525/stops.txt", inputDir));
-////		List<gtfs.Trip> trips = GTFSParser.parseTrips(String.format("%sfeed_kobecity_kobe-shiokaze_20241001_20240914083525/trips.txt", inputDir));
-////		List<StopTime> stopTimes = GTFSParser.parseStopTimes(String.format("%sfeed_kobecity_kobe-shiokaze_20241001_20240914083525/stop_times.txt", inputDir));
-////		List<Fare> fares = GTFSParser.parseFareAttributes(String.format("%sfeed_kobecity_kobe-shiokaze_20241001_20240914083525/fare_attributes.txt", inputDir));
-////		List<FareRule> fareRules = GTFSParser.parseFareRules(String.format("%sfeed_kobecity_kobe-shiokaze_20241001_20240914083525/fare_rules.txt", inputDir));
-//
-//		// revised GTFS data
-//		List<Stop> stops = GTFSParser.parseStops(String.format("%sfeed_kobecity_kobe-shiokaze_reflecting_increased/stops.txt", inputDir));
-//		List<gtfs.Trip> trips = GTFSParser.parseTrips(String.format("%sfeed_kobecity_kobe-shiokaze_reflecting_increased/trips.txt", inputDir));
-//		List<StopTime> stopTimes = GTFSParser.parseStopTimes(String.format("%sfeed_kobecity_kobe-shiokaze_reflecting_increased/stop_times.txt", inputDir));
-//		List<Fare> fares = GTFSParser.parseFareAttributes(String.format("%sfeed_kobecity_kobe-shiokaze_reflecting_increased/fare_attributes.txt", inputDir));
-//		List<FareRule> fareRules = GTFSParser.parseFareRules(String.format("%sfeed_kobecity_kobe-shiokaze_reflecting_increased/fare_rules.txt", inputDir));
-//
-//
-//		String stationFile = String.format("%sbase_station.csv", inputDir);
-//		Network station = DataAccessor.loadLocationData(stationFile);
-//		japan.setStation(station);
-//
-//		String outputDir = "/large/PseudoPFLOW/";
-//
-//		ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
-//				28
-//				// 22
-//				// 0, 16, 31, 32, 39, 36, 18, 41, 1, 40, 46,
-//				// 13,
-//				// 11,
-//				// 14,
-//				// 12,
-//				// 11, 15,
-//				// 4, 43, 20, 21,
-//				// 9,
-//				// 41, 40, 39, 36, 32, 31, 18, 15,
-//				// 8, 24, 25, 29, 33, 34, 35, 44, 45, 47,
-//				// 19
-//
-//		));
-//
-//		for (int i: prefectureCodes){
-//
-//			File tripDir = new File(outputDir+"trip/", String.valueOf(i));
-//			File trajDir = new File(outputDir+"trajectory/", String.valueOf(i));
-//			System.out.println("Start prefecture:" + i +" "+ tripDir.mkdirs() +" "+ trajDir.mkdirs());
-//
-//			String roadFile = String.format("%sdrm_%02d.tsv", inputDir+"/network/", i);
-//
-//			Network road = DrmLoader.load(roadFile);
-//			Double carRatio = Double.parseDouble(prop.getProperty("car." + i));
-//			Double bikeRatio = Double.parseDouble(prop.getProperty("bike." + i));
-//
-//			File actDir = new File(String.format("%s/activity_v2/", root), String.valueOf(i));
-//			for(File file: Objects.requireNonNull(actDir.listFiles())){
-//				if (file.getName().contains(".csv")) {
-//					String tripFileName = outputDir + "trip/" + i + "/trip_" + file.getName().substring(9,14) + ".csv";
-//					String trajectoryFileName = outputDir + "trajectory/" + i + "/trajectory_" + file.getName().substring(9,14) + ".csv";
-//
-//					// Check if the files already exist
-//
-//					long starttime = System.currentTimeMillis();
-//					TripGenerator_WebAPI_GTFS worker = new TripGenerator_WebAPI_GTFS(japan, road, trips, stopTimes, stops, fareRules, fares);
-//					List<Person> agents = PersonAccessor.loadActivity(file.getAbsolutePath(), mfactor, carRatio, bikeRatio);
-//					System.out.printf("%s%n", file.getName());
-//					worker.generate(agents);
-//					PersonAccessor.writeTrips(tripFileName, agents);
-//					PersonAccessor.writeTrajectory(trajectoryFileName, agents);
-//					long endtime = System.currentTimeMillis();
-//					System.out.println(file.getName() + ": " + (endtime - starttime));
-//
-//					for (String stop : originStationCount.keySet()) {
-//						System.out.println(stop + ": " + originStationCount.get(stop) + " times");
-//					}
-//				}
-//			}
-//
-//		}
-//		System.out.println("end");
-//	}
 }

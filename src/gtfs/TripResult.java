@@ -1,6 +1,7 @@
 package gtfs;
 
 public class TripResult {
+    private final long walkTime;
     private String originStation;
     private String destinationStation;
     private String departureTime;
@@ -9,12 +10,13 @@ public class TripResult {
     private double fare;  // 票价
     private boolean usedTransit;
 
-    public TripResult(String originStation, String destinationStation, String departureTime, String arrivalTime, long totalTravelTime, double fare, boolean usedTransit) {
+    public TripResult(String originStation, String destinationStation, String departureTime, String arrivalTime, long totalTravelTime, long walkTime, double fare, boolean usedTransit) {
         this.originStation = originStation;
         this.destinationStation = destinationStation;
         this.departureTime = departureTime;
         this.arrivalTime = arrivalTime;
         this.totalTravelTime = totalTravelTime;
+        this.walkTime = walkTime;
         this.fare = fare;
         this.usedTransit = usedTransit;
     }
@@ -37,6 +39,10 @@ public class TripResult {
 
     public long getTotalTravelTime() {
         return totalTravelTime;
+    }
+
+    public long getWalkTime() {
+        return walkTime;
     }
 
     public double getFare() {

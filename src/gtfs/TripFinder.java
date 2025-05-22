@@ -114,6 +114,9 @@ public class TripFinder {
         long shortestTravelTime = Long.MAX_VALUE;
 
         for (Stop originStop : originCandidates) {
+//            if(originStop.getStopName().equals("一ノ谷町２丁目")){
+//                System.out.println("check line");
+//            }
             for (Stop destinationStop : destinationCandidates) {
                 Trip trip = TripFinder.findConnectingTrip(trips, stopTimes, originStop, destinationStop, userDepartureTime);
 
@@ -151,6 +154,8 @@ public class TripFinder {
             Route route2 = routing.getRoute(net,	 destinationStop.getLongitude(), destinationStop.getLatitude(), actualDestinationLon,  actualDestinationLat);
             long walkTimeToDestination = (long) (route2.getLength() / 1.38) / 60;
 
+            long walkTime = walkTimeToDestination + walkTimeToOriginStation;
+
             long waitingTimeAtStation = calculateWaitingTime(userDepartureTime, bestOriginStopTime.getDepartureTime());
 
             long timeToOriginStation = Math.max(walkTimeToOriginStation, waitingTimeAtStation);
@@ -175,6 +180,7 @@ public class TripFinder {
                     bestOriginStopTime.getDepartureTime(),
                     bestDestinationStopTime.getArrivalTime(),
                     totalTravelTime,
+                    walkTime,
                     fare,
                     false
             );

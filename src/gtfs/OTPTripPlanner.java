@@ -79,7 +79,6 @@ public class OTPTripPlanner {
                     }
                 }
 
-                // 解析出发时间和到达时间
                 long startTimeMillis = itinerary.getLong("startTime");
                 long endTimeMillis = itinerary.getLong("endTime");
 
@@ -92,7 +91,7 @@ public class OTPTripPlanner {
 
                 long totalTime = Duration.between(startTime, endTime).toMinutes();
 
-                return new TripResult(originStation, destinationStation, startTime.toString(), endTime.toString(), totalTime, fare, usedTransit);
+                return new TripResult(originStation, destinationStation, startTime.toString(), endTime.toString(), totalTime, 0, fare, usedTransit);
             }
 
         } catch (Exception e) {
