@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- Adjust factor of distance in Huff model for destination choice, and add time cost factors
+- Change non-commuter activity generation from MNL model to Huff model
+- Redefine the attraction for destination choice
+
 ### Fixed
 
 - Fixed empty parameter set for students with free activity logics ([#1](https://github.com))

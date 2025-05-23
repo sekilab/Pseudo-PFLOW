@@ -75,27 +75,26 @@ public abstract class ActGenerator {
 		}
 		return -1;
 	}
-	
-	//
+
 	protected double getMeshCapacity(ETransition transition, GMesh mesh, EGender gender) {
-		List<Double> values = mesh.getEconomics();
-		if (values.isEmpty()) return 0;
+        List<Double> values = mesh.getEconomics();
+        if (values.isEmpty()) return 0;
 
         switch (transition) {
-        case OFFICE:
-            return gender!=EGender.FEMALE ? mesh.getEconomics(14) : mesh.getEconomics(15);
-        case SHOPPING:
-            return mesh.getEconomics(4);
-        case EATING:
-            return mesh.getEconomics(new int[]{8,9});
-        case FREE:
-            return mesh.getEconomics(new int[]{5,7,10,12});
-        case BUSINESS:
-        default:
-            return mesh.getEconomics(0);
+            case OFFICE:
+                return gender != EGender.FEMALE ? mesh.getEconomics(14) : mesh.getEconomics(15);
+            case SHOPPING:
+                return mesh.getEconomics(4);
+            case EATING:
+                return mesh.getEconomics(new int[]{8, 9});
+            case FREE:
+                return mesh.getEconomics(new int[]{5, 7, 10, 12});
+            case BUSINESS:
+            default:
+                return mesh.getEconomics(0);
         }
-	}
-	
+    }
+
 	protected List<Double> getMeshCapacity(ETransition transition, List<GMesh> meshes, EGender gender) {
 		List<Double> res = new ArrayList<>();
 		for (GMesh mesh : meshes) {
@@ -105,6 +104,33 @@ public abstract class ActGenerator {
 		}
 		return res;
 	}
+
+    protected double getMeshAttraction(ETransition transition, GMesh mesh, EGender gender) {
+
+        switch (transition) {
+            case OFFICE:
+                return 1.0;
+            case SHOPPING:
+                return 2.0;
+            case EATING:
+                return 3.0;
+            case FREE:
+                return 4.0;
+            case BUSINESS:
+            default:
+                return 5.0;
+        }
+    }
+
+    protected List<Double> getMeshAttraction(ETransition transition, List<GMesh> meshes, EGender gender) {
+        List<Double> res = new ArrayList<>();
+        for (GMesh mesh : meshes) {
+            double capacity = (transition != ETransition.HOSPITAL) ?
+                getMeshAttraction(transition, mesh, gender) : mesh.getHospitalCapacity();
+            res.add(capacity);
+        }
+        return res;
+    }
 
     protected List<Facility> getFacilities(ETransition transition, GMesh mesh) {
         switch (transition) {
@@ -147,20 +173,34 @@ public abstract class ActGenerator {
 		return null;
 	}
 
+    protected double getBeta(ETransition transition, EGender gender) {
+        // trip purpose
+        // agent attribute
+        return 2.0;
+    }
+
+
+
 	// Only for workplace choice, need to improve
 	protected GLonLat choiceByDistanceWeightedCapacity(GLonLat origin, City city, ETransition transition, EGender gender) {
 		List<GMesh> meshes = city.getMeshes();
 		GMesh mesh = null;
+        double beta = getBeta(transition, gender);
 		{
 			List<Double> probs = new ArrayList<>();
+            // todo: redefine attraction
+            // ListDouble attractions = getMeshAttraction(transition, meshes, gender);
 			List<Double> capacities = getMeshCapacity(transition, meshes, gender);
 			for (int i = 0; i < meshes.size(); i++) {
 				GMesh tmesh = meshes.get(i);
 				double capacity = capacities.get(i);
 				ILonLat center = tmesh.getCenter();
+                // todo: add time cost
+                // double timeCost = getTravelTime(origin, destination)
 				double distance = DistanceUtils.distance(
 						origin.getLon(), origin.getLat(), center.getLon(), center.getLat());
-				probs.add(capacity/Math.pow(distance, 2));
+				probs.add(capacity/Math.pow(distance, beta));
+                // probs.add(attraction/Math.pow(timeCost, beta));
 			}
 			int choice = Roulette.choice(probs, getRandom());
 			mesh = meshes.get(choice);
@@ -183,6 +223,7 @@ public abstract class ActGenerator {
 
 	protected GLonLat choiceFreeDestination(GLonLat origin, ETransition transition, boolean senior, EGender gender, ELabor labor) {
 		// search mnl parameters
+        // todo: to deprecate and change to huff model
 		City city = japan.getCity(origin.getGcode());
 		ECity cityType = city.getType();
 		List<Double> params = mnlAcs.get(labor, cityType, transition);

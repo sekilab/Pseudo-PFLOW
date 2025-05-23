@@ -85,7 +85,7 @@ public class Student extends ActGenerator {
 				City city = japan.getCity(e);
 				if (city != null) {
 					List<Facility> schools = city.getSchools(labor);
-					if (schools != null && schools.size() > 0) {
+					if (schools != null && !schools.isEmpty()) {
 						res.add(e);
 					}
 				}
@@ -111,7 +111,7 @@ public class Student extends ActGenerator {
 			if (city != null) {
 				if (labor == ELabor.PRE_SCHOOL) {
 					List<Facility> schools = city.getSchools(labor);
-					if (schools != null && schools.size() > 0) {
+					if (schools != null && !schools.isEmpty()) {
 						int choice = (int)(getRandom()*schools.size());
 						return schools.get(choice);
 					}
@@ -131,7 +131,7 @@ public class Student extends ActGenerator {
 						Set<String> names = censusOD.getDestinationNames(gender);
 						List<String> selectedNames = choiceCityWithSchools(labor, names);
 						List<Double> capacities = censusOD.getCapacities(gender, selectedNames);
-						if (capacities.size() > 0) {
+						if (!capacities.isEmpty()) {
 							City dcity = null;
 							{
 								int choice = Roulette.choice(capacities, getRandom());
@@ -251,7 +251,7 @@ public class Student extends ActGenerator {
 		public Integer call() throws Exception {
 			try {
 				for (HouseHold household : households) {
-					if (household.getListPersons().size() > 0) {
+					if (!household.getListPersons().isEmpty()) {
 						assignSchool(household);
 						process(household);		
 					}
