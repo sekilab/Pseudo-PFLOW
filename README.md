@@ -134,7 +134,7 @@ Each person is assigned a role(workder, student, no-worker).
   * Activity data in CSV format
 
 ## 5. Create trip data from activity data
-* Entry point: pseudo.gen.TripGenerator
+* Entry point: pseudo.gen.TripGenerator_WebAPI_refactor
 * Input
   * city_boundary.csv: City boundary data
   * base_station.csv: Location of stations
