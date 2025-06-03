@@ -759,18 +759,13 @@ public class TripGenerator_WebAPI_refactor {
 			Double carRatio = Double.parseDouble(prop.getProperty("car." + i));
 			Double bikeRatio = Double.parseDouble(prop.getProperty("bike." + i));
 
-			File actDir = new File(String.format("%s/activity_v2/", root), String.valueOf(i));
+			File actDir = new File(String.format("%s/activity/", root), String.valueOf(i));
 			for(File file: Objects.requireNonNull(actDir.listFiles())){
 				if (file.getName().contains(".csv")) {
 					String tripFileName = outputDir + "trip/" + i + "/trip_" + file.getName().substring(9, 14) + ".csv";
-					if(file.getName().substring(9, 14).equals("22101")||file.getName().substring(9, 14).equals("22102")){
-						continue;
-					}
+
 					String trajectoryFileName = outputDir + "trajectory/" + i + "/trajectory_" + file.getName().substring(9,14) + ".csv";
 
-					if(!file.getName().equals("activity_11217.csv")){
-						continue;
-					}
 
 					// Check if the files already exist
 //					if (new File(tripFileName).exists() || new File(trajectoryFileName).exists()) {

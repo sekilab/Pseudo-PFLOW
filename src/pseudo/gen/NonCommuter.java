@@ -95,6 +95,7 @@ public class NonCommuter extends ActGenerator {
 					// choose a destination
 					curloc = transition!=ETransition.HOME ?
 							choiceFreeDestination(curloc, transition, senior, gender, person.getLabor()) : home;
+                            //choiceByDistanceWeightedCapacity(curloc, null, transition, gender) : home;
 					if (curloc == null) {
 						person.getActivities().clear();
 						person.addAcitivity(homeAct);
@@ -203,8 +204,8 @@ public class NonCommuter extends ActGenerator {
 		String outputDir = String.format("%s/activity/", root);
 
 		long starttime = System.currentTimeMillis();
-		int start = 10;
-        int end = 13;
+		int start = 22;
+        int end = 22;
 		for (int i = start; i <= end; i++) {
 			// create directory
 			File prefDir = new File(outputDir, String.valueOf(i));

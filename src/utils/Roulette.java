@@ -15,6 +15,7 @@ public class Roulette {
 	}
 	
 	public static int choice(List<Double> probabilities, double random) {
+        // can implement binary search here
 		int res = 0;
 		double sum = 0.0;
 		double total = random * total(probabilities);

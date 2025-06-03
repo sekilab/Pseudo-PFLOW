@@ -1,13 +1,11 @@
 package pseudo.aggr;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
+import pseudo.gen.Commuter;
 import pseudo.res.ETransport;
 
 public class LinkVolumeCalculator {
@@ -53,23 +51,41 @@ public class LinkVolumeCalculator {
 		}
 	}
 	
-	public static void main(String[] args) {
-		String input = "/home/ubuntu/Data/pseudo/trajectory/city/"; //args[0];
-		String output = "/home/ubuntu/Data/pseudo/link_volume.csv";//args[1];
-		int start = 1;//Integer.valueOf(args[2]);
-		int end = 47;//Integer.valueOf(args[3]);
+	public static void main(String[] args) throws IOException {
+        String dir;
+        InputStream inputStream = Commuter.class.getClassLoader().getResourceAsStream("config.properties");
+        if (inputStream == null) {
+            throw new FileNotFoundException("config.properties file not found in the classpath");
+        }
+        Properties prop = new Properties();
+        prop.load(inputStream);
+
+        dir = prop.getProperty("root");
+        String inputDir = String.format("%s/trajectory/", dir);
+        String outputDir = String.format("%s/link_volume/", dir);
+        int start = 22;
+        int end = 22;
+
+		//String input = "/home/ubuntu/Data/pseudo/trajectory/city/"; //args[0];
+		//String output = "/home/ubuntu/Data/pseudo/link_volume.csv";//args[1];
+
+        for (int i = start; i <= end; i++) {
+            // create directory
+            File prefDir = new File(outputDir, String.valueOf(i));
+            System.out.println("Start prefecture:" + i + prefDir.mkdirs());
+            File[] files = (new File(inputDir, String.valueOf(i))).listFiles();
+
+            Map<String, Map<Long,Integer>> data = new HashMap<>();
+            int count = 0;
+            assert files != null;
+            for (File file : files){
+                System.out.printf("%d %d%n", count++, files.length);
+                calcurate(file.getAbsolutePath(), data);
+            }
+            write(String.format("%s/link_volume.csv", prefDir.getAbsolutePath()), data);
+        }
 		
-		Map<String, Map<Long,Integer>> data = new HashMap<>();
-		File[] files = (new File(input)).listFiles();
-		int count = 0;
-		for (File file : files){
-			int pref = Integer.valueOf(file.getName().substring(7, 9));
-			System.out.println(String.format("%d %d", count++, files.length));
-			if (pref >= start && pref <= end) {
-				calcurate(file.getAbsolutePath(), data);
-			}
-		}
-		write(output, data);
+
 		System.out.println("end");
 	}
 }

@@ -12,6 +12,8 @@ import pseudo.res.*;
 import pt.MotifAnalyzer;
 import utils.Roulette;
 
+import static utils.Softmax.softmax;
+
 public abstract class ActGenerator {
 
 	protected Country japan;
@@ -191,6 +193,7 @@ public abstract class ActGenerator {
             // todo: redefine attraction
             // ListDouble attractions = getMeshAttraction(transition, meshes, gender);
 			List<Double> capacities = getMeshCapacity(transition, meshes, gender);
+            List<Double> distances = new ArrayList<>();
 			for (int i = 0; i < meshes.size(); i++) {
 				GMesh tmesh = meshes.get(i);
 				double capacity = capacities.get(i);
@@ -201,7 +204,9 @@ public abstract class ActGenerator {
 						origin.getLon(), origin.getLat(), center.getLon(), center.getLat());
 				probs.add(capacity/Math.pow(distance, beta));
                 // probs.add(attraction/Math.pow(timeCost, beta));
+                distances.add(distance);
 			}
+            probs = softmax(probs, 0.001);
 			int choice = Roulette.choice(probs, getRandom());
 			mesh = meshes.get(choice);
 		}
@@ -223,14 +228,13 @@ public abstract class ActGenerator {
 
 	protected GLonLat choiceFreeDestination(GLonLat origin, ETransition transition, boolean senior, EGender gender, ELabor labor) {
 		// search mnl parameters
-        // todo: to deprecate and change to huff model
 		City city = japan.getCity(origin.getGcode());
 		ECity cityType = city.getType();
 		List<Double> params = mnlAcs.get(labor, cityType, transition);
 		
 		if (params == null) {
 			System.out.println(transition);
-            params = Arrays.asList(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
+            params = Arrays.asList(400.0, -5.42892492, -0.462596172, -0.413510686, -0.378755683, 0.00926181900, 0.0178483885, 0.359163473);
 		}
 		// search a city
 		City dcity = null;

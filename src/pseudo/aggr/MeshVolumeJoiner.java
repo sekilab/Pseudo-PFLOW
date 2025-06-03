@@ -1,14 +1,9 @@
 package pseudo.aggr;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import pseudo.gen.Commuter;
+
+import java.io.*;
+import java.util.*;
 
 public class MeshVolumeJoiner {
 
@@ -57,10 +52,9 @@ public class MeshVolumeJoiner {
 		}
 	}
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 //		String input = args[0];
 //		String output = args[1];
-		
 		
 		String input = "/home/ubuntu/Data/pseudo/trajectory/16/";
 		String output = "/home/ubuntu/Data/pseudo/16_mesh_volume.csv";

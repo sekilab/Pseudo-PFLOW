@@ -130,6 +130,7 @@ public class Commuter extends ActGenerator {
 					}else {
 						transition = freeTransitionFilter(transition);
 						curloc = choiceFreeDestination(curloc, transition, senior, gender, person.getLabor());
+                        //curloc = choiceByDistanceWeightedCapacity(curloc, null, transition, gender);
 					}
 					if (curloc == null) {
 						person.getActivities().clear();
@@ -245,8 +246,8 @@ public class Commuter extends ActGenerator {
         String outputDir = String.format("%s/activity/", root);
 
         long starttime = System.currentTimeMillis();
-        int start = 10;
-        int end = 13;
+        int start = 22;
+        int end = 22;
         for (int i = start; i <= end; i++) {
 
 			// load markov chains

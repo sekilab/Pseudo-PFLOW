@@ -275,12 +275,13 @@ public class TripGenerator {
 	
 		// create worker
 		TripGenerator worker = new TripGenerator(japan, modeAcs);
-		String inputDir = String.format("%s/activity/", dir);
+		String inputDir = String.format("%s/activity_merged/", dir);
 		String outputDir = String.format("%s/trip/", dir);
 
 		long starttime = System.currentTimeMillis();
-		int start = 1;
-		for (int i = 13; i <= 13; i++){
+		int start = 22;
+        int end = 22;
+		for (int i = start; i <= end; i++){
 			File prefDir = new File(outputDir, String.valueOf(i));
 			System.out.println("Start prefecture:" + i + prefDir.mkdirs());
 

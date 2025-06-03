@@ -186,6 +186,7 @@ public class Student extends ActGenerator {
 					}else {
 						transition = freeTransitionFilter(transition);
 						curloc = choiceFreeDestination(curloc, transition, true, gender, person.getLabor());
+                        //curloc = choiceByDistanceWeightedCapacity(curloc, null, transition, gender);
 					}
 					
 					if (curloc == null) {
@@ -346,8 +347,8 @@ public class Student extends ActGenerator {
 
 		String outputDir = String.format("%s/activity/", root);
 
-		int start = 10;
-        int end = 13;
+		int start = 22;
+        int end = 22;
 		for (int i = start; i <= end; i++) {
 			// create directory
 			File prefDir = new File(outputDir, String.valueOf(i));

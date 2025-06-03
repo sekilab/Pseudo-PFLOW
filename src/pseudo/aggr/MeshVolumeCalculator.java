@@ -1,18 +1,11 @@
 package pseudo.aggr;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.*;
+import java.util.*;
 
 import jp.ac.ut.csis.pflow.geom2.Mesh;
 import jp.ac.ut.csis.pflow.geom2.MeshUtils;
+import pseudo.gen.Commuter;
 
 public class MeshVolumeCalculator {
 
@@ -92,25 +85,49 @@ public class MeshVolumeCalculator {
 		}
 	}
 
-	public static void main(String[] args) {
-		String input = "/home/ubuntu/Data/pseudo/trajectory/city/";
-		String output = "/home/ubuntu/Data/pseudo/mesh_volume.csv";
-		int start = 1;
-		int end = 47;
+	public static void main(String[] args) throws IOException {
+		//String input = "/home/ubuntu/Data/pseudo/trajectory/city/";
+		//String output = "/home/ubuntu/Data/pseudo/mesh_volume.csv";
+		//int start = 1;
+		//int end = 47;
+
+        String dir;
+
+        InputStream inputStream = Commuter.class.getClassLoader().getResourceAsStream("config.properties");
+        if (inputStream == null) {
+            throw new FileNotFoundException("config.properties file not found in the classpath");
+        }
+        Properties prop = new Properties();
+        prop.load(inputStream);
+
+        dir = prop.getProperty("root");
+        String inputDir = String.format("%s/trajectory/", dir);
+        String outputDir = String.format("%s/mesh_volume/", dir);
+        //String input = "/home/ubuntu/Data/pseudo/trajectory/city/";
+        //String output = "/home/ubuntu/Data/pseudo/mesh_volume.csv";
+        int start = 22;
+        int end = 22;
+
+        for (int i = start; i <=end; i++) {
+            // create directory
+            File prefDir = new File(outputDir, String.valueOf(i));
+            System.out.println("Start prefecture:" + i + prefDir.mkdirs());
+            File[] files = (new File(inputDir, String.valueOf(i))).listFiles();
+
+            assert files != null;
+            Arrays.sort(files);
+            Map<String, List<Integer>> data = new HashMap<>();
+
+            int count = 0;
+            for (File file : files) {
+                System.out.printf("%d %d%n", count++, files.length);
+                calcurate(file.getAbsolutePath(), data);
+            }
+            write(String.format("%s/mesh_volume.csv", prefDir.getAbsolutePath()), data);
+        }
+
 		
-		Map<String, List<Integer>> data = new HashMap<>();
-		File[] files = (new File(input)).listFiles();
-		Arrays.sort(files);
-		
-		int count = 0;
-		for (File file : files) {
-			System.out.println(String.format("%d %d", count++, files.length));
-			int pref = Integer.valueOf(file.getName().substring(7, 9));
-			if (pref >= start && pref <= end) {
-				calcurate(file.getAbsolutePath(), data);
-			}
-		}
-		write(output, data);
+
 		System.out.println("end");
 	}
 }

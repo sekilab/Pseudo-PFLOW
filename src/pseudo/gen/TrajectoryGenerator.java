@@ -255,8 +255,6 @@ public class TrajectoryGenerator {
 		System.out.println("Root Directory: " + dir);
 		String roaddir = String.format("%sprocessing/network/", dir);
 		
-		int start = 14;
-		
 		String railFile = String.format("%srailnetwork.tsv", roaddir);
 
 		Network railway = RailLoader.load(railFile);
@@ -265,7 +263,9 @@ public class TrajectoryGenerator {
 		String outputDir = String.format("%strajectory/", dir);
 
 		// create trajectories
-		for (int i = 13; i <= 13; i++) {
+        int start = 22;
+        int end = 22;
+		for (int i = start; i <= end; i++) {
 			// create directory
 			File prefDir = new File(outputDir, String.valueOf(i));
 			System.out.println("Start prefecture:"+i+prefDir.mkdirs());
