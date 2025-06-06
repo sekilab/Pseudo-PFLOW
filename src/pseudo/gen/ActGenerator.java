@@ -206,7 +206,7 @@ public abstract class ActGenerator {
                 // probs.add(attraction/Math.pow(timeCost, beta));
                 distances.add(distance);
 			}
-            probs = softmax(probs, 0.001);
+            //probs = softmax(probs, 0.001);
 			int choice = Roulette.choice(probs, getRandom());
 			mesh = meshes.get(choice);
 		}
@@ -261,6 +261,7 @@ public abstract class ActGenerator {
 			for (int i = 0; i < capcities.size(); i++) {
 				capcities.set(i, capcities.get(i)/deno);
 			}
+            capcities = softmax(capcities, 1000);
 			
 			int choice = Roulette.choice(capcities, getRandom());
 			dcity = cities.get(choice);
