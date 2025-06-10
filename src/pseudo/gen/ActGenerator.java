@@ -177,9 +177,29 @@ public abstract class ActGenerator {
 	}
 
     protected double getBeta(ETransition transition, EGender gender) {
+		double beta = 2.0;
         // trip purpose
+		switch (transition) {
+			case OFFICE: {
+
+			}
+			case SHOPPING: {
+
+			}
+			case EATING: {
+
+			}
+			case FREE: {
+
+			};
+			case BUSINESS:
+			default: {
+			}
+		}
         // agent attribute
-        return 2.0;
+		{}
+
+        return beta;
     }
 
 
