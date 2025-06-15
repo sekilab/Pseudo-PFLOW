@@ -9,7 +9,6 @@ import java.util.concurrent.Callable;
 
 import jp.ac.ut.csis.pflow.routing4.res.Network;
 import jp.ac.ut.csis.pflow.routing4.res.Node;
-import org.opengis.referencing.FactoryException;
 import pseudo.acs.CensusODAccessor;
 import pseudo.acs.DataAccessor;
 import pseudo.acs.MNLParamAccessor;
@@ -85,7 +84,7 @@ public class Student extends ActGenerator {
 				City city = japan.getCity(e);
 				if (city != null) {
 					List<Facility> schools = city.getSchools(labor);
-					if (schools != null && !schools.isEmpty()) {
+					if (schools != null && schools.size() > 0) {
 						res.add(e);
 					}
 				}
@@ -111,7 +110,7 @@ public class Student extends ActGenerator {
 			if (city != null) {
 				if (labor == ELabor.PRE_SCHOOL) {
 					List<Facility> schools = city.getSchools(labor);
-					if (schools != null && !schools.isEmpty()) {
+					if (schools != null && schools.size() > 0) {
 						int choice = (int)(getRandom()*schools.size());
 						return schools.get(choice);
 					}
@@ -131,7 +130,7 @@ public class Student extends ActGenerator {
 						Set<String> names = censusOD.getDestinationNames(gender);
 						List<String> selectedNames = choiceCityWithSchools(labor, names);
 						List<Double> capacities = censusOD.getCapacities(gender, selectedNames);
-						if (!capacities.isEmpty()) {
+						if (capacities.size() > 0) {
 							City dcity = null;
 							{
 								int choice = Roulette.choice(capacities, getRandom());
@@ -154,7 +153,7 @@ public class Student extends ActGenerator {
 			GLonLat home = new GLonLat(household.getHome(), household.getGcode());
 			EGender fixedGender = EGender.MALE;	// Fixed value
 			EGender gender = person.getGender();
-			
+
 			// Markov Accessor
 			ELabor labor = person.getLabor();
 			EMarkov type = getTypeMarkov(labor);
@@ -186,7 +185,6 @@ public class Student extends ActGenerator {
 					}else {
 						transition = freeTransitionFilter(transition);
 						curloc = choiceFreeDestination(curloc, transition, true, gender, person.getLabor());
-                        //curloc = choiceByDistanceWeightedCapacity(curloc, null, transition, gender);
 					}
 					
 					if (curloc == null) {
@@ -252,7 +250,7 @@ public class Student extends ActGenerator {
 		public Integer call() throws Exception {
 			try {
 				for (HouseHold household : households) {
-					if (!household.getListPersons().isEmpty()) {
+					if (household.getListPersons().size() > 0) {
 						assignSchool(household);
 						process(household);		
 					}
@@ -269,13 +267,14 @@ public class Student extends ActGenerator {
 		return new ActivityTask(id, households, mapMotif);
 	}
 	
-	public static void main(String[] args) throws IOException, FactoryException {
+	public static void main(String[] args) throws IOException {
 		
 		Country japan = new Country();
 		
 		System.out.println("start");
 
 		String inputDir = null;
+		String output = null;
 		String root = null;
 
 		InputStream inputStream = Commuter.class.getClassLoader().getResourceAsStream("config.properties");
@@ -286,6 +285,7 @@ public class Student extends ActGenerator {
 		prop.load(inputStream);
 
 		root = prop.getProperty("root");
+		output = "C:/Data/PseudoPFLOW/";
 		inputDir = prop.getProperty("inputDir");
 		System.out.println("Root Directory: " + root);
 		System.out.println("Input Directory: " + inputDir);
@@ -303,12 +303,6 @@ public class Student extends ActGenerator {
 		
 		String hospitalFile = String.format("%scity_hospital.csv", inputDir);
 		DataAccessor.loadHospitalData(hospitalFile, japan);
-
-		String restaurantFile = String.format("%scity_restaurant.csv", inputDir);
-		DataAccessor.loadRestaurantData(restaurantFile, japan);
-
-		String retailFile = String.format("%scity_retail.csv", inputDir);
-		DataAccessor.loadRetailData(retailFile, japan);
 				
 		String preschoolFile = String.format("%scity_pre_school.csv", inputDir);
 		DataAccessor.loadPreSchoolData(preschoolFile, japan);
@@ -345,11 +339,10 @@ public class Student extends ActGenerator {
 		
 		// create activities
 
-		String outputDir = String.format("%s/activity/", root);
+		String outputDir = String.format("%s/activity/", output);
 
 		int start = 22;
-        int end = 22;
-		for (int i = start; i <= end; i++) {
+		for (int i = start; i <= 22; i++) {
 			// create directory
 			File prefDir = new File(outputDir, String.valueOf(i));
 			System.out.println("Start prefecture:" + i + prefDir.mkdirs());

@@ -12,10 +12,7 @@ import java.util.concurrent.Callable;
 
 import jp.ac.ut.csis.pflow.routing4.res.Network;
 import org.opengis.referencing.FactoryException;
-import pseudo.acs.DataAccessor;
-import pseudo.acs.MNLParamAccessor;
-import pseudo.acs.MkChainAccessor;
-import pseudo.acs.PersonAccessor;
+import pseudo.acs.*;
 import pseudo.res.Activity;
 import pseudo.res.EGender;
 import pseudo.res.ELabor;
@@ -56,8 +53,9 @@ public class NonCommuter extends ActGenerator {
 					transition != ETransition.HOME &&
 					transition != ETransition.SHOPPING &&
 					transition != ETransition.EATING &&
-					transition != ETransition.HOSPITAL &&
-					transition != ETransition.FREE) {
+					transition != ETransition.HOSPITAL
+					// && transition != ETransition.FREE
+			) {
 				transition = ETransition.FREE;
 			}
 			return transition;
@@ -95,7 +93,6 @@ public class NonCommuter extends ActGenerator {
 					// choose a destination
 					curloc = transition!=ETransition.HOME ?
 							choiceFreeDestination(curloc, transition, senior, gender, person.getLabor()) : home;
-                            //choiceByDistanceWeightedCapacity(curloc, null, transition, gender) : home;
 					if (curloc == null) {
 						person.getActivities().clear();
 						person.addAcitivity(homeAct);
@@ -149,12 +146,13 @@ public class NonCommuter extends ActGenerator {
 
 	public static void main(String[] args) throws IOException, FactoryException {
 
-		Country japan = new Country();
+		Country country = new Country();
 
 		System.out.println("start");
 
 		String inputDir = null;
 		String root = null;
+		String output = null;
 
 		InputStream inputStream = Commuter.class.getClassLoader().getResourceAsStream("config.properties");
 		if (inputStream == null) {
@@ -165,32 +163,36 @@ public class NonCommuter extends ActGenerator {
 
 		root = prop.getProperty("root");
 		inputDir = prop.getProperty("inputDir");
+		output = "C:/Data/PseudoPFLOW/";
 		System.out.println("Root Directory: " + root);
 		System.out.println("Input Directory: " + inputDir);
 
 		// load data
 		String stationFile = String.format("%sbase_station.csv", inputDir);
 		Network station = DataAccessor.loadLocationData(stationFile);
-		japan.setStation(station);
+		country.setStation(station);
 
 		String cityFile = String.format("%scity_boundary.csv", inputDir);
-		DataAccessor.loadCityData(cityFile, japan);
+		DataAccessor.loadCityData(cityFile, country);
+
+		String censusFile = String.format("%scity_census_od.csv", inputDir);
+		CensusODAccessor odAcs = new CensusODAccessor(censusFile, country);
 
 		String hospitalFile = String.format("%scity_hospital.csv", inputDir);
-		DataAccessor.loadHospitalData(hospitalFile, japan);
+		DataAccessor.loadHospitalData(hospitalFile, country);
 
 		String restaurantFile = String.format("%scity_restaurant.csv", inputDir);
-		DataAccessor.loadRestaurantData(restaurantFile, japan);
+		DataAccessor.loadRestaurantData(restaurantFile, country);
 
 		String retailFile = String.format("%scity_retail.csv", inputDir);
-		DataAccessor.loadRetailData(retailFile, japan);
+		DataAccessor.loadRetailData(retailFile, country);
 
 		String meshFile = String.format("%smesh_ecensus.csv", inputDir);
-		DataAccessor.loadEconomicCensus(meshFile, japan);
+		DataAccessor.loadEconomicCensus(meshFile, country);
 
-		// load data after ecensus
+		// load data after economic census
 		String tatemonFile = String.format("%scity_tatemono.csv", inputDir);
-		DataAccessor.loadZenrinTatemono(tatemonFile, japan, 1);
+		DataAccessor.loadZenrinTatemono(tatemonFile, country, 1);
 
 
 		// load MNL parmaters
@@ -201,12 +203,11 @@ public class NonCommuter extends ActGenerator {
 		int mfactor = 1;
 
 		// create activities
-		String outputDir = String.format("%s/activity/", root);
+		String outputDir = String.format("%s/activity/", output);
 
 		long starttime = System.currentTimeMillis();
 		int start = 22;
-        int end = 22;
-		for (int i = start; i <= end; i++) {
+		for (int i = start; i <= 22; i++) {
 			// create directory
 			File prefDir = new File(outputDir, String.valueOf(i));
 			System.out.println("Start prefecture:" + i + prefDir.mkdirs());
@@ -235,7 +236,7 @@ public class NonCommuter extends ActGenerator {
 				map.put(EGender.FEMALE, new MkChainAccessor(femaleFile));
 				mrkMap.put(EMarkov.NOLABOR_SENIOR, map);
 			}
-			NonCommuter worker = new NonCommuter(japan, mrkMap, mnlAcs);
+			NonCommuter worker = new NonCommuter(country, mrkMap, mnlAcs);
 
 			for (File file : householdDir.listFiles()) {
 				if (file.getName().contains(".csv")) {

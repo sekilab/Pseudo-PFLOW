@@ -70,9 +70,9 @@ public class Commuter extends ActGenerator {
 						City dcity = japan.getCity(cityName);
 						if (dcity != null) {
 							if (!city.getId().equals(dcity.getId())) {
-								return choiceByFacilityCapacity(dcity, ETransition.OFFICE, gender);
+								return choiceDestination(dcity, ETransition.OFFICE, gender);
 							}else {
-								return choiceByDistanceWeightedCapacity(home, dcity, ETransition.OFFICE, gender);
+								return choiceDestination2(home, dcity, ETransition.OFFICE, gender);
 							}
 						}
 					}
@@ -130,7 +130,6 @@ public class Commuter extends ActGenerator {
 					}else {
 						transition = freeTransitionFilter(transition);
 						curloc = choiceFreeDestination(curloc, transition, senior, gender, person.getLabor());
-                        //curloc = choiceByDistanceWeightedCapacity(curloc, null, transition, gender);
 					}
 					if (curloc == null) {
 						person.getActivities().clear();
@@ -191,6 +190,7 @@ public class Commuter extends ActGenerator {
 
         System.out.println("start");
 
+		String output = null;
 		String inputDir = null;
 		String root = null;
 
@@ -203,6 +203,7 @@ public class Commuter extends ActGenerator {
 
 		root = prop.getProperty("root");
 		inputDir = prop.getProperty("inputDir");
+		output = "C:/Data/PseudoPFLOW/";
 		System.out.println("Root Directory: " + root);
 		System.out.println("Input Directory: " + inputDir);
 
@@ -238,17 +239,15 @@ public class Commuter extends ActGenerator {
         MNLParamAccessor mnlAcs = new MNLParamAccessor();
         mnlAcs.add(mnlFile, ELabor.WORKER);
 
-        // 10 times
         int mfactor = 1;
 
         // create activities
 
-        String outputDir = String.format("%s/activity/", root);
+        String outputDir = String.format("%s/activity/", output);
 
         long starttime = System.currentTimeMillis();
         int start = 22;
-        int end = 22;
-        for (int i = start; i <= end; i++) {
+        for (int i = start; i <= 22; i++) {
 
 			// load markov chains
 			Map<EMarkov, Map<EGender, MkChainAccessor>> mrkMap = new HashMap<>();
