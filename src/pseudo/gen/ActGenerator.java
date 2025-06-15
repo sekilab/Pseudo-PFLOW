@@ -312,64 +312,45 @@ public abstract class ActGenerator {
         for (City ecity : cities) {
             meshes.addAll(ecity.getMeshes());
         }
-        List<Double> meshCapacities = getMeshCapacity(transition, meshes, gender);
-
-        Set<Integer> excludedMeshes = new HashSet<>();
-
-        while (excludedMeshes.size() < meshes.size()) {
-            List<Double> filteredCapacities = new ArrayList<>();
-            List<GMesh> filteredMeshes = new ArrayList<>();
-
+        GMesh mesh = null;
+        double beta = getBeta(transition, gender);
+        {
+            List<Double> probs = new ArrayList<>();
+            // todo: redefine attraction
+            // ListDouble attractions = getMeshAttraction(transition, meshes, gender);
+            List<Double> capacities = getMeshCapacity(transition, meshes, gender);
+            List<Double> distances = new ArrayList<>();
             for (int i = 0; i < meshes.size(); i++) {
-                if (!excludedMeshes.contains(i)) {
-                    filteredCapacities.add(meshCapacities.get(i));
-                    filteredMeshes.add(meshes.get(i));
-                }
+                GMesh tmesh = meshes.get(i);
+                double capacity = capacities.get(i);
+                ILonLat center = tmesh.getCenter();
+                // todo: add time cost
+                // double timeCost = getTravelTime(origin, destination)
+                double distance = DistanceUtils.distance(
+                    origin.getLon(), origin.getLat(), center.getLon(), center.getLat());
+                probs.add(capacity/Math.pow(distance, beta));
+                // probs.add(attraction/Math.pow(timeCost, beta));
+                distances.add(distance);
             }
-
-            if (filteredMeshes.isEmpty()) {
-                System.out.println("No valid meshes available.");
-                return null;
-            }
-
-            int choice = Roulette.choice(filteredCapacities, getRandom());
-            GMesh mesh = filteredMeshes.get(choice);
-
-            if (mesh != null) {
-                List<Facility> facilities = getFacilities(transition, mesh);
-                if (!facilities.isEmpty()) {
-                    List<Double> facilityCapacities = new ArrayList<>();
-                    for (Facility f : facilities) {
-                        facilityCapacities.add(f.getCapacity());
-                    }
-                    int facilityChoice = Roulette.choice(facilityCapacities, getRandom());
-                    Facility fac = facilities.get(facilityChoice);
-                    return new GLonLat(fac, city.getId());
-                } else {
-                    excludedMeshes.add(meshes.indexOf(mesh));
-                    System.out.println("No facilities found in mesh: " + mesh.getId() + ". Excluding...");
-                }
-            } else {
-                System.out.println("Mesh selection returned null. Retrying...");
-            }
+            probs = softmax(probs, 0.001);
+            int choice = Roulette.choice(probs, getRandom());
+            mesh = meshes.get(choice);
         }
-
-        for (GMesh mesh : meshes) {
-            List<Facility> allFacilities = mesh.getFacilities();
-            if (!allFacilities.isEmpty()) {
-                System.out.println("Fallback: Selecting from all facilities in mesh: " + mesh.getId());
-                List<Double> facilityCapacities = new ArrayList<>();
-                for (Facility f : allFacilities) {
-                    facilityCapacities.add(f.getCapacity());
+        // Search a poi
+        if (mesh != null) {
+            List<Facility> facilities = getFacilities(transition, mesh);
+            List<Double> capacities = new ArrayList<>();
+            if (!facilities.isEmpty()) {
+                for (Facility f : facilities) {
+                    capacities.add(f.getCapacity());
                 }
-                int facilityChoice = Roulette.choice(facilityCapacities, getRandom());
-                Facility fac = allFacilities.get(facilityChoice);
+                int choice = Roulette.choice(capacities, getRandom());
+                Facility fac = facilities.get(choice);
                 return new GLonLat(fac, city.getId());
             }
         }
-
-        System.out.println("Fallback failed: No facilities found in any mesh.");
         return null;
+
     }
 	
 	

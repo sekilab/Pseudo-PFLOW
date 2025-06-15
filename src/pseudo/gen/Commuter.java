@@ -129,8 +129,8 @@ public class Commuter extends ActGenerator {
 						person.setOffice(curloc);
 					}else {
 						transition = freeTransitionFilter(transition);
-						curloc = choiceFreeDestination(curloc, transition, senior, gender, person.getLabor());
-                        //curloc = choiceByDistanceWeightedCapacity(curloc, null, transition, gender);
+						//curloc = choiceFreeDestination(curloc, transition, senior, gender, person.getLabor());
+                        choiceFreeDestination(curloc, transition, gender, MAX_SEARCH_DISTANCE);
 					}
 					if (curloc == null) {
 						person.getActivities().clear();

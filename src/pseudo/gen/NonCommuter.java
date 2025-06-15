@@ -94,7 +94,8 @@ public class NonCommuter extends ActGenerator {
 				if (transition != ETransition.STAY) {
 					// choose a destination
 					curloc = transition!=ETransition.HOME ?
-							choiceFreeDestination(curloc, transition, senior, gender, person.getLabor()) : home;
+							//choiceFreeDestination(curloc, transition, senior, gender, person.getLabor()) : home;
+                            choiceFreeDestination(curloc, transition, gender, MAX_SEARCH_DISTANCE) : home;
                             //choiceByDistanceWeightedCapacity(curloc, null, transition, gender) : home;
 					if (curloc == null) {
 						person.getActivities().clear();
