@@ -234,12 +234,12 @@ public abstract class ActGenerator {
 		// Search a poi
 		if (mesh != null) {
 			List<Facility> facilities = getFacilities(transition, mesh);
-			List<Double> capcities = new ArrayList<>();
+			List<Double> capacities = new ArrayList<>();
 			if (!facilities.isEmpty()) {
 				for (Facility f : facilities) {
-					capcities.add(f.getCapacity());
+					capacities.add(f.getCapacity());
 				}
-				int choice = Roulette.choice(capcities, getRandom());
+				int choice = Roulette.choice(capacities, getRandom());
 				Facility fac = facilities.get(choice);
 				return new GLonLat(fac, city.getId());
 			}
@@ -261,7 +261,7 @@ public abstract class ActGenerator {
 		City dcity = null;
 		List<City> cities = japan.searchCities(MAX_SEARCH_DISTANCE, city);
 		{
-			List<Double> capcities = new ArrayList<>();
+			List<Double> capacities = new ArrayList<>();
 			double deno = 0;
 			for (City ecity : cities) {
 				double dx = ecity.getLon() - city.getLon();
@@ -276,15 +276,16 @@ public abstract class ActGenerator {
 						params.get(4)*ecity.getArea() +
 						params.get(5)*ecity.getPopRatio()/1000 +
 						params.get(6)*ecity.getOfficeRatio()/1000);
-				capcities.add(prob);
+				capacities.add(prob);
 				deno += prob;
 			}
-			for (int i = 0; i < capcities.size(); i++) {
-				capcities.set(i, capcities.get(i)/deno);
+			for (int i = 0; i < capacities.size(); i++) {
+				capacities.set(i, capacities.get(i)/deno);
 			}
-           // capcities = softmax(capcities, 1000);
+            // get the target city
+            // capacities = softmax(capacities, 1000);
 			
-			int choice = Roulette.choice(capcities, getRandom());
+			int choice = Roulette.choice(capacities, getRandom());
 			dcity = cities.get(choice);
 		}
 		

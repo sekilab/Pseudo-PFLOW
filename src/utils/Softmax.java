@@ -6,16 +6,16 @@ import java.util.Collections;
 import java.util.List;
 
 public class Softmax {
+    public static List<Double> softmax(List<Double> input) {
+        return softmax(input, 1.0);
+    }
+
     /**
      * Applies the softmax function with a temperature parameter to the input arrays.
      * @param input The input arrays.
      * @param temperature The temperature value (> 0). Lower is sharper (more confident predictions), while higher is smoother (less confident).
      * @return The softmax probabilities.
      */
-    public static List<Double> softmax(List<Double> input) {
-        return softmax(input, 1.0);
-    }
-
     public static List<Double> softmax(List<Double> input, double temperature) {
         if  (temperature < 0) {
             throw new IllegalArgumentException("Temperature must be greater than 0.");
