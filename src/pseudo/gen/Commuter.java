@@ -129,8 +129,8 @@ public class Commuter extends ActGenerator {
 						person.setOffice(curloc);
 					}else {
 						transition = freeTransitionFilter(transition);
-						//curloc = choiceFreeDestination(curloc, transition, senior, gender, person.getLabor());
-                        choiceFreeDestination(curloc, transition, gender, MAX_SEARCH_DISTANCE);
+						curloc = choiceFreeDestination(curloc, transition, senior, gender, person.getLabor());
+                        //choiceFreeDestination(curloc, transition, gender, MAX_SEARCH_DISTANCE);
 					}
 					if (curloc == null) {
 						person.getActivities().clear();
@@ -246,9 +246,13 @@ public class Commuter extends ActGenerator {
         String outputDir = String.format("%s/activity/", root);
 
         long starttime = System.currentTimeMillis();
-        int start = 22;
-        int end = 22;
-        for (int i = start; i <= end; i++) {
+        ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
+            22, 23
+            //13, 14, 23, 19
+            // , 12, 11, 27, 26, 24, 21, 28
+        ));
+
+        for (int i: prefectureCodes){
 
 			// load markov chains
 			Map<EMarkov, Map<EGender, MkChainAccessor>> mrkMap = new HashMap<>();

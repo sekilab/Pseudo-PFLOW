@@ -4,10 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.Callable;
 
 import jp.ac.ut.csis.pflow.routing4.res.Network;
@@ -94,8 +91,8 @@ public class NonCommuter extends ActGenerator {
 				if (transition != ETransition.STAY) {
 					// choose a destination
 					curloc = transition!=ETransition.HOME ?
-							//choiceFreeDestination(curloc, transition, senior, gender, person.getLabor()) : home;
-                            choiceFreeDestination(curloc, transition, gender, MAX_SEARCH_DISTANCE) : home;
+							choiceFreeDestination(curloc, transition, senior, gender, person.getLabor()) : home;
+                            //choiceFreeDestination(curloc, transition, gender, MAX_SEARCH_DISTANCE) : home;
                             //choiceByDistanceWeightedCapacity(curloc, null, transition, gender) : home;
 					if (curloc == null) {
 						person.getActivities().clear();
@@ -205,9 +202,13 @@ public class NonCommuter extends ActGenerator {
 		String outputDir = String.format("%s/activity/", root);
 
 		long starttime = System.currentTimeMillis();
-		int start = 22;
-        int end = 22;
-		for (int i = start; i <= end; i++) {
+        ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
+            22, 23
+            //13, 14, 23, 19
+            //, 12, 11, 27, 26, 24, 21, 28
+        ));
+
+        for (int i: prefectureCodes){
 			// create directory
 			File prefDir = new File(outputDir, String.valueOf(i));
 			System.out.println("Start prefecture:" + i + prefDir.mkdirs());

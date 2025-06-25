@@ -167,7 +167,7 @@ public abstract class ActGenerator {
 				for (Facility f : facilities) {
 					capacities.add(f.getCapacity());
 				}
-                capacities = softmax(capacities, 1000);
+                // capacities = softmax(capacities, 1000);
 				int choice = Roulette.choice(capacities, getRandom());
 				Facility fac = facilities.get(choice);
 				return new GLonLat(fac, city.getId());
@@ -184,15 +184,17 @@ public abstract class ActGenerator {
 
 			}
 			case SHOPPING: {
-
+                beta = 1.4;
 			}
 			case EATING: {
-
+                beta = 1.4;
 			}
 			case FREE: {
-
+                beta = 1.4;
 			};
-			case BUSINESS:
+			case BUSINESS:{
+                beta= 1.2;
+            }
 			default: {
 			}
 		}
@@ -217,12 +219,12 @@ public abstract class ActGenerator {
             List<Double> distances = new ArrayList<>();
 			for (int i = 0; i < meshes.size(); i++) {
 				GMesh tmesh = meshes.get(i);
-				double capacity = capacities.get(i);
+				double capacity = Math.log(1+capacities.get(i));
 				ILonLat center = tmesh.getCenter();
                 // todo: add time cost
                 // double timeCost = getTravelTime(origin, destination)
 				double distance = DistanceUtils.distance(
-						origin.getLon(), origin.getLat(), center.getLon(), center.getLat());
+						origin.getLon(), origin.getLat(), center.getLon(), center.getLat()) / 1000;
 				probs.add(capacity/Math.pow(distance, beta));
                 // probs.add(attraction/Math.pow(timeCost, beta));
                 distances.add(distance);
@@ -303,7 +305,7 @@ public abstract class ActGenerator {
     protected GLonLat choiceFreeDestination(GLonLat origin,
                                             ETransition transition,
                                             EGender gender,
-                                            Integer threshold) {
+                                             Integer threshold) {
         City city = japan.getCity(origin.getGcode());
 
         List<City> cities = japan.searchCities(threshold, city);
@@ -322,17 +324,17 @@ public abstract class ActGenerator {
             List<Double> distances = new ArrayList<>();
             for (int i = 0; i < meshes.size(); i++) {
                 GMesh tmesh = meshes.get(i);
-                double capacity = capacities.get(i);
+                double capacity = Math.log(capacities.get(i)+1);
                 ILonLat center = tmesh.getCenter();
                 // todo: add time cost
                 // double timeCost = getTravelTime(origin, destination)
                 double distance = DistanceUtils.distance(
-                    origin.getLon(), origin.getLat(), center.getLon(), center.getLat());
+                    origin.getLon(), origin.getLat(), center.getLon(), center.getLat()) / 1000;
                 probs.add(capacity/Math.pow(distance, beta));
                 // probs.add(attraction/Math.pow(timeCost, beta));
                 distances.add(distance);
             }
-            probs = softmax(probs, 0.001);
+            // probs = softmax(probs, 100);
             int choice = Roulette.choice(probs, getRandom());
             mesh = meshes.get(choice);
         }

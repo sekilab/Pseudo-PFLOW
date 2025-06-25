@@ -185,8 +185,8 @@ public class Student extends ActGenerator {
 						person.setOffice(curloc);
 					}else {
 						transition = freeTransitionFilter(transition);
-						//curloc = choiceFreeDestination(curloc, transition, true, gender, person.getLabor());
-                        curloc = choiceFreeDestination(curloc, transition, gender, MAX_SEARCH_DISTANCE);
+						curloc = choiceFreeDestination(curloc, transition, true, gender, person.getLabor());
+                        // curloc = choiceFreeDestination(curloc, transition, gender, MAX_SEARCH_DISTANCE);
 					}
 					
 					if (curloc == null) {
@@ -347,9 +347,13 @@ public class Student extends ActGenerator {
 
 		String outputDir = String.format("%s/activity/", root);
 
-		int start = 22;
-        int end = 22;
-		for (int i = start; i <= end; i++) {
+        ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
+            22, 23
+            // 13, 14, 23, 19
+            //, 12, 11, 27, 26, 24, 21, 28
+        ));
+
+        for (int i: prefectureCodes){
 			// create directory
 			File prefDir = new File(outputDir, String.valueOf(i));
 			System.out.println("Start prefecture:" + i + prefDir.mkdirs());

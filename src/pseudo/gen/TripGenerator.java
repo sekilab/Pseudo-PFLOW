@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.Callable;
@@ -279,9 +280,13 @@ public class TripGenerator {
 		String outputDir = String.format("%s/trip/", dir);
 
 		long starttime = System.currentTimeMillis();
-		int start = 22;
-        int end = 22;
-		for (int i = start; i <= end; i++){
+        ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
+            22, 23
+//            13, 14, 23, 19
+            // , 12, 11, 27, 26, 24, 21, 28
+        ));
+
+        for (int i: prefectureCodes){
 			File prefDir = new File(outputDir, String.valueOf(i));
 			System.out.println("Start prefecture:" + i + prefDir.mkdirs());
 
