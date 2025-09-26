@@ -734,10 +734,10 @@ public class TripGenerator_WebAPI_refactor {
 		Network station = DataAccessor.loadLocationData(stationFile);
 		japan.setStation(station);
 
-		String outputDir = "C:/large/PseudoPFLOW/";
+		String outputDir = "D:/large/PseudoPFLOW/";
 
 		ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
-				11
+                12
 //				22, 16, 28,
 //				13,14,12,11,
 //				1,2,3,5,6,8,10,15,
@@ -762,19 +762,19 @@ public class TripGenerator_WebAPI_refactor {
 			for(File file: Objects.requireNonNull(actDir.listFiles())){
 				if (file.getName().contains(".csv")) {
 					String tripFileName = outputDir + "trip/" + i + "/trip_" + file.getName().substring(9, 14) + ".csv";
-					if(file.getName().substring(9, 14).equals("22101")||file.getName().substring(9, 14).equals("22102")){
-						continue;
-					}
+//					if(file.getName().substring(9, 14).equals("22101")||file.getName().substring(9, 14).equals("22102")){
+//						continue;
+//					}
 					String trajectoryFileName = outputDir + "trajectory/" + i + "/trajectory_" + file.getName().substring(9,14) + ".csv";
 
-					if(!file.getName().equals("activity_11217.csv")){
+					if(!file.getName().equals("kashiwa_act_final.csv")){
 						continue;
 					}
 
 					// Check if the files already exist
-//					if (new File(tripFileName).exists() || new File(trajectoryFileName).exists()) {
-//						continue; // Skip to the next iteration
-//					}
+					if (new File(tripFileName).exists() || new File(trajectoryFileName).exists()) {
+						continue; // Skip to the next iteration
+					}
 
 					long starttime = System.currentTimeMillis();
 					TripGenerator_WebAPI_refactor worker = new TripGenerator_WebAPI_refactor(japan, road, railway);

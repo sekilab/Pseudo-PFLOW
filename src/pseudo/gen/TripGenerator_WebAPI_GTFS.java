@@ -96,7 +96,7 @@ public class TripGenerator_WebAPI_GTFS {
 	// private static final double MAX_SEARCH_STATION_DISTANCE = 5000;
 	private static final double FARE_PER_KILOMETER = 25; // Japanese yen, only for vehicle
 	private static final double FARE_PER_HOUR = 1000; // Japanese yen, all modes, possible to extend to prefecture level
-	private static final double FATIGUE_INDEX_WALK = 2.5;
+	private static final double FATIGUE_INDEX_WALK = 2.75;
 	private static final double FATIGUE_INDEX_WALK_SLOPE = 1.5;
 	private static final double FATIGUE_INDEX_BICYCLE = 1.2;
 	private static final double FARE_INIT = 250; // Japanese yen, only for vehicle
@@ -393,8 +393,8 @@ public class TripGenerator_WebAPI_GTFS {
                    return ETransport.WALK;
                 }
 
-                if(originStation.equals("312_2須磨寺町公園前")){
-                    System.out.println("312_2須磨寺町公園前 Check");
+                if(originStation.equals("315_2須磨浦公園駅前")){
+                    System.out.println("315_2須磨浦公園駅前 Check");
                 }
 
                 double fare = age > 65 ? 120.0 : 240.0;
@@ -447,6 +447,9 @@ public class TripGenerator_WebAPI_GTFS {
 
 				if (stationNode != null && !stationNode.isNull()) {
 					String stationName = stationNode.get("station_name").asText();
+                    if(stationName.equals("315_2須磨浦公園駅前")|stationName.equals("315_1須磨浦公園駅前")){
+                        break;
+                    }
 					if (stationNames.contains(stationName)) {
 						firstMatchingStation = feature;
                         break;
@@ -1025,7 +1028,7 @@ public class TripGenerator_WebAPI_GTFS {
 		// 1) Decide which GTFS version to use: original vs. revised
 		//    You can use a boolean, a property, or a command-line argument.
 		// --------------------------------------------------------------------
-		boolean useRevised = true;		// or read from properties, e.g.:
+		boolean useRevised = false;		// or read from properties, e.g.:
 		// boolean useRevised = Boolean.parseBoolean(prop.getProperty("gtfs.useRevised"));
 
 		// Build feed folder name based on the choice
@@ -1102,7 +1105,7 @@ public class TripGenerator_WebAPI_GTFS {
 			);
 
 			for (File file : Objects.requireNonNull(actDir.listFiles())) {
-				if(!file.getName().equals("filtered_activity_28107_3rd.csv")){
+				if(!file.getName().equals("filtered_activity_28107_updated.csv")){
 					continue;
 				}
 				if (file.getName().contains(".csv")) {
