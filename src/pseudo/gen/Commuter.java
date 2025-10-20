@@ -3,9 +3,9 @@ package pseudo.gen;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.Callable;
+import org.opengis.referencing.FactoryException;
 
 import jp.ac.ut.csis.pflow.routing4.res.Network;
-import org.opengis.referencing.FactoryException;
 import pseudo.acs.CensusODAccessor;
 import pseudo.acs.DataAccessor;
 import pseudo.acs.MNLParamAccessor;
@@ -240,8 +240,8 @@ public class Commuter extends ActGenerator {
         String outputDir = String.format("%s/activity/", root);
 
         long starttime = System.currentTimeMillis();
-        int start = 1;
-        for (int i = start; i <= 47; i++) {
+        int start = 13;
+        for (int i = start; i <= 13; i++) {
 
 			// load markov chains
 			Map<EMarkov, Map<EGender, MkChainAccessor>> mrkMap = new HashMap<>();

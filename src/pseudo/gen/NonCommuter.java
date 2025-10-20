@@ -11,6 +11,7 @@ import java.util.Properties;
 import java.util.concurrent.Callable;
 
 import jp.ac.ut.csis.pflow.routing4.res.Network;
+import org.opengis.referencing.FactoryException;
 import pseudo.acs.DataAccessor;
 import pseudo.acs.MNLParamAccessor;
 import pseudo.acs.MkChainAccessor;
@@ -145,7 +146,7 @@ public class NonCommuter extends ActGenerator {
 		return new ActivityTask(id, households, mapMotif);
 	}
 
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException, FactoryException {
 
 		Country japan = new Country();
 
@@ -177,6 +178,12 @@ public class NonCommuter extends ActGenerator {
 		String hospitalFile = String.format("%scity_hospital.csv", inputDir);
 		DataAccessor.loadHospitalData(hospitalFile, japan);
 
+		String restaurantFile = String.format("%scity_restaurant.csv", inputDir);
+		DataAccessor.loadRestaurantData(restaurantFile, japan);
+
+		String retailFile = String.format("%scity_retail.csv", inputDir);
+		DataAccessor.loadRetailData(retailFile, japan);
+
 		String meshFile = String.format("%smesh_ecensus.csv", inputDir);
 		DataAccessor.loadEconomicCensus(meshFile, japan);
 
@@ -196,8 +203,8 @@ public class NonCommuter extends ActGenerator {
 		String outputDir = String.format("%s/activity/", root);
 
 		long starttime = System.currentTimeMillis();
-		int start = 1;
-		for (int i = start; i <= 47; i++) {
+		int start = 13;
+		for (int i = start; i <= 13; i++) {
 			// create directory
 			File prefDir = new File(outputDir, String.valueOf(i));
 			System.out.println("Start prefecture:" + i + prefDir.mkdirs());

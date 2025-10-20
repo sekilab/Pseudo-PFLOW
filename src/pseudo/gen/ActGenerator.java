@@ -5,7 +5,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.jboss.netty.util.internal.ThreadLocalRandom;
+import java.util.concurrent.ThreadLocalRandom;
 
 import jp.ac.ut.csis.pflow.geom.DistanceUtils;
 import jp.ac.ut.csis.pflow.geom2.ILonLat;
@@ -34,15 +34,15 @@ public abstract class ActGenerator {
 	protected Country japan;
 	protected MNLParamAccessor mnlAcs;
 	protected Map<EMarkov,Map<EGender,MkChainAccessor>> mrkAcsMap;
-	
+
 	protected static final Dijkstra routing = new Dijkstra();
-	
+
 	protected static final long TRAIN_SERVICE_START_TIME = 5 * 3600;
 	protected static final int timeInterval = 15 * 60;
-	
+
 	protected static final int MAX_SEARCH_DISTANDE = 20000;
 
-	
+
 	public ActGenerator(Country japan,
 						MNLParamAccessor mnlAcs,
 						Map<EMarkov,Map<EGender,MkChainAccessor>> mrkAcsMap) {
@@ -50,28 +50,28 @@ public abstract class ActGenerator {
 		this.mnlAcs = mnlAcs;
 		this.mrkAcsMap = mrkAcsMap;
 	}
-	
+
 	protected synchronized double getRandom() {
 		return ThreadLocalRandom.current().nextDouble();
 	}
-	
+
 	protected int formatTime(int time, int interval) {
 		return (time / interval) * interval;
 	}
-	
-	protected static Activity createActivity(Activity preActivity, 
-			GLonLat dest, int startTime, int endTime, EPurpose purpose) {
-		
+
+	protected static Activity createActivity(Activity preActivity,
+											 GLonLat dest, int startTime, int endTime, EPurpose purpose) {
+
 		// Pre activity
 		long preDuration = startTime - preActivity.getStartTime();
 		preActivity.setDuration(preDuration);
-		
-		// Next activity 
+
+		// Next activity
 		int duration = endTime - startTime;
 		Activity res = new Activity(dest,startTime, duration, purpose);
 		return res;
 	}
-	
+
 	protected int setMotif(Person person) {
 		List<Activity> acts  = person.getActivities();
 		if (acts.size() > 0) {
@@ -80,8 +80,8 @@ public abstract class ActGenerator {
 			for (Activity a : acts) {
 				EPurpose purpose = a.getPurpose();
 				int loc = 0;
-				if (purpose == EPurpose.HOME || 
-						purpose == EPurpose.OFFICE || 
+				if (purpose == EPurpose.HOME ||
+						purpose == EPurpose.OFFICE ||
 						purpose == EPurpose.SCHOOL) {
 					loc = purpose.getId();
 				}else {
@@ -94,40 +94,40 @@ public abstract class ActGenerator {
 		}
 		return -1;
 	}
-	
+
 	//
 	protected double getMeshCapacity(ETransition transition, GMesh mesh, EGender gender) {
 		List<Double> values = mesh.getEconomics();
 		if (values.size() > 0) {
 			switch (transition) {
-			case OFFICE:
-				return gender!=EGender.FEMALE ? mesh.getEconomics(14) : mesh.getEconomics(15);
-			case SHOPPING:
-				return mesh.getEconomics(4);
-			case EATING:
-				return mesh.getEconomics(new int[]{8,9});
-			case FREE:
-				return mesh.getEconomics(new int[]{5,7,10,12});
-			case BUSINESS:
-				return mesh.getEconomics(0);
-			default:
-				return mesh.getEconomics(0);
+				case OFFICE:
+					return gender!=EGender.FEMALE ? mesh.getEconomics(14) : mesh.getEconomics(15);
+				case SHOPPING:
+					return mesh.getEconomics(4);
+				case EATING:
+					return mesh.getEconomics(new int[]{8,9});
+				case FREE:
+					return mesh.getEconomics(new int[]{5,7,10,12});
+				case BUSINESS:
+					return mesh.getEconomics(0);
+				default:
+					return mesh.getEconomics(0);
 			}
 		}else {
 			return 0;
 		}
 	}
-	
+
 	protected List<Double> getMeshCapacity(ETransition transition, List<GMesh> meshes, EGender gender) {
 		List<Double> res = new ArrayList<>();
 		for (GMesh mesh : meshes) {
-			double capacity = (transition != ETransition.HOSPITAL) ? 
+			double capacity = (transition != ETransition.HOSPITAL) ?
 					getMeshCapacity(transition, mesh, gender) : mesh.getHospitalCapacity();
 			res.add(capacity);
 		}
 		return res;
 	}
-	
+
 	protected List<Facility> getFacilities(ETransition transition, GMesh mesh){
 		if (transition == ETransition.HOSPITAL) {
 			return mesh.getHospitals();
@@ -279,7 +279,7 @@ public abstract class ActGenerator {
 		City city = japan.getCity(origin.getGcode());
 		ECity cityType = city.getType();
 		List<Double> params = mnlAcs.get(labor, cityType, transition);
-		
+
 		if (params == null) {
 			System.out.println(transition);
 		}
@@ -295,23 +295,23 @@ public abstract class ActGenerator {
 				double distance = Math.sqrt(dx*dx+dy*dy);
 				double prob = Math.exp(
 						params.get(0)*distance +
-						params.get(1)*(gender!=EGender.MALE?1:0) +
-						params.get(2)*(city.getId().equals(ecity.getId())?1:0) +
-						params.get(3)*(senior?1:0) +
-						params.get(4)*ecity.getArea() +
-						params.get(5)*ecity.getPopRatio()/1000 +
-						params.get(6)*ecity.getOfficeRatio()/1000);
+								params.get(1)*(gender!=EGender.MALE?1:0) +
+								params.get(2)*(city.getId().equals(ecity.getId())?1:0) +
+								params.get(3)*(senior?1:0) +
+								params.get(4)*ecity.getArea() +
+								params.get(5)*ecity.getPopRatio()/1000 +
+								params.get(6)*ecity.getOfficeRatio()/1000);
 				capcities.add(prob);
 				deno += prob;
 			}
 			for (int i = 0; i < capcities.size(); i++) {
 				capcities.set(i, capcities.get(i)/deno);
 			}
-			
+
 			int choice = Roulette.choice(capcities, getRandom());
 			dcity = cities.get(choice);
 		}
-		
+
 		// search a mesh
 		if (dcity != null) {
 			if (!city.getId().equals(dcity.getId())) {
@@ -324,16 +324,16 @@ public abstract class ActGenerator {
 		}
 		return null;
 	}
-	
-	
+
+
 	protected abstract Callable<Integer> createTask(Map<Integer, Integer> mapMotif, int id, List<HouseHold> households);
-	
-	
+
+
 	public int assign(List<HouseHold> household) {
 		// prepare thread processing
 		int numThreads = Runtime.getRuntime().availableProcessors();
 		System.out.println("NumOfThreads:" + numThreads);
-		
+
 		List<Callable<Integer> > listTasks = new ArrayList<>();
 		int listSize = household.size();
 		int taskNum =numThreads * 10;
@@ -345,7 +345,7 @@ public abstract class ActGenerator {
 			listTasks.add(createTask(mapMotif, i/stepSize, subList));
 		}
 		System.out.println("NumOfTasks:" + listTasks.size());
-		
+
 		// execute thread processing
 		ExecutorService es = Executors.newFixedThreadPool(numThreads);
 		try {
@@ -353,7 +353,7 @@ public abstract class ActGenerator {
 			es.shutdown();
 		} catch (Exception exp) {
 			exp.printStackTrace();
-		}		
+		}
 		return 0;
 	}
 }

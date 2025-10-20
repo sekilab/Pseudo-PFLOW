@@ -9,6 +9,7 @@ import java.util.concurrent.Callable;
 
 import jp.ac.ut.csis.pflow.routing4.res.Network;
 import jp.ac.ut.csis.pflow.routing4.res.Node;
+import org.opengis.referencing.FactoryException;
 import pseudo.acs.CensusODAccessor;
 import pseudo.acs.DataAccessor;
 import pseudo.acs.MNLParamAccessor;
@@ -267,7 +268,7 @@ public class Student extends ActGenerator {
 		return new ActivityTask(id, households, mapMotif);
 	}
 	
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException, FactoryException {
 		
 		Country japan = new Country();
 		
@@ -301,6 +302,12 @@ public class Student extends ActGenerator {
 		
 		String hospitalFile = String.format("%scity_hospital.csv", inputDir);
 		DataAccessor.loadHospitalData(hospitalFile, japan);
+
+		String restaurantFile = String.format("%scity_restaurant.csv", inputDir);
+		DataAccessor.loadRestaurantData(restaurantFile, japan);
+
+		String retailFile = String.format("%scity_retail.csv", inputDir);
+		DataAccessor.loadRetailData(retailFile, japan);
 				
 		String preschoolFile = String.format("%scity_pre_school.csv", inputDir);
 		DataAccessor.loadPreSchoolData(preschoolFile, japan);
@@ -339,8 +346,8 @@ public class Student extends ActGenerator {
 
 		String outputDir = String.format("%s/activity/", root);
 
-		int start = 1;
-		for (int i = start; i <= 47; i++) {
+		int start = 13;
+		for (int i = start; i <= 13; i++) {
 			// create directory
 			File prefDir = new File(outputDir, String.valueOf(i));
 			System.out.println("Start prefecture:" + i + prefDir.mkdirs());
