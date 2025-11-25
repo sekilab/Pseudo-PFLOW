@@ -37,18 +37,18 @@ public class Student extends ActGenerator {
 	private CensusODAccessor odAcs;
 	private SchoolRefAccessor schRefAcs;
 	private static final double SCHOOL_MAX_DISTANCE = 5000;
-	
+
 	public Student(Country japan,
 				   Map<EMarkov,Map<EGender,MkChainAccessor>> mrkAcsMap,
 				   MNLParamAccessor mnlAcs,
 				   CensusODAccessor odAcs,
 				   SchoolRefAccessor schRefAcs) {
 		super(japan, mnlAcs,mrkAcsMap);
-		
+
 		this.odAcs = odAcs;
 		this.schRefAcs = schRefAcs;
 	}
-	
+
 	private class ActivityTask implements Callable<Integer> {
 		private int id;
 		private List<HouseHold> households;
@@ -57,73 +57,73 @@ public class Student extends ActGenerator {
 		private int total;
 
 		public ActivityTask(int id, List<HouseHold> households,
-				Map<Integer, Integer> mapMotif){
+							Map<Integer, Integer> mapMotif){
 			this.id = id;
 			this.households = households;
 			this.mapMotif = mapMotif;
 			this.total = error = 0;
-		}	
-		
-		
+		}
+
+
 		private EMarkov getTypeMarkov(ELabor labor) {
 			switch (labor) {
-			case PRE_SCHOOL: 
-			case PRIMARY_SCHOOL: 
-			case SECONDARY_SCHOOL:
-				return EMarkov.STUDENT1;
-			case HIGH_SCHOOL:
-			case JUNIOR_COLLEGE:
-			case COLLEGE:
-			default:
+				case PRE_SCHOOL:
+				case PRIMARY_SCHOOL:
+				case SECONDARY_SCHOOL:
+					return EMarkov.STUDENT1;
+				case HIGH_SCHOOL:
+				case JUNIOR_COLLEGE:
+				case COLLEGE:
+				default:
 			}
 			return EMarkov.STUDENT2;
 		}
-		
+
 		private List<String> choiceCityWithSchools(ELabor labor, Set<String> names){
 			List<String> res = new ArrayList<>();
 			for (String e : names) {
 				City city = japan.getCity(e);
 				if (city != null) {
 					List<Facility> schools = city.getSchools(labor);
-					if (schools != null && schools.size() > 0) {
+					if (schools != null && !schools.isEmpty()) {
 						res.add(e);
 					}
 				}
 			}
 			return res;
 		}
-		
+
 		private ETransition freeTransitionFilter(ETransition transition) {
-			if (	transition != ETransition.STAY && 
-					transition != ETransition.HOME && 
-					transition != ETransition.SHOPPING &&  
-					transition != ETransition.EATING &&  
-					transition != ETransition.HOSPITAL &&  
+			if (	transition != ETransition.STAY &&
+					transition != ETransition.HOME &&
+					transition != ETransition.SHOPPING &&
+					transition != ETransition.EATING &&
+					transition != ETransition.HOSPITAL &&
 					transition != ETransition.FREE) {
 				transition = ETransition.FREE;
 			}
 			return transition;
 		}
-		
+
 		private GLonLat choiceSchool(GLonLat gloc, Person person) {
-			City city = japan.getCity(gloc.getGcode());	
+			City city = japan.getCity(gloc.getGcode());
 			ELabor labor = person.getLabor();
 			if (city != null) {
 				if (labor == ELabor.PRE_SCHOOL) {
 					List<Facility> schools = city.getSchools(labor);
-					if (schools != null && schools.size() > 0) {
+					if (schools != null && !schools.isEmpty()) {
 						int choice = (int)(getRandom()*schools.size());
 						return schools.get(choice);
 					}
-				
+
 				}else if (labor == ELabor.PRIMARY_SCHOOL) {
 					HouseHold household = person.getParent();
 					return (household.getPrimarySchool());
-				
+
 				}else if (labor == ELabor.SECONDARY_SCHOOL) {
 					HouseHold household = person.getParent();
 					return (household.getSecondarySchool());
-					
+
 				}else {
 					CensusOD censusOD = odAcs.get(EType.STUDENT, city.getId());
 					if (censusOD != null) {
@@ -131,14 +131,14 @@ public class Student extends ActGenerator {
 						Set<String> names = censusOD.getDestinationNames(gender);
 						List<String> selectedNames = choiceCityWithSchools(labor, names);
 						List<Double> capacities = censusOD.getCapacities(gender, selectedNames);
-						if (capacities.size() > 0) {
+						if (!capacities.isEmpty()) {
 							City dcity = null;
 							{
 								int choice = Roulette.choice(capacities, getRandom());
 								String cityName = selectedNames.get(choice);
 								dcity = japan.getCity(cityName);
 							}
-							if (dcity != null) {							
+							if (dcity != null) {
 								List<Facility> schools = dcity.getSchools(labor);
 								int choice = (int) (getRandom() * schools.size());
 								return schools.get(choice);
@@ -149,22 +149,22 @@ public class Student extends ActGenerator {
 			}
 			return null;
 		}
-			
+
 		private int createActivity(HouseHold household, Person person) {
 			GLonLat home = new GLonLat(household.getHome(), household.getGcode());
 			EGender fixedGender = EGender.MALE;	// Fixed value
 			EGender gender = person.getGender();
-			
+
 			// Markov Accessor
 			ELabor labor = person.getLabor();
 			EMarkov type = getTypeMarkov(labor);
 			MkChainAccessor mkAcs = mrkAcsMap.get(type).get(fixedGender);
-			
+
 			// first activity
 			EPurpose prePurpose = EPurpose.HOME;
 			Activity homeAct = new Activity(home, 0, 24*3600, EPurpose.HOME);
 			person.addAcitivity(homeAct);
-			
+
 			// second... activity
 			GLonLat curloc = home;
 			Activity preAct = homeAct;
@@ -176,34 +176,35 @@ public class Student extends ActGenerator {
 				int choice = Roulette.choice(probs, randomValue);
 				transition = mkAcs.getTransition(choice);
 				EPurpose purpose = transition.getPurpose();
-				
+
 				if (transition != ETransition.STAY) {
 					if (transition == ETransition.HOME) {
 						curloc = home;
 					}else if (transition == ETransition.SCHOOL) {
-						curloc = person.hasOffice() ? person.getOffice() : choiceSchool(curloc, person); 
+						curloc = person.hasOffice() ? person.getOffice() : choiceSchool(curloc, person);
 						person.setOffice(curloc);
 					}else {
 						transition = freeTransitionFilter(transition);
 						curloc = choiceFreeDestination(curloc, transition, true, gender, person.getLabor());
+						// curloc = choiceFreeDestination(curloc, transition, gender, MAX_SEARCH_DISTANCE);
 					}
-					
+
 					if (curloc == null) {
 						person.getActivities().clear();
 						person.addAcitivity(homeAct);
 						return 3;
 					}
-					
+
 					// Create an activity
 					preAct = Student.createActivity(preAct, curloc, i, 3600*24, purpose);
 					person.getActivities().add(preAct);
-					
+
 					prePurpose = purpose;
 				}
-			}					
+			}
 			return 0;
 		}
-		
+
 		private void process(HouseHold household) {
 			for (Person person : household.getListPersons()) {
 				int res = createActivity(household, person);
@@ -246,14 +247,14 @@ public class Student extends ActGenerator {
 				}
 			}
 		}
-		
+
 		@Override
 		public Integer call() throws Exception {
 			try {
 				for (HouseHold household : households) {
-					if (household.getListPersons().size() > 0) {
+					if (!household.getListPersons().isEmpty()) {
 						assignSchool(household);
-						process(household);		
+						process(household);
 					}
 				}
 			}catch(Exception e) {
@@ -263,7 +264,7 @@ public class Student extends ActGenerator {
 			return 0;
 		}
 	}
-		
+
 	protected Callable<Integer> createTask(Map<Integer, Integer> mapMotif, int id, List<HouseHold> households){
 		return new ActivityTask(id, households, mapMotif);
 	}
@@ -346,8 +347,8 @@ public class Student extends ActGenerator {
 
 		String outputDir = String.format("%s/activity/", root);
 
-		int start = 13;
-		for (int i = start; i <= 13; i++) {
+		int start = 1;
+		for (int i = start; i <= 47; i++) {
 			// create directory
 			File prefDir = new File(outputDir, String.valueOf(i));
 			System.out.println("Start prefecture:" + i + prefDir.mkdirs());

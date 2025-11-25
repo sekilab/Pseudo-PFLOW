@@ -38,6 +38,19 @@
         </repository>
     </repositories>
 
+    <dependencyManagement>
+        <dependencies>
+            <!-- 锁定 Jackson 全家桶到 2.17.1（databind/core/annotations 一致） -->
+            <dependency>
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>2.17.1</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
 
     <dependencies>
         <!-- 你的原有依赖 -->
@@ -86,20 +99,20 @@
             <artifactId>gt-shapefile</artifactId>
             <version>${geotools.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.geotools</groupId>
-            <artifactId>gt-swing</artifactId>
-            <version>${geotools.version}</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>org.geotools</groupId>-->
+<!--            <artifactId>gt-swing</artifactId>-->
+<!--            <version>${geotools.version}</version>-->
+<!--        </dependency>-->
 
 
         <!-- 与 GeoTools 26.x 对应的 JTS 包名（locationtech）；
              OTP 1.x 仍使用 com.vividsolutions.jts —— 两套包名并存没问题，但别互相传对象。 -->
-        <dependency>
-            <groupId>org.locationtech.jts</groupId>
-            <artifactId>jts-core</artifactId>
-            <version>1.18.2</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>org.locationtech.jts</groupId>-->
+<!--            <artifactId>jts-core</artifactId>-->
+<!--            <version>1.18.2</version>-->
+<!--        </dependency>-->
 
         <dependency>
             <groupId>commons-lang</groupId>
@@ -129,10 +142,18 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Jackson 由 BOM 统一为 2.17.1 -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.17.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
         </dependency>
 
         <dependency>
@@ -145,6 +166,20 @@
             <groupId>org.opentripplanner</groupId>
             <artifactId>otp</artifactId>
             <version>1.4.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-databind</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-annotations</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
 

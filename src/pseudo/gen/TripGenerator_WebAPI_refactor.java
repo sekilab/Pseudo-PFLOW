@@ -39,9 +39,10 @@ import pseudo.res.*;
 import javax.net.ssl.SSLContext;
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
+
+import static pseudo.gen.ActGenerator.routing;
+
 
 public class TripGenerator_WebAPI_refactor {
 
@@ -381,6 +382,8 @@ public class TripGenerator_WebAPI_refactor {
 			return String.format("%02d%02d", hours, minutes);
 		}
 
+		private boolean finite(double v) { return !Double.isNaN(v) && !Double.isInfinite(v); }
+
 		private int process(Person person) {
 			List<SPoint> points = new ArrayList<>();
 
@@ -420,6 +423,28 @@ public class TripGenerator_WebAPI_refactor {
 						Map<String, String> mixedparams = getStringStringMap(oll, dll, startTime);
 
 						JsonNode[] mixedResultsHolder = new JsonNode[1];
+
+//						FirstCallGate.ensureOnce(routing, () -> {
+//							try {
+//								routing.getRoute(drm, oll.getLon(), oll.getLat(), oll.getLon(), oll.getLat());
+//							} catch (Throwable ignore) {  }
+//						});
+//						FirstCallGate.await(routing);
+
+						double sLon = oll.getLon(), sLat = oll.getLat(), tLon = dll.getLon(), tLat = dll.getLat();
+
+						// 坐标脏值过滤
+						if (!finite(sLon) || !finite(sLat) || !finite(tLon) || !finite(tLat)) {
+							System.err.printf("[SKIP] bad coord person=%s from=%.6f,%.6f to=%.6f,%.6f%n",
+									person.getId(), sLon, sLat, tLon, tLat);
+							return -1;
+						}
+
+						// 双保险：如果启动时没预热到，这里再确保首调只发生一次
+						RouteWarmup.ensureOnce(() -> {
+							try { routing.getRoute(drm, sLon, sLat, sLon, sLat); } catch (Throwable ignore) {}
+						});
+						RouteWarmup.await();
 
 						Route route = routing.getRoute(drm,	oll.getLon(), oll.getLat(), dll.getLon(), dll.getLat());
 						nextMode = determineTransportMode(person, distance, route, mixedparams, mixedResultsHolder);
@@ -489,53 +514,107 @@ public class TripGenerator_WebAPI_refactor {
 			mixedparams.put("TransportCode", "3");
 			mixedparams.put("AppDate", "20240401");
 			mixedparams.put("AppTime", convertSecondsToHHMM(startTime));
+			mixedparams.put("MaxRoutes", "9");
+			mixedparams.put("MaxRadius", "1000");
 			return mixedparams;
 		}
 
 		@Override
-		public Integer call() throws Exception {
+		public Integer call() {
+			final String tn = Thread.currentThread().getName();
 			try {
-			for (Person p : listAgents) {
-				int res = process(p);
-				if (res < 0) {
-					this.error++;
+				System.out.printf("[TASK-START] %s size=%d%n", tn, listAgents.size());
+				for (Person p : listAgents) {
+					int res = process(p);
+					if (res < 0) this.error++;
+					this.total++;
 				}
-				this.total++;
-			}
-			}catch(Exception e) {
+				System.out.printf("[TASK-DONE] %s err=%d total=%d%n", tn, error, total);
+				return 0;
+			} catch (Throwable e) {
+				System.err.printf("[TASK-FAIL] %s err=%d total=%d%n", tn, error, total);
 				e.printStackTrace();
+				throw e; // 关键：抛出去，让上面的 Future.get() 感知
 			}
-			// System.out.printf("[%d]-%d-%d%n",id, error, total);
-			return 0;
 		}
 	}
-	
+
 	public void generate(List<Person> agents) {
-		// prepare thread processing
+		// === 预热：单线程触发内部 STRtree 的第一次 build（避免并发首调）===
+		try {
+			// 用一条“零成本”的微型路线触发（起终点相同即可）
+			RouteWarmup.ensureOnce(() -> {
+				// 选一个能保证进到 routing 的坐标；这里为了示意直接拿第一个 agent
+				Person p0 = agents.isEmpty() ? null : agents.get(0);
+				if (p0 != null) {
+					// 按你实际方式取坐标
+					double lon = /* 起点经度 */ 139.0;
+					double lat = /* 起点纬度 */ 35.0;
+					Route route = routing.getRoute(drm, lon, lat, lon, lat);
+				}
+			});
+		} catch (Throwable t) {
+			System.err.println("[WARMUP] failed"); t.printStackTrace();
+		}
+
+		// === 线程池 ===
 		int numThreads = Runtime.getRuntime().availableProcessors();
 		System.out.println("NumOfThreads:" + numThreads);
-		
-		List<Callable<Integer> > listTasks = new ArrayList<>();
+
+		List<Callable<Integer>> listTasks = new ArrayList<>();
 		int listSize = agents.size();
-		int taskNum = numThreads;
+		int taskNum  = numThreads;
 		int stepSize = listSize / taskNum + (listSize % taskNum != 0 ? 1 : 0);
-		for (int i = 0; i < listSize; i+= stepSize){
-			int end = i + stepSize;
-			end = Math.min(listSize, end);
+		for (int i = 0; i < listSize; i += stepSize) {
+			int end = Math.min(listSize, i + stepSize);
 			List<Person> subList = agents.subList(i, end);
-			listTasks.add(new TripTask(i, subList));
+			listTasks.add(new TripTask(i, subList)); // i 作为 taskId
 		}
 		System.out.println("NumOfTasks:" + listTasks.size());
-		
-		// execute thread processing
-		ExecutorService es = Executors.newFixedThreadPool(numThreads);
+
+		ExecutorService es = Executors.newFixedThreadPool(numThreads, r -> {
+			Thread t = new Thread(r, "pflow-worker");
+			t.setDaemon(false);
+			t.setUncaughtExceptionHandler((th, e) -> {
+				System.err.println("[UNCAUGHT] " + th.getName()); e.printStackTrace();
+			});
+			return t;
+		});
+
+		List<Future<Integer>> futures = null;
 		try {
-			es.invokeAll(listTasks);
+			// invokeAll 会等待任务结束，但不会打印任务内部异常；需要后续 get()
+			futures = es.invokeAll(listTasks);
+		} catch (InterruptedException ie) {
+			Thread.currentThread().interrupt();
+			ie.printStackTrace();
+		} finally {
 			es.shutdown();
-		} catch (Exception exp) {
-			exp.printStackTrace();
-		}		
+			try {
+				if (!es.awaitTermination(10, java.util.concurrent.TimeUnit.MINUTES)) {
+					System.err.println("[WARN] tasks not finished in time, forcing shutdownNow()");
+					es.shutdownNow();
+				}
+			} catch (InterruptedException ie) {
+				Thread.currentThread().interrupt();
+			}
+		}
+
+		// 把任务内部抛出的异常真正拿出来（非常关键）
+		if (futures != null) {
+			for (Future<Integer> f : futures) {
+				try { f.get(); }
+				catch (ExecutionException ee) {
+					System.err.println("[TASK-ERROR]");
+					ee.getCause().printStackTrace();
+				}
+				catch (InterruptedException ie) {
+					Thread.currentThread().interrupt();
+				}
+			}
+		}
 	}
+
 
 	private static JsonNode getMixedRoute(CloseableHttpClient httpClient, String sessionid, Map<String, String> params) {
 		HttpPost mixedRoutePost = new HttpPost(prop.getProperty("api.getMixedRouteURL"));
@@ -582,28 +661,6 @@ public class TripGenerator_WebAPI_refactor {
         }
 	}
 
-	private static JsonNode getRoadRoute(CloseableHttpClient httpClient, String sessionid, Map<String, String> params) throws Exception {
-		HttpPost roadRoutePost = new HttpPost(prop.getProperty("api.getRoadRouteURL"));
-
-		List<NameValuePair> roadRouteParams = new ArrayList<>();
-		for (Map.Entry<String, String> entry : params.entrySet()) {
-			roadRouteParams.add(new BasicNameValuePair(entry.getKey(), entry.getValue()));
-		}
-
-		roadRoutePost.setEntity(new UrlEncodedFormEntity(roadRouteParams));
-		roadRoutePost.setHeader("Cookie", "WebApiSessionID=" + sessionid);
-
-		HttpResponse roadRouteResponse = executePostRequest(httpClient, roadRoutePost);
-		ObjectMapper mapper = new ObjectMapper();
-
-		if (roadRouteResponse.getStatusLine().getStatusCode() == 200) {
-			String roadRouteResponseBody = EntityUtils.toString(roadRouteResponse.getEntity());
-			return mapper.readTree(roadRouteResponseBody);
-		} else {
-			System.out.println("Failed to get road route: " + roadRouteResponse.getStatusLine().getStatusCode());
-			return mapper.readTree("");
-		}
-	}
 	private static Properties prop;
 	private static void loadProperties() throws Exception {
 		InputStream inputStream = Commuter.class.getClassLoader().getResourceAsStream("config.properties");
@@ -615,6 +672,10 @@ public class TripGenerator_WebAPI_refactor {
 	}
 
 	public static void main(String[] args) throws Exception {
+		Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
+			System.err.println("[UNCAUGHT] thread=" + t.getName());
+			e.printStackTrace();
+		});
 
 		String inputDir;
 		String root;
@@ -647,7 +708,7 @@ public class TripGenerator_WebAPI_refactor {
 
 		ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
 
-				16
+				12
 				// 0, 16, 31, 32, 39, 36, 18, 41, 1, 40, 46,
 				// 13,
 				// 11,
@@ -674,16 +735,16 @@ public class TripGenerator_WebAPI_refactor {
 			Double carRatio = Double.parseDouble(prop.getProperty("car." + i));
 			Double bikeRatio = Double.parseDouble(prop.getProperty("bike." + i));
 
-			File actDir = new File(String.format("%s/activity_merge3/", root), String.valueOf(i));
+			File actDir = new File(String.format("%s/activity_v2_test/", root), String.valueOf(i));
 			for(File file: Objects.requireNonNull(actDir.listFiles())){
 				if (file.getName().contains(".csv")) {
 					String tripFileName = outputDir + "trip/" + i + "/trip_" + file.getName().substring(9,14) + ".csv";
 					String trajectoryFileName = outputDir + "trajectory/" + i + "/trajectory_" + file.getName().substring(9,14) + ".csv";
 
 					// Check if the files already exist
-					if (new File(tripFileName).exists() || new File(trajectoryFileName).exists()) {
-						continue; // Skip to the next iteration
-					}
+//					if (new File(tripFileName).exists() || new File(trajectoryFileName).exists()) {
+//						continue; // Skip to the next iteration
+//					}
 
 					long starttime = System.currentTimeMillis();
 					TripGenerator_WebAPI_refactor worker = new TripGenerator_WebAPI_refactor(japan, road);

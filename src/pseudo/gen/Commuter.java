@@ -3,9 +3,9 @@ package pseudo.gen;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.Callable;
-import org.opengis.referencing.FactoryException;
 
 import jp.ac.ut.csis.pflow.routing4.res.Network;
+import org.opengis.referencing.FactoryException;
 import pseudo.acs.CensusODAccessor;
 import pseudo.acs.DataAccessor;
 import pseudo.acs.MNLParamAccessor;
@@ -29,7 +29,7 @@ import utils.Roulette;
 public class Commuter extends ActGenerator {
 
 	private final CensusODAccessor odAcs;
-	
+
 	public Commuter(Country japan,
 					Map<EMarkov,Map<EGender,MkChainAccessor>> mrkAcsMap,
 					MNLParamAccessor mnlAcs,
@@ -37,7 +37,7 @@ public class Commuter extends ActGenerator {
 		super(japan, mnlAcs, mrkAcsMap);
 		this.odAcs = odAcs;
 	}
-	
+
 	private class ActivityTask implements Callable<Integer> {
 		private final int id;
 		private final List<HouseHold> households;
@@ -46,20 +46,20 @@ public class Commuter extends ActGenerator {
 		private int total;
 
 		public ActivityTask(int id, List<HouseHold> households,
-				Map<Integer, Integer> mapMotif){
+							Map<Integer, Integer> mapMotif){
 			this.id = id;
 			this.households = households;
 			this.mapMotif = mapMotif;
 			this.total = error = 0;
-		}	
-		
+		}
+
 		private GLonLat choiceOffice(GLonLat home, EGender gender) {
 			City city = japan.getCity(home.getGcode());
 			CensusOD censusOD = odAcs.get(EType.COMMUTER, city.getId());
 			if (censusOD != null) {
 				List<Double> capacities = censusOD.getCapacities(gender);
 				if (!capacities.isEmpty()) {
-					int choice = Roulette.choice(capacities, getRandom());	
+					int choice = Roulette.choice(capacities, getRandom());
 					boolean isHome = censusOD.isHome(choice);
 					if (isHome) {
 						return home;
@@ -68,9 +68,9 @@ public class Commuter extends ActGenerator {
 						City dcity = japan.getCity(cityName);
 						if (dcity != null) {
 							if (!city.getId().equals(dcity.getId())) {
-								return choiceDestination(dcity, ETransition.OFFICE, gender);
+								return choiceByFacilityCapacity(dcity, ETransition.OFFICE, gender);
 							}else {
-								return choiceDestination2(home, dcity, ETransition.OFFICE, gender);
+								return choiceByDistanceWeightedCapacity(home, dcity, ETransition.OFFICE, gender);
 							}
 						}
 					}
@@ -80,31 +80,31 @@ public class Commuter extends ActGenerator {
 		}
 
 		private ETransition freeTransitionFilter(ETransition transition) {
-			if (	transition != ETransition.STAY && 
-					transition != ETransition.HOME && 
-					transition != ETransition.SHOPPING &&  
-					transition != ETransition.EATING &&  
-					transition != ETransition.HOSPITAL &&  
-					transition != ETransition.FREE && 
+			if (	transition != ETransition.STAY &&
+					transition != ETransition.HOME &&
+					transition != ETransition.SHOPPING &&
+					transition != ETransition.EATING &&
+					transition != ETransition.HOSPITAL &&
+					transition != ETransition.FREE &&
 					transition != ETransition.BUSINESS) {
 				transition = ETransition.FREE;
 			}
 			return transition;
 		}
-		
+
 		private int createActivities(HouseHold household, Person person) {
 			GLonLat home = new GLonLat(household.getHome(), household.getGcode());
 			EGender gender = person.getGender();
-		
+
 			// Markov Accessor
 			MkChainAccessor mkAcs = mrkAcsMap.get(EMarkov.LABOR).get(gender);
 			boolean senior = person.getAge() >= 65;
-			
+
 			// first activity
 			EPurpose prePurpose = EPurpose.HOME;
 			Activity homeAct = new Activity(home, 0, 24*3600, EPurpose.HOME);
 			person.addAcitivity(homeAct);
-			
+
 			// second... activity
 			GLonLat curloc = home;
 			Activity preAct = homeAct;
@@ -115,37 +115,40 @@ public class Commuter extends ActGenerator {
 				double randomValue = getRandom();
 				int choice = Roulette.choice(probs, randomValue);
 				transition = mkAcs.getTransition(choice);
-				
+
 				EPurpose purpose = transition.getPurpose();
-				
+
 				if (transition != ETransition.STAY) {
 					// choice destination
 					if (transition == ETransition.HOME) {
 						curloc = home;
 					}else if (transition == ETransition.OFFICE) {
-						curloc = person.hasOffice() ? person.getOffice() : choiceOffice(home, gender); 
+						curloc = person.hasOffice() ? person.getOffice() : choiceOffice(home, gender);
 						person.setOffice(curloc);
 					}else {
 						transition = freeTransitionFilter(transition);
 						curloc = choiceFreeDestination(curloc, transition, senior, gender, person.getLabor());
+						//choiceFreeDestination(curloc, transition, gender, MAX_SEARCH_DISTANCE);
 					}
 					if (curloc == null) {
 						person.getActivities().clear();
 						person.addAcitivity(homeAct);
 						return 3;
 					}
-					
+
 					// Create an activity
 					preAct = Commuter.createActivity(preAct, curloc, i, 3600*24, purpose);
 					person.getActivities().add(preAct);
-					
+
 					prePurpose = purpose;
 				}
 			}
-
+//			if(person.getActivities().size()==1){
+//				System.out.println("===================================================");
+//			}
 			return 0;
 		}
-		
+
 		private void process(HouseHold household) {
 			for (Person person : household.getListPersons()) {
 				int res = createActivities(household, person);
@@ -166,7 +169,7 @@ public class Commuter extends ActGenerator {
 		public Integer call() throws Exception {
 			try {
 				for (HouseHold household : households) {
-					process(household);		
+					process(household);
 				}
 			}catch(Exception e) {
 				e.printStackTrace();
@@ -175,7 +178,7 @@ public class Commuter extends ActGenerator {
 			return 0;
 		}
 	}
-	
+
 	protected Callable<Integer> createTask(Map<Integer, Integer> mapMotif, int id, List<HouseHold> households){
 		return new ActivityTask(id, households, mapMotif);
 	}
@@ -240,8 +243,8 @@ public class Commuter extends ActGenerator {
         String outputDir = String.format("%s/activity/", root);
 
         long starttime = System.currentTimeMillis();
-        int start = 13;
-        for (int i = start; i <= 13; i++) {
+        int start = 1;
+        for (int i = start; i <= 47; i++) {
 
 			// load markov chains
 			Map<EMarkov, Map<EGender, MkChainAccessor>> mrkMap = new HashMap<>();

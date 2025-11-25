@@ -3,12 +3,15 @@ package network;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.util.ArrayList;
 import java.util.List;
 
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.LineString;
-import com.vividsolutions.jts.geom.MultiLineString;
-import com.vividsolutions.jts.io.WKTReader;
+import jp.ac.ut.csis.pflow.geom2.LonLat;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.MultiLineString;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.io.WKTReader;
 
 import jp.ac.ut.csis.pflow.geom2.GeometryUtils;
 import jp.ac.ut.csis.pflow.geom2.ILonLat;
@@ -17,6 +20,19 @@ import jp.ac.ut.csis.pflow.routing4.res.Network;
 import jp.ac.ut.csis.pflow.routing4.res.Node;
 
 public class RailLoader {
+
+	public static List<ILonLat> createPointList(LineString linestring) {
+		int size = linestring.getNumPoints();
+		List<ILonLat> points = new ArrayList(size);
+
+		for(int i = 0; i < size; ++i) {
+			Point point = linestring.getPointN(i);
+			points.add(new LonLat(point.getX(), point.getY()));
+		}
+
+		return points;
+	}
+
 	public static Network load(String filepath) {
 		File file = new File(filepath);
 		Network network = new Network();	
@@ -46,7 +62,7 @@ public class RailLoader {
 			Node node1 = network.hasNode(source) ? network.getNode(source) : new Node(source,x0,y0);
 			Node node2 = network.hasNode(target) ? network.getNode(target) : new Node(target,x1,y1);
 			
-			List<ILonLat> listPoints = GeometryUtils.createPointList(line);			
+			List<ILonLat> listPoints = createPointList(line);
 			Link link = new Link(gid, node1, node2, length, length, length, false, listPoints);
 
 			network.addLink(link);

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="pflowlib">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/pflowlib.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

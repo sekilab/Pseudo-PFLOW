@@ -4,10 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.Callable;
 
 import jp.ac.ut.csis.pflow.routing4.res.Network;
@@ -44,7 +41,7 @@ public class NonCommuter extends ActGenerator {
 		private int total;
 
 		public ActivityTask(int id, List<HouseHold> households,
-				Map<Integer, Integer> mapMotif){
+							Map<Integer, Integer> mapMotif){
 			this.id = id;
 			this.households = households;
 			this.mapMotif = mapMotif;
@@ -95,6 +92,8 @@ public class NonCommuter extends ActGenerator {
 					// choose a destination
 					curloc = transition!=ETransition.HOME ?
 							choiceFreeDestination(curloc, transition, senior, gender, person.getLabor()) : home;
+					//choiceFreeDestination(curloc, transition, gender, MAX_SEARCH_DISTANCE) : home;
+					//choiceByDistanceWeightedCapacity(curloc, null, transition, gender) : home;
 					if (curloc == null) {
 						person.getActivities().clear();
 						person.addAcitivity(homeAct);
@@ -145,6 +144,7 @@ public class NonCommuter extends ActGenerator {
 	protected Callable<Integer> createTask(Map<Integer, Integer> mapMotif, int id, List<HouseHold> households){
 		return new ActivityTask(id, households, mapMotif);
 	}
+
 
 	public static void main(String[] args) throws IOException, FactoryException {
 
@@ -203,8 +203,8 @@ public class NonCommuter extends ActGenerator {
 		String outputDir = String.format("%s/activity/", root);
 
 		long starttime = System.currentTimeMillis();
-		int start = 13;
-		for (int i = start; i <= 13; i++) {
+		int start = 12;
+		for (int i = start; i <= 12; i++) {
 			// create directory
 			File prefDir = new File(outputDir, String.valueOf(i));
 			System.out.println("Start prefecture:" + i + prefDir.mkdirs());

@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 
-import com.vividsolutions.jts.geom.LineString;
+import org.locationtech.jts.geom.LineString;
 
 import jp.ac.ut.csis.pflow.geom2.DistanceUtils;
 import jp.ac.ut.csis.pflow.geom2.GeometryUtils;
@@ -32,7 +32,7 @@ import jp.ac.ut.csis.pflow.routing4.res.Route;
 
 public class Generator {
 	private static final int TIME_INTERVAL = 10;
-	
+
 	private static int getAtNearestPoint(List<ILonLat> points, ILonLat lonlat) {
 		double maxDistance = Double.MAX_VALUE;
 		int at = -1;
@@ -164,29 +164,29 @@ public class Generator {
 	}
 	
 	@SuppressWarnings("unused")
-	private static void write2(File file, Map<String, Result> results) {
-		try{
-			BufferedWriter bw = new BufferedWriter(new FileWriter(file));
-			int id = 0;
-			for (Map.Entry<String, Result> e : results.entrySet()) {
-				id++;
-				Trip trip = e.getValue().getTrip();
-				List<Link> listLinks = e.getValue().getListLinks();
-				for (Link link : listLinks) {
-					LineString line = GeometryUtils.createLineString(link.getLineString());
-					String wkt = GeometryUtils.createWKTString(line);
-					bw.write(String.format("%s\t%s\t%s\t%s", 
-							id, link.getLinkID(),
-							trip.getTripId(),wkt));
-					bw.newLine();
-				}
-			}
-			bw.close();
-		}
-		catch(Exception e) {
-			e.printStackTrace();
-		}
-	}	
+//	private static void write2(File file, Map<String, Result> results) {
+//		try{
+//			BufferedWriter bw = new BufferedWriter(new FileWriter(file));
+//			int id = 0;
+//			for (Map.Entry<String, Result> e : results.entrySet()) {
+//				id++;
+//				Trip trip = e.getValue().getTrip();
+//				List<Link> listLinks = e.getValue().getListLinks();
+//				for (Link link : listLinks) {
+//					LineString line = GeometryUtils.createLineString(link.getLineString());
+//					String wkt = GeometryUtils.createWKTString(line);
+//					bw.write(String.format("%s\t%s\t%s\t%s",
+//							id, link.getLinkID(),
+//							trip.getTripId(),wkt));
+//					bw.newLine();
+//				}
+//			}
+//			bw.close();
+//		}
+//		catch(Exception e) {
+//			e.printStackTrace();
+//		}
+//	}
 	
 	public static void main(String[] args) {
 		TimeZone.setDefault(TimeZone.getTimeZone("UTC"));

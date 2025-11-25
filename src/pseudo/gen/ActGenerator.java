@@ -1,46 +1,31 @@
 package pseudo.gen;
 
 import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.*;
 
 import jp.ac.ut.csis.pflow.geom.DistanceUtils;
 import jp.ac.ut.csis.pflow.geom2.ILonLat;
 import jp.ac.ut.csis.pflow.routing4.logic.Dijkstra;
 import pseudo.acs.MNLParamAccessor;
 import pseudo.acs.MkChainAccessor;
-import pseudo.res.Activity;
-import pseudo.res.City;
-import pseudo.res.ECity;
-import pseudo.res.EGender;
-import pseudo.res.ELabor;
-import pseudo.res.EMarkov;
-import pseudo.res.EPurpose;
-import pseudo.res.ETransition;
-import pseudo.res.Facility;
-import pseudo.res.Country;
-import pseudo.res.GLonLat;
-import pseudo.res.HouseHold;
-import pseudo.res.GMesh;
-import pseudo.res.Person;
+import pseudo.res.*;
 import pt.MotifAnalyzer;
 import utils.Roulette;
 
+
 public abstract class ActGenerator {
-	public Map<Integer, Integer> mapMotif = new HashMap<>();
+
 	protected Country japan;
 	protected MNLParamAccessor mnlAcs;
 	protected Map<EMarkov,Map<EGender,MkChainAccessor>> mrkAcsMap;
 
 	protected static final Dijkstra routing = new Dijkstra();
 
-	protected static final long TRAIN_SERVICE_START_TIME = 5 * 3600;
+	// protected static final long TRAIN_SERVICE_START_TIME = 5 * 3600;
 	protected static final int timeInterval = 15 * 60;
+	protected static final int MAX_SEARCH_DISTANCE = 20000;
 
-	protected static final int MAX_SEARCH_DISTANDE = 20000;
+	public Map<Integer, Integer> mapMotif = new HashMap<>();
 
 
 	public ActGenerator(Country japan,
@@ -62,30 +47,27 @@ public abstract class ActGenerator {
 	protected static Activity createActivity(Activity preActivity,
 											 GLonLat dest, int startTime, int endTime, EPurpose purpose) {
 
-		// Pre activity
-		long preDuration = startTime - preActivity.getStartTime();
-		preActivity.setDuration(preDuration);
-
-		// Next activity
-		int duration = endTime - startTime;
-		Activity res = new Activity(dest,startTime, duration, purpose);
-		return res;
+		preActivity.setDuration(startTime - preActivity.getStartTime());
+		return new Activity(dest, startTime, endTime - startTime, purpose);
 	}
 
 	protected int setMotif(Person person) {
 		List<Activity> acts  = person.getActivities();
-		if (acts.size() > 0) {
+		if (!acts.isEmpty()) {
 			List<Integer> list = new ArrayList<>();
 			int counter = 100;
 			for (Activity a : acts) {
 				EPurpose purpose = a.getPurpose();
-				int loc = 0;
-				if (purpose == EPurpose.HOME ||
-						purpose == EPurpose.OFFICE ||
-						purpose == EPurpose.SCHOOL) {
-					loc = purpose.getId();
-				}else {
-					loc = counter++;
+				int loc;
+				switch (purpose){
+					case HOME:
+					case OFFICE:
+					case SCHOOL:
+						loc = purpose.getId();
+						break;
+					default:
+						loc = counter++;
+						break;
 				}
 				list.add(loc);
 			}
@@ -95,26 +77,22 @@ public abstract class ActGenerator {
 		return -1;
 	}
 
-	//
 	protected double getMeshCapacity(ETransition transition, GMesh mesh, EGender gender) {
 		List<Double> values = mesh.getEconomics();
-		if (values.size() > 0) {
-			switch (transition) {
-				case OFFICE:
-					return gender!=EGender.FEMALE ? mesh.getEconomics(14) : mesh.getEconomics(15);
-				case SHOPPING:
-					return mesh.getEconomics(4);
-				case EATING:
-					return mesh.getEconomics(new int[]{8,9});
-				case FREE:
-					return mesh.getEconomics(new int[]{5,7,10,12});
-				case BUSINESS:
-					return mesh.getEconomics(0);
-				default:
-					return mesh.getEconomics(0);
-			}
-		}else {
-			return 0;
+		if (values.isEmpty()) return 0;
+
+		switch (transition) {
+			case OFFICE:
+				return gender != EGender.FEMALE ? mesh.getEconomics(14) : mesh.getEconomics(15);
+			case SHOPPING:
+				return mesh.getEconomics(4);
+			case EATING:
+				return mesh.getEconomics(new int[]{8, 9});
+			case FREE:
+				return mesh.getEconomics(new int[]{5, 7, 10, 12});
+			case BUSINESS:
+			default:
+				return mesh.getEconomics(0);
 		}
 	}
 
@@ -128,151 +106,147 @@ public abstract class ActGenerator {
 		return res;
 	}
 
-	protected List<Facility> getFacilities(ETransition transition, GMesh mesh){
-		if (transition == ETransition.HOSPITAL) {
-			return mesh.getHospitals();
-		}else if(transition==ETransition.SHOPPING){
-			return mesh.getRetails();
-		}else if(transition==ETransition.EATING){
-			return mesh.getRestaurants();
-		}else {
-			return mesh.getFacilities();
+	protected double getMeshAttraction(ETransition transition, GMesh mesh, EGender gender) {
+
+		switch (transition) {
+			case OFFICE:
+				return 1.0;
+			case SHOPPING:
+				return 2.0;
+			case EATING:
+				return 3.0;
+			case FREE:
+				return 4.0;
+			case BUSINESS:
+			default:
+				return 5.0;
 		}
 	}
 
-	protected GLonLat choiceDestination(City city, ETransition transition, EGender gender) {
-		List<GMesh> meshes = city.getMeshes();
-		List<Double> meshCapacities = getMeshCapacity(transition, meshes, gender);
-
-		Set<Integer> excludedMeshes = new HashSet<>();
-
-		while (excludedMeshes.size() < meshes.size()) {
-			List<Double> filteredCapacities = new ArrayList<>();
-			List<GMesh> filteredMeshes = new ArrayList<>();
-
-			for (int i = 0; i < meshes.size(); i++) {
-				if (!excludedMeshes.contains(i)) {
-					filteredCapacities.add(meshCapacities.get(i));
-					filteredMeshes.add(meshes.get(i));
-				}
-			}
-
-			if (filteredMeshes.isEmpty()) {
-				System.out.println("No valid meshes available.");
-				return null;
-			}
-
-			int choice = Roulette.choice(filteredCapacities, getRandom());
-			GMesh mesh = filteredMeshes.get(choice);
-
-			if (mesh != null) {
-				List<Facility> facilities = getFacilities(transition, mesh);
-				if (!facilities.isEmpty()) {
-					List<Double> facilityCapacities = new ArrayList<>();
-					for (Facility f : facilities) {
-						facilityCapacities.add(f.getCapacity());
-					}
-					int facilityChoice = Roulette.choice(facilityCapacities, getRandom());
-					Facility fac = facilities.get(facilityChoice);
-					return new GLonLat(fac, city.getId());
-				} else {
-					excludedMeshes.add(meshes.indexOf(mesh));
-					System.out.println("No facilities found in mesh: " + mesh.getId() + ". Excluding...");
-				}
-			} else {
-				System.out.println("Mesh selection returned null. Retrying...");
-			}
-		}
-
+	protected List<Double> getMeshAttraction(ETransition transition, List<GMesh> meshes, EGender gender) {
+		List<Double> res = new ArrayList<>();
 		for (GMesh mesh : meshes) {
-			List<Facility> allFacilities = mesh.getFacilities();
-			if (!allFacilities.isEmpty()) {
-				System.out.println("Fallback: Selecting from all facilities in mesh: " + mesh.getId());
-				List<Double> facilityCapacities = new ArrayList<>();
-				for (Facility f : allFacilities) {
-					facilityCapacities.add(f.getCapacity());
+			double capacity = (transition != ETransition.HOSPITAL) ?
+					getMeshAttraction(transition, mesh, gender) : mesh.getHospitalCapacity();
+			res.add(capacity);
+		}
+		return res;
+	}
+
+	protected List<Facility> getFacilities(ETransition transition, GMesh mesh) {
+		switch (transition) {
+			case HOSPITAL:
+				return mesh.getHospitals();
+			case SHOPPING:
+				return mesh.getRetails();
+			case EATING:
+				return mesh.getRestaurants();
+			default:
+				return mesh.getFacilities();
+		}
+	}
+
+	/**
+	 * Choose a destination based solely on facility capacity, without considering distance.
+	 * This is typically used for leisure or general-purpose activity destination selection.
+	 */
+	protected GLonLat choiceByFacilityCapacity(City city, ETransition transition, EGender gender) {
+		List<GMesh> meshes = city.getMeshes();
+		GMesh mesh = null;
+		{
+			List<Double> capacities = getMeshCapacity(transition, meshes, gender);
+			int choice = Roulette.choice(capacities, getRandom());
+			mesh = meshes.get(choice);
+		}
+		// Search a poi
+		if (mesh != null) {
+			List<Facility> facilities = getFacilities(transition, mesh);
+			List<Double> capacities = new ArrayList<>();
+			if (!facilities.isEmpty()) {
+				for (Facility f : facilities) {
+					capacities.add(f.getCapacity());
 				}
-				int facilityChoice = Roulette.choice(facilityCapacities, getRandom());
-				Facility fac = allFacilities.get(facilityChoice);
+				// capacities = softmax(capacities, 1000);
+				int choice = Roulette.choice(capacities, getRandom());
+				Facility fac = facilities.get(choice);
 				return new GLonLat(fac, city.getId());
 			}
 		}
-
-		System.out.println("Fallback failed: No facilities found in any mesh.");
 		return null;
 	}
 
+	protected double getBeta(ETransition transition, EGender gender) {
+		double beta = 2.0;
+		// trip purpose
+		switch (transition) {
+			case OFFICE: {
 
-	// Only for commute
-	protected GLonLat choiceDestination2(GLonLat origin, City city, ETransition transition, EGender gender) {
+			}
+			case SHOPPING: {
+				beta = 1.4;
+			}
+			case EATING: {
+				beta = 1.4;
+			}
+			case FREE: {
+				beta = 1.4;
+			};
+			case BUSINESS:{
+				beta= 1.2;
+			}
+			default: {
+			}
+		}
+		// agent attribute
+		{}
+
+		return beta;
+	}
+
+
+
+	// Only for workplace choice, need to improve
+	protected GLonLat choiceByDistanceWeightedCapacity(GLonLat origin, City city, ETransition transition, EGender gender) {
 		List<GMesh> meshes = city.getMeshes();
-		List<Double> capacities = getMeshCapacity(transition, meshes, gender);
-		Set<Integer> excludedMeshes = new HashSet<>(); // Record indices of meshes without facilities
-
-		while (excludedMeshes.size() < meshes.size()) {
-			// Calculate probabilities dynamically, excluding checked meshes
+		GMesh mesh = null;
+		double beta = getBeta(transition, gender);
+		{
 			List<Double> probs = new ArrayList<>();
-			List<GMesh> filteredMeshes = new ArrayList<>();
+			// todo: redefine attraction
+			// ListDouble attractions = getMeshAttraction(transition, meshes, gender);
+			List<Double> capacities = getMeshCapacity(transition, meshes, gender);
+			List<Double> distances = new ArrayList<>();
 			for (int i = 0; i < meshes.size(); i++) {
-				if (!excludedMeshes.contains(i)) {
-					GMesh tmesh = meshes.get(i);
-					ILonLat center = tmesh.getCenter();
-					double distance = DistanceUtils.distance(
-							origin.getLon(), origin.getLat(), center.getLon(), center.getLat());
-					probs.add(capacities.get(i) / Math.pow(distance, 2));
-					filteredMeshes.add(tmesh);
-				}
+				GMesh tmesh = meshes.get(i);
+				double capacity = Math.log(1+capacities.get(i));
+				ILonLat center = tmesh.getCenter();
+				// todo: add time cost
+				// double timeCost = getTravelTime(origin, destination)
+				double distance = DistanceUtils.distance(
+						origin.getLon(), origin.getLat(), center.getLon(), center.getLat()) / 1000;
+				probs.add(capacity/Math.pow(distance, beta));
+				// probs.add(attraction/Math.pow(timeCost, beta));
+				distances.add(distance);
 			}
-
-			if (filteredMeshes.isEmpty()) {
-				System.out.println("No valid meshes available.");
-				return null; // Exit if all meshes have been excluded
-			}
-
-			// Select a mesh based on the computed probabilities
+			//probs = softmax(probs, 1000);
 			int choice = Roulette.choice(probs, getRandom());
-			GMesh mesh = filteredMeshes.get(choice);
-
-			// Search for facilities in the selected mesh
-			if (mesh != null) {
-				List<Facility> facilities = getFacilities(transition, mesh);
-				if (!facilities.isEmpty()) {
-					// If facilities are found, select one and return its location
-					List<Double> facilityCapacities = new ArrayList<>();
-					for (Facility f : facilities) {
-						facilityCapacities.add(f.getCapacity());
-					}
-					int facilityChoice = Roulette.choice(facilityCapacities, getRandom());
-					Facility fac = facilities.get(facilityChoice);
-					return new GLonLat(fac, city.getId());
-				} else {
-					// Exclude this mesh and retry
-					excludedMeshes.add(meshes.indexOf(mesh));
-					System.out.println("No facilities found in mesh: " + mesh.getId() + ". Excluding...");
-				}
-			} else {
-				System.out.println("Mesh selection returned null. Retrying...");
-			}
+			mesh = meshes.get(choice);
 		}
-
-		for (GMesh mesh : meshes) {
-			List<Facility> allFacilities = mesh.getFacilities();
-			if (!allFacilities.isEmpty()) {
-				System.out.println("Fallback: Selecting from all facilities in mesh: " + mesh.getId());
-				List<Double> facilityCapacities = new ArrayList<>();
-				for (Facility f : allFacilities) {
-					facilityCapacities.add(f.getCapacity());
+		// Search a poi
+		if (mesh != null) {
+			List<Facility> facilities = getFacilities(transition, mesh);
+			List<Double> capacities = new ArrayList<>();
+			if (!facilities.isEmpty()) {
+				for (Facility f : facilities) {
+					capacities.add(f.getCapacity());
 				}
-				int facilityChoice = Roulette.choice(facilityCapacities, getRandom());
-				Facility fac = allFacilities.get(facilityChoice);
+				int choice = Roulette.choice(capacities, getRandom());
+				Facility fac = facilities.get(choice);
 				return new GLonLat(fac, city.getId());
 			}
 		}
-
-		System.out.println("Fallback failed: No facilities found in any mesh.");
 		return null;
 	}
-
 
 	protected GLonLat choiceFreeDestination(GLonLat origin, ETransition transition, boolean senior, EGender gender, ELabor labor) {
 		// search mnl parameters
@@ -282,17 +256,19 @@ public abstract class ActGenerator {
 
 		if (params == null) {
 			System.out.println(transition);
+			params = Arrays.asList(400.0, -5.42892492, -0.462596172, -0.413510686, -0.378755683, 0.00926181900, 0.0178483885, 0.359163473);
 		}
 		// search a city
 		City dcity = null;
-		List<City> cities = japan.searchCities(MAX_SEARCH_DISTANDE, city);
+		List<City> cities = japan.searchCities(MAX_SEARCH_DISTANCE, city);
 		{
-			List<Double> capcities = new ArrayList<>();
+			List<Double> capacities = new ArrayList<>();
 			double deno = 0;
 			for (City ecity : cities) {
 				double dx = ecity.getLon() - city.getLon();
 				double dy = ecity.getLat() - city.getLat();
 				double distance = Math.sqrt(dx*dx+dy*dy);
+				//assert params != null;
 				double prob = Math.exp(
 						params.get(0)*distance +
 								params.get(1)*(gender!=EGender.MALE?1:0) +
@@ -301,28 +277,81 @@ public abstract class ActGenerator {
 								params.get(4)*ecity.getArea() +
 								params.get(5)*ecity.getPopRatio()/1000 +
 								params.get(6)*ecity.getOfficeRatio()/1000);
-				capcities.add(prob);
+				capacities.add(prob);
 				deno += prob;
 			}
-			for (int i = 0; i < capcities.size(); i++) {
-				capcities.set(i, capcities.get(i)/deno);
+			for (int i = 0; i < capacities.size(); i++) {
+				capacities.set(i, capacities.get(i)/deno);
 			}
+			// get the target city
+			// capacities = softmax(capacities, 1000);
 
-			int choice = Roulette.choice(capcities, getRandom());
+			int choice = Roulette.choice(capacities, getRandom());
 			dcity = cities.get(choice);
 		}
 
 		// search a mesh
 		if (dcity != null) {
 			if (!city.getId().equals(dcity.getId())) {
-				return choiceDestination(dcity, transition, gender);
+				return choiceByFacilityCapacity(dcity, transition, gender);
 			}else {
-				return choiceDestination2(origin, dcity, transition, gender);
+				return choiceByDistanceWeightedCapacity(origin, dcity, transition, gender);
 			}
-		}else{
-			System.out.println(cities);
 		}
 		return null;
+	}
+
+	protected GLonLat choiceFreeDestination(GLonLat origin,
+											ETransition transition,
+											EGender gender,
+											Integer threshold) {
+		City city = japan.getCity(origin.getGcode());
+
+		List<City> cities = japan.searchCities(threshold, city);
+		List<GMesh> meshes = new ArrayList<>();
+
+		for (City ecity : cities) {
+			meshes.addAll(ecity.getMeshes());
+		}
+		GMesh mesh = null;
+		double beta = getBeta(transition, gender);
+		{
+			List<Double> probs = new ArrayList<>();
+			// todo: redefine attraction
+			// ListDouble attractions = getMeshAttraction(transition, meshes, gender);
+			List<Double> capacities = getMeshCapacity(transition, meshes, gender);
+			List<Double> distances = new ArrayList<>();
+			for (int i = 0; i < meshes.size(); i++) {
+				GMesh tmesh = meshes.get(i);
+				double capacity = Math.log(capacities.get(i)+1);
+				ILonLat center = tmesh.getCenter();
+				// todo: add time cost
+				// double timeCost = getTravelTime(origin, destination)
+				double distance = DistanceUtils.distance(
+						origin.getLon(), origin.getLat(), center.getLon(), center.getLat()) / 1000;
+				probs.add(capacity/Math.pow(distance, beta));
+				// probs.add(attraction/Math.pow(timeCost, beta));
+				distances.add(distance);
+			}
+			// probs = softmax(probs, 100);
+			int choice = Roulette.choice(probs, getRandom());
+			mesh = meshes.get(choice);
+		}
+		// Search a poi
+		if (mesh != null) {
+			List<Facility> facilities = getFacilities(transition, mesh);
+			List<Double> capacities = new ArrayList<>();
+			if (!facilities.isEmpty()) {
+				for (Facility f : facilities) {
+					capacities.add(f.getCapacity());
+				}
+				int choice = Roulette.choice(capacities, getRandom());
+				Facility fac = facilities.get(choice);
+				return new GLonLat(fac, city.getId());
+			}
+		}
+		return null;
+
 	}
 
 

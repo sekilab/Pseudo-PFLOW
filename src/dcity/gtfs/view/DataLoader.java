@@ -10,17 +10,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.LineString;
-import com.vividsolutions.jts.geom.MultiLineString;
-import com.vividsolutions.jts.geom.Point;
-import com.vividsolutions.jts.io.WKTReader;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.MultiLineString;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.io.WKTReader;
 
 import jp.ac.ut.csis.pflow.geom2.GeometryUtils;
 import jp.ac.ut.csis.pflow.geom2.ILonLat;
 import jp.ac.ut.csis.pflow.routing4.res.Link;
 import jp.ac.ut.csis.pflow.routing4.res.Network;
 import jp.ac.ut.csis.pflow.routing4.res.Node;
+
+import static network.DrmLoader.createPointList;
 
 public class DataLoader {
 	
@@ -149,7 +151,7 @@ public class DataLoader {
 				Node node1 = network.hasNode(source) ? network.getNode(source) : new Node(source,p1.getX(),p1.getY());
 				Node node2 = network.hasNode(target) ? network.getNode(target) : new Node(target,p2.getX(),p2.getY());
 				
-				List<ILonLat> listPoints = GeometryUtils.createPointList(line);
+				List<ILonLat> listPoints = createPointList(line);
 				
 				Link link = new Link(gid, node1, node2, length, length, length, false, listPoints);
 				network.addLink(link);

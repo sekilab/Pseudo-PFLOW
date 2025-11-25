@@ -3,22 +3,36 @@ package network;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.LineString;
-import com.vividsolutions.jts.geom.MultiLineString;
-import com.vividsolutions.jts.geom.Point;
-import com.vividsolutions.jts.io.WKTReader;
+import jp.ac.ut.csis.pflow.geom2.LonLat;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.MultiLineString;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.io.WKTReader;
 
-import jp.ac.ut.csis.pflow.geom2.GeometryUtils;
 import jp.ac.ut.csis.pflow.geom2.ILonLat;
 import jp.ac.ut.csis.pflow.routing4.res.DrmLink;
 import jp.ac.ut.csis.pflow.routing4.res.Network;
 import jp.ac.ut.csis.pflow.routing4.res.Node;
 
 public class DrmLoader {
+
+	public static List<ILonLat> createPointList(LineString linestring) {
+		int size = linestring.getNumPoints();
+		List<ILonLat> points = new ArrayList(size);
+
+		for(int i = 0; i < size; ++i) {
+			Point point = linestring.getPointN(i);
+			points.add(new LonLat(point.getX(), point.getY()));
+		}
+
+		return points;
+	}
+
 	public static Network load(String filepath) {
 		File file = new File(filepath);
 		Network network = new Network();	
@@ -53,7 +67,7 @@ public class DrmLoader {
 			Point p0 = line.getStartPoint();
 			Point p1 = line.getEndPoint(); 
 			Node  n0,n1;
-			List<ILonLat> list = GeometryUtils.createPointList(line); 
+			List<ILonLat> list = createPointList(line);
 			if( DrmLink.isOnewayAndReverse(regcd) ) {
 				n0 = network.hasNode(tgt) ? network.getNode(tgt) : new Node(tgt,p1.getX(),p1.getY());
 				n1 = network.hasNode(src) ? network.getNode(src) : new Node(src,p0.getX(),p0.getY());
