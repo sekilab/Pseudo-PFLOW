@@ -3,9 +3,12 @@ package test;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Map;
+import java.util.Properties;
 import java.util.TreeMap;
 
 import javax.imageio.ImageIO;
@@ -15,10 +18,19 @@ import com.google.common.io.Files;
 
 public class test {
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		System.out.println(System.currentTimeMillis());
-		String inputDir = "C:/Users/kashiyama/Desktop/skymonitor/datasets/gen2/";
-		String outputDir = "C:/Users/kashiyama/Desktop/skymonitor/datasets/gen1/";
+
+		// Load configuration from config.properties
+		InputStream inputStream = test.class.getClassLoader().getResourceAsStream("config.properties");
+		if (inputStream == null) {
+			throw new FileNotFoundException("config.properties file not found in the classpath");
+		}
+		Properties prop = new Properties();
+		prop.load(inputStream);
+
+		String inputDir = prop.getProperty("legacy.skymonitor.gen2");
+		String outputDir = prop.getProperty("legacy.skymonitor.gen1");
 		
 		File[] files = new File(inputDir).listFiles(new FileFilterExtension());
 		try {

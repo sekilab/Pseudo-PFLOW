@@ -3,9 +3,12 @@ package pt;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.InputStream;
 import java.util.Map;
+import java.util.Properties;
 import java.util.TreeMap;
 
 
@@ -55,11 +58,18 @@ public class OutingAnalyzer {
 		return 0;
 	}
 
-	public static void main(String[] args) {
-	
+	public static void main(String[] args) throws Exception {
+		// Load configuration from config.properties
+		InputStream inputStream = OutingAnalyzer.class.getClassLoader().getResourceAsStream("config.properties");
+		if (inputStream == null) {
+			throw new FileNotFoundException("config.properties file not found in the classpath");
+		}
+		Properties prop = new Properties();
+		prop.load(inputStream);
+
 		// pid, tripno, purpose, magfac
-		String inputDir = "C:/Users/kashiyama/Desktop/input/";
-		String outputDir = "C:/Users/kashiyama/Desktop/output/";
+		String inputDir = prop.getProperty("legacy.input.dir");
+		String outputDir = prop.getProperty("legacy.output.dir");
 		for (File file : new File(inputDir).listFiles()) {
 			String name = file.getName().replaceAll(".csv", "");
 			File out = new File(outputDir,String.format("%s_outing.csv", name));

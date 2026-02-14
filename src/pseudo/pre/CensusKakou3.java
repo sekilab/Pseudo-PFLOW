@@ -4,8 +4,11 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.Properties;
 
 public class CensusKakou3{
 
@@ -26,9 +29,18 @@ public class CensusKakou3{
 		}
 	}
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
+		// Load configuration from config.properties
+		InputStream inputStream = CensusKakou3.class.getClassLoader().getResourceAsStream("config.properties");
+		if (inputStream == null) {
+			throw new FileNotFoundException("config.properties file not found in the classpath");
+		}
+		Properties prop = new Properties();
+		prop.load(inputStream);
+
 		System.out.println("start");
-		File[] files = new File("C:/Users/kashiyama/Desktop/stat/statdata/500/").listFiles();
+		String censusData500 = prop.getProperty("legacy.census.data.500");
+		File[] files = new File(censusData500).listFiles();
 		int count=0;
 		for (File file : files) {
 			File outFile = new File(file.getParent(), String.format("aa%02d.csv", count++));
