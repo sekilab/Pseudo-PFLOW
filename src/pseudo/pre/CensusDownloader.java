@@ -8,10 +8,11 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.URL;
+import java.util.Properties;
 
 public class CensusDownloader {
 
-	  public static void download(String path, int i ) {
+	  public static void download(String path, int i, String outputDir) {
 	    try {
 	      URL url = new URL(path);
 	      HttpURLConnection conn =
@@ -41,7 +42,7 @@ public class CensusDownloader {
 	      System.out.println(i);
 	      
           InputStream inputStream = conn.getInputStream();
-          String saveFilePath = String.format("C:/Users/kashiyama/Desktop/stat/statdata/国勢調査27人口500/%d.zip", i);
+          String saveFilePath = String.format("%s%d.zip", outputDir, i);
          
           // opens an output stream to save into file
           FileOutputStream outputStream = new FileOutputStream(saveFilePath);
@@ -71,7 +72,16 @@ public class CensusDownloader {
 	  }
 	  
 	  
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
+		// Load configuration from config.properties
+		InputStream configStream = CensusDownloader.class.getClassLoader().getResourceAsStream("config.properties");
+		if (configStream == null) {
+			throw new FileNotFoundException("config.properties file not found in the classpath");
+		}
+		Properties prop = new Properties();
+		prop.load(configStream);
+
+		String censusDownloadDir = prop.getProperty("legacy.census.download.dir");
 		
 //			String[] paths = {
 //					"https://www.e-stat.go.jp/gis/statmap-search/data?dlserveyId=A002005212015&code=01&coordSys=1&format=shape&downloadType=5&datum=2000",
@@ -304,9 +314,9 @@ public class CensusDownloader {
 				"https://www.e-stat.go.jp/gis/statmap-search/data?statsId=T000847&code=3036&downloadType=2"};		
 
 
-	
+
 		for (int i = 0; i < paths.length; i++) {
-			download(paths[i], i);
+			download(paths[i], i, censusDownloadDir);
 		}
 		System.out.println("end");
 		

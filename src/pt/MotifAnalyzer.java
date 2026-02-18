@@ -3,12 +3,15 @@ package pt;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 
 public class MotifAnalyzer {
@@ -155,10 +158,17 @@ public class MotifAnalyzer {
 		return 0;
 	}
 
-	public static void main(String[] args) {
-	
+	public static void main(String[] args) throws Exception {
+		// Load configuration from config.properties
+		InputStream inputStream = MotifAnalyzer.class.getClassLoader().getResourceAsStream("config.properties");
+		if (inputStream == null) {
+			throw new FileNotFoundException("config.properties file not found in the classpath");
+		}
+		Properties prop = new Properties();
+		prop.load(inputStream);
+
 		// pid, tripno, purpose, magfac
-		String inputDir = "C:/Users/kashiyama/Desktop/input/";
+		String inputDir = prop.getProperty("legacy.input.dir");
 		for (File file : new File(inputDir).listFiles()) {
 			String name = file.getName().replaceAll(".csv", "");
 			File out = new File(file.getParent(),String.format("%s_motif.csv", name));

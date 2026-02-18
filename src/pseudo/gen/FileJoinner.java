@@ -3,10 +3,13 @@ package pseudo.gen;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -50,10 +53,18 @@ public class FileJoinner {
 		}
 	}
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
+		// Load configuration from config.properties
+		InputStream inputStream = FileJoinner.class.getClassLoader().getResourceAsStream("config.properties");
+		if (inputStream == null) {
+			throw new FileNotFoundException("config.properties file not found in the classpath");
+		}
+		Properties prop = new Properties();
+		prop.load(inputStream);
+
 		//process(args[0],args[1]);
-		String a = "C:/Users/kashiyama/Desktop/stat/person/trip/"; 
-		String b = "C:/Users/kashiyama/Desktop/input/"; 
+		String a = prop.getProperty("legacy.person.trip.dir");
+		String b = prop.getProperty("legacy.input.dir");
 		process(a, b);
 		System.out.println("end");
 	}	

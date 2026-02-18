@@ -3,12 +3,15 @@ package pseudo.pre;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Random;
 
 import jp.ac.ut.csis.pflow.geom2.ILonLat;
@@ -210,8 +213,16 @@ public class PersonGenerator{
         }
 	}
 	
-	public static void main(String[] args) {
-		String root = "C:/Users/kashiyama/Desktop/stat/";
+	public static void main(String[] args) throws Exception {
+		// Load configuration from config.properties
+		InputStream inputStream = PersonGenerator.class.getClassLoader().getResourceAsStream("config.properties");
+		if (inputStream == null) {
+			throw new FileNotFoundException("config.properties file not found in the classpath");
+		}
+		Properties prop = new Properties();
+		prop.load(inputStream);
+
+		String root = prop.getProperty("legacy.stat.root");
 		
 		// load data
 		String laborFile = String.format("%spre_labor_rate.csv", root);
