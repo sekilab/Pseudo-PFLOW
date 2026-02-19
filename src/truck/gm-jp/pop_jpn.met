@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<MD_Metadata xmlns="http://www.iscgm.org/spec/2.0/GMMP_MetadataSchema" xmlns:gmmp="http://www.iscgm.org/spec/2.0/GMMP_MetadataSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.iscgm.org/spec/2.0/GMMP_MetadataSchema gmmp.xsd">
+
+  <fileIdentifier>gm_pop_jpn_v2</fileIdentifier>
+
+  <language>en</language>
+
+  <characterSet>004</characterSet>
+
+  <contact>
+    <organisationName>Geospatial Information Authority of Japan</organisationName>
+    <contactInfo>
+      <phone>
+        <voice>+81 29 864 6910</voice>
+        <facsimile>+81 29 864 6923</facsimile>
+      </phone>
+      <address>
+        <deliveryPoint>Kitasato 1</deliveryPoint>
+        <city>Tsukuba</city>
+        <administrativeArea>Ibaraki</administrativeArea>
+        <postalCode>305-0811</postalCode>
+        <country>Japan</country>
+        <electronicMailAddress>chikyuchizu@gsi.go.jp</electronicMailAddress>
+      </address>
+      <onlineResource>
+        <linkage>http://www.gsi.go.jp/ENGLISH/index.html</linkage>
+      </onlineResource>
+    </contactInfo>
+    <role>007</role>
+  </contact>
+
+  <dateStamp>2010-04-27</dateStamp>
+
+  <metadataStandardName>Global Map Metadata Profile</metadataStandardName>
+
+  <metadataStandardVersion>2.0</metadataStandardVersion>
+
+  <referenceSystemInfo>
+    <MD_CRS>
+      <projection>
+        <code>Geographic</code>
+      </projection>
+      <ellipsoid>
+        <code>GRS80</code>
+      </ellipsoid>
+      <datum>
+        <code>ITRF94</code>
+      </datum>
+    </MD_CRS>
+  </referenceSystemInfo>
+
+  <identificationInfo>
+    <MD_DataIdentification>
+      <citation>
+        <title>Global Map Japan - Population Center layer</title>
+        <date>
+          <date>2011-03-31</date>
+          <dateType>001</dateType>
+        </date>
+        <edition>Version 2.0</edition>
+      </citation>
+      <abstract>Global Map Japan -Population Center is one of the layers of Global Map Japan. It includes the data such as built-up area.</abstract>
+      <purpose>The Global Map is a basic framework database designed to support Geographic Information Systems applications, especially for examination of global environmental issues.</purpose>
+      <credit>Geospatial Information Authority of Japan</credit>
+      <pointOfContact>
+        <organisationName>Geospatial Information Authority of Japan</organisationName>
+        <contactInfo>
+          <phone>
+            <voice>+81 29 864 6910</voice>
+            <facsimile>+81 29 864 6923</facsimile>
+          </phone>
+          <address>
+            <deliveryPoint>Kitasato 1</deliveryPoint>
+            <city>Tsukuba</city>
+            <administrativeArea>Ibaraki</administrativeArea>
+            <postalCode>305-0811</postalCode>
+            <country>Japan</country>
+            <electronicMailAddress>chikyuchizu@gsi.go.jp</electronicMailAddress>
+          </address>
+          <onlineResource>
+            <linkage>http://www.gsi.go.jp/ENGLISH/index.html</linkage>
+          </onlineResource>
+        </contactInfo>
+        <role>006</role>
+      </pointOfContact>
+      <pointOfContact>
+        <organisationName>Geospatial Information Authority of Japan</organisationName>
+        <contactInfo>
+          <phone>
+            <voice>+81 29 864 6910</voice>
+            <facsimile>+81 29 864 6923</facsimile>
+          </phone>
+          <address>
+            <deliveryPoint>Kitasato 1</deliveryPoint>
+            <city>Tsukuba</city>
+            <administrativeArea>Ibaraki</administrativeArea>
+            <postalCode>305-0811</postalCode>
+            <country>Japan</country>
+            <electronicMailAddress>chikyuchizu@gsi.go.jp</electronicMailAddress>
+          </address>
+          <onlineResource>
+            <linkage>http://www.gsi.go.jp/ENGLISH/index.html</linkage>
+          </onlineResource>
+        </contactInfo>
+        <role>010</role>
+      </pointOfContact>
+      <resourceConstraints>
+        <MD_LegalConstraints>
+          <useLimitation>Due to the data of one to one million scales, Global Map is suitable for determining the status of the comparatively extensive area. </useLimitation>
+          <useConstraints>001</useConstraints>
+          <otherConstraints>Global Map Japan is subject to copyright law of Japan and copyright protection by an international treaty. Application procedure is required in using the product, except for non-commercial purpose and use in small quantity. Acknowledgement of written sources and report of utilization in an appropriate manner is necessary in using the product. (In case of use in small quantity, acknowledgement of written sources is necessary, but report of utilization is not required.)</otherConstraints>
+        </MD_LegalConstraints>
+      </resourceConstraints>
+      <spatialRepresentationType>001</spatialRepresentationType>
+      <spatialResolution>
+        <equivalentScale>
+          <denominator>1000000</denominator>
+        </equivalentScale>
+      </spatialResolution>
+      <language>en</language>
+      <characterSet>004</characterSet>
+      <topicCategory>013</topicCategory>
+      <topicCategory>016</topicCategory>
+      <extent>
+        <description></description>
+        <geographicElement>
+          <EX_GeographicBoundingBox>
+            <westBoundLongitude>122.000000</westBoundLongitude>
+            <eastBoundLongitude>154.000000</eastBoundLongitude>
+            <southBoundLatitude>20.000000</southBoundLatitude>
+            <northBoundLatitude>46.000000</northBoundLatitude>
+          </EX_GeographicBoundingBox>
+        </geographicElement>
+      </extent>
+    </MD_DataIdentification>
+  </identificationInfo>
+
+  <distributionInfo>
+    <MD_Distribution>
+      <distributionFormat>
+        <MD_Format>
+          <name>Shape file</name>
+          <version>2.0</version>
+        </MD_Format>
+      </distributionFormat>
+      <transferOptions>
+        <MD_DigitalTransferOptions>
+          <onLine>
+            <linkage> http://www.gsi.go.jp/ENGLISH/index.html</linkage>
+          </onLine>
+          
+        </MD_DigitalTransferOptions>
+      </transferOptions>
+    </MD_Distribution>
+  </distributionInfo>
+
+  <dataQualityInfo>
+    <DQ_DataQuality>
+      <scope>
+        <level>005</level>
+      </scope>
+      <lineage>
+        <LI_Lineage>
+          <statement>The Global Map Japan version 1.0 Population center layer was developed using the 1:1,000,000 International Map series. The Global Map Japan version 1.1 Population center layer was developed to update the data of version 1.0 using the 1:500,000 District Map series and the 1:1,000,000 International Map series. The Global Map Japan version 2.0 Population center layer, which is corresponding to the merger of municipalities as of April 1, 2010, was developed to update the Global Map Japan version 1.1. (Because the built-up area data of the Global Map Japan is corresponding to the location of each municipality.)</statement>
+        </LI_Lineage>
+      </lineage>
+    </DQ_DataQuality>
+  </dataQualityInfo>
+
+
+</MD_Metadata>
