@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+	<kml xmlns="http://earth.google.com/kml/2.1">
+	  <Document>
+	    <Name>JAXA_HRLULC_Japan_v25.04_100m.kml</Name>
+	    <Description></Description>
+	    <Style>
+	      <ListStyle id="hideChildren">
+	        <listItemType>checkHideChildren</listItemType>
+	      </ListStyle>
+	    </Style>
+	    <NetworkLink>
+	      <name>LULC</name>
+	      <Link>
+	        <href>http://www.eorc.jaxa.jp/ALOS/lulc/kml/v2504_2024/bgimage.kml?v2504_2024</href>
+	        <viewRefreshMode>onRegion</viewRefreshMode>
+	        <viewFormat/>
+	      </Link>
+	    </NetworkLink>
+
+// Added for Location mark		
+		<NetworkLink>
+	      <name>TileLocation</name>
+	      <Region>
+	        <Lod>
+	          <minLodPixels>128</minLodPixels>
+	          <maxLodPixels>-1</maxLodPixels>
+	        <LatLonAltBox>
+	          <north>66.51326044311185</north>
+	          <south>0.00000000000000</south>
+	          <east>180.00000000000000</east>
+	          <west>89.99999999999999</west>
+	        </LatLonAltBox>			  
+	        </Lod>
+	      </Region>
+	      <Link>
+	        <href>http://www.eorc.jaxa.jp/ALOS/lulc/kml/v2504_2024/TileLocation_100m.kml?v2504_2024</href>
+	        <viewRefreshMode>onRegion</viewRefreshMode>
+	        <viewFormat/>
+	      </Link>
+	    </NetworkLink>
+
+<LookAt>
+  <longitude>138</longitude>
+  <latitude>35</latitude>
+  <altitude>0</altitude>
+  <range>2900000</range>
+  <altitudeMode>clampToGround</altitudeMode>
+</LookAt>
+
+		  </Document>
+	</kml>
+	

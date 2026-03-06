@@ -3,8 +3,10 @@ package pt;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -12,6 +14,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import pseudo.res.EPurpose;
 import pseudo.res.ETransition;
@@ -259,7 +262,7 @@ public class MarkovAnalyzer {
 //			 )
 //		to 'C:\Users\kashiyama\Desktop\input\tky2008_trip_14-14.csv' WITH CSV
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 	
 		String[] names = {
 //				"tky2008_trip_01-10_labor_male",
@@ -273,12 +276,23 @@ public class MarkovAnalyzer {
 				"test"
 		};
 		
+		// Load configuration from config.properties
+		InputStream inputStream = MarkovAnalyzer.class.getClassLoader().getResourceAsStream("config.properties");
+		if (inputStream == null) {
+			throw new FileNotFoundException("config.properties file not found in the classpath");
+		}
+		Properties prop = new Properties();
+		prop.load(inputStream);
+
+		String markovTripDir = prop.getProperty("legacy.markov.trip.dir");
+		String markovOutputDir = prop.getProperty("legacy.markov.output.dir");
+
 		for (String name : names) {
 			System.out.println(name);
-			
-			String tripFilename = String.format("C:/Users/kashiyama/Desktop/stat/markov/trip/%s.csv", name);
-			//File trjFile1 = new File(String.format("C:/Users/kashiyama/Desktop/stat/markov/%s_time.csv", name));
-			File trjFile2 = new File(String.format("C:/Users/kashiyama/Desktop/stat/markov/%s_prob.csv", name));
+
+			String tripFilename = String.format("%s%s.csv", markovTripDir, name);
+			//File trjFile1 = new File(String.format("%s%s_time.csv", markovOutputDir, name));
+			File trjFile2 = new File(String.format("%s%s_prob.csv", markovOutputDir, name));
 			try(
 					//BufferedWriter bw1 = new BufferedWriter(new FileWriter(trjFile1));
 					BufferedWriter bw2 = new BufferedWriter(new FileWriter(trjFile2));){

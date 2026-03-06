@@ -273,6 +273,7 @@ public class Commuter extends ActGenerator {
             System.out.println("Start prefecture:" + i + prefDir.mkdirs());
             File householdDir = new File(String.format("%s/agent/", root), String.valueOf(i));
             // String householdDir = String.format("%s/agent/", root);
+            // System.out.println("Start prefecture:" + householdDir.mkdirs()); // new code then
 
             for (File file : householdDir.listFiles()) {
                 if (file.getName().contains(".csv")) {

@@ -3,11 +3,14 @@ package pt;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -211,10 +214,19 @@ public class TripGenerator {
 		return 0;
 	}
 		
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
+		// Load configuration from config.properties
+		InputStream inputStream = TripGenerator.class.getClassLoader().getResourceAsStream("config.properties");
+		if (inputStream == null) {
+			throw new FileNotFoundException("config.properties file not found in the classpath");
+		}
+		Properties prop = new Properties();
+		prop.load(inputStream);
+
 		String code = "shizuoka";
-		File dir = new File(String.format("C:/Users/kashiyama/Desktop/stat/statdata/都市圏PT/%s/p-csv/", code));
-		String outputDir = String.format("C:/Users/kashiyama/Desktop/stat/statdata/都市圏PT/%s/", code);
+		String ptDataDir = prop.getProperty("legacy.pt.data.dir");
+		File dir = new File(String.format("%s%s/p-csv/", ptDataDir, code));
+		String outputDir = String.format("%s%s/", ptDataDir, code);
 		
 		subtripFlag = true;
 		

@@ -1,0 +1,11 @@
+commodity,weight_constraint_prob
+agricultural_food,0.40
+publications,0.55
+daily_necessities,0.20
+light_industrial,0.35
+forestry_mineral,0.55
+metal_products,0.45
+machinery,0.32
+ceramic_chemical,0.45
+special_products,0.45
+mixed_load,0.20

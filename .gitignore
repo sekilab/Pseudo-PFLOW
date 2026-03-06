@@ -1,55 +1,87 @@
-# IntelliJ IDEA project files
+# =============================================
+#  Pseudo-PFLOW .gitignore
+# =============================================
+
+# ----- Java build artifacts -----
+bin/
+target/
+out/
+build/
+*.class
+
+# ----- JARs (use Maven for dependencies) -----
+*.jar
+!lib/pflowlib.jar
+
+# ----- IDE / Editor -----
 .idea/
 *.iml
+.vscode/
+.classpath
+.project
+.settings/
+.classpath.txt
+.factorypath
+*.sublime-*
 
-# Java build artifacts (except for lib/)
-*.class
-*.jar
-!lib/*.jar
+# ----- Claude Code local settings -----
+.claude/
 
-# Log files
+# ----- Maven wrapper (optional, regenerable) -----
+.mvn/
+
+# ----- Log files -----
 *.log
 hs_err_pid*
 replay_pid*
 
-# Build output directories
-target/
-out/
-build/
+# ----- OS files -----
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# Temporary files
+# ----- Temp / backup files -----
 *.tmp
 *.swp
 *.bak
 *.orig
 *.rej
+*.backup
 
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints/
+# ----- Large binary data files -----
+*.bin
+*.dat
+*.raster
 
-# Visual Studio Code
-.vscode/
-
-# macOS system files
-.DS_Store
-
-# Windows system files
-Thumbs.db
-desktop.ini
-
-# Python cache (if scripts are used)
-__pycache__/
-*.py[cod]
-
-# Compressed files
+# ----- Compressed / archive files -----
 *.zip
 *.tar
 *.tar.gz
 *.rar
+*.7z
 
-# Intermediate or large data files (optional)
-*.csv
-*.json
-*.tsv
-*.xlsx
+# ----- Simulation output (large, regenerable) -----
+data/output/
+
+# ----- Jupyter / Python -----
+.ipynb_checkpoints/
+__pycache__/
+*.py[cod]
+
+# ----- Generated docs -----
 *.pdf
+*.xlsx
+
+# ----- Local run scripts (contain hardcoded machine paths) -----
+run_truck.bat
+run_taxi.bat
+run_traj.bat
+run_with_java21.bat
+test_traj.bat
+compile_traj.bat
+
+# ----- Config test variants (local experiments) -----
+*.properties.test_*
+
+# ----- Stray JARs at project root -----
+osmpbf-*.jar

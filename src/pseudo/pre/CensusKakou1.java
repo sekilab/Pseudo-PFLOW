@@ -4,11 +4,14 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 public class CensusKakou1{
 
@@ -81,9 +84,17 @@ public class CensusKakou1{
 		return res;
 	}
 	
-	private void process1() {
-		String root = "C:/Users/kashiyama/Desktop/stat/";
-		String dir =  String.format("%sstatdata/国勢調査27ー通勤/", root); 
+	private void process1() throws Exception {
+		// Load configuration from config.properties
+		InputStream inputStream = CensusKakou1.class.getClassLoader().getResourceAsStream("config.properties");
+		if (inputStream == null) {
+			throw new FileNotFoundException("config.properties file not found in the classpath");
+		}
+		Properties prop = new Properties();
+		prop.load(inputStream);
+
+		String root = prop.getProperty("legacy.stat.root");
+		String dir =  String.format("%sstatdata/国勢調査27ー通勤/", root);
 		String outfile =  String.format("%scity_census_od.csv", root); 
 		
 		try (BufferedWriter bw = new BufferedWriter(new FileWriter(outfile))){
@@ -117,7 +128,7 @@ public class CensusKakou1{
 		}
 	}
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 		System.out.println("start");
 		(new CensusKakou1()).process1();
 		System.out.println("end");

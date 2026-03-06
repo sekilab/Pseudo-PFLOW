@@ -3,8 +3,11 @@ package pseudo.aggr;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.InputStream;
+import java.util.Properties;
 
 public class Sampling {
 
@@ -58,9 +61,17 @@ public class Sampling {
 		}
 	}
 	
-	public static void main(String[] args) {
-		String input = "C:/Users/kashiyama/Desktop/input/";
-		String output = "C:/Users/kashiyama/Desktop/trj12.csv";
+	public static void main(String[] args) throws Exception {
+		// Load configuration from config.properties
+		InputStream inputStream = Sampling.class.getClassLoader().getResourceAsStream("config.properties");
+		if (inputStream == null) {
+			throw new FileNotFoundException("config.properties file not found in the classpath");
+		}
+		Properties prop = new Properties();
+		prop.load(inputStream);
+
+		String input = prop.getProperty("legacy.input.dir");
+		String output = prop.getProperty("legacy.sampling.output");
 		File[] files = (new File(input)).listFiles();
 		try(BufferedWriter bw = new BufferedWriter(new FileWriter(output));){
 			for (File file : files) {

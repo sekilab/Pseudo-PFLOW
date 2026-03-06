@@ -1,0 +1,46 @@
+poi_id,name,lon,lat,zone_id,facility_type,capacity_level
+IS096,Saitama Precision Manufacturing,139.6000,35.8800,MFS27,INDUSTRIAL,medium
+IS097,Koshigaya Industrial Park,139.7800,35.8800,MFS27,INDUSTRIAL,medium
+IS098,Kasukabe Electronics Zone,139.7400,35.9600,MFS30,INDUSTRIAL,medium
+IS099,Ageo Manufacturing District,139.5800,35.9700,MFS30,INDUSTRIAL,low
+IS100,Sayama Automotive Parts,139.4100,35.8500,MFS29,INDUSTRIAL,medium
+IS101,Iruma Precision Works,139.3800,35.8300,MFS09,INDUSTRIAL,low
+IS102,Tokorozawa Tech Park,139.4600,35.7900,MFS09,INDUSTRIAL,medium
+IS103,Hanno Textile Mills,139.3100,35.8500,MFS29,INDUSTRIAL,low
+IS104,Chichibu Cement Works,139.0800,35.9900,MFS60,INDUSTRIAL,medium
+IS105,Kumagaya Industrial Zone,139.3800,36.1400,MFS59,INDUSTRIAL,medium
+IS106,Fukaya Manufacturing Park,139.2800,36.1900,MFS59,INDUSTRIAL,medium
+IS107,Honjo Industrial Complex,139.1900,36.2400,MFS59,INDUSTRIAL,low
+IS108,Chiba Makuhari Tech Park,140.0200,35.6400,MFS43,INDUSTRIAL,high
+IS109,Kashiwa R&D Center,139.9600,35.8500,MFS43,INDUSTRIAL,medium
+IS110,Matsudo Electronics,139.8900,35.7800,MFS43,INDUSTRIAL,medium
+IS111,Nagareyama Tech Zone,139.8900,35.8400,MFS28,INDUSTRIAL,low
+IS112,Noda Industrial Park,139.8600,35.9500,MFS43,INDUSTRIAL,medium
+IS113,Funabashi Shipbuilding,139.9700,35.6800,MFS39,INDUSTRIAL,medium
+IS114,Ichikawa Chemical Complex,139.9100,35.7000,MFS39,INDUSTRIAL,medium
+IS115,Urayasu Electronics Assembly,139.8900,35.6400,MFS04,INDUSTRIAL,low
+IS116,Yachiyo Automotive Plant,140.0900,35.7100,MFS43,INDUSTRIAL,medium
+IS117,Sakura Precision Machinery,140.2200,35.7200,MFS54,INDUSTRIAL,low
+IS118,Narita Aircraft Maintenance,140.3700,35.7600,MFS54,INDUSTRIAL,high
+IS119,Inzai Semiconductor Fab,140.1500,35.8300,MFS54,INDUSTRIAL,high
+IS120,Tomisato Food Processing,140.3400,35.7300,MFS54,INDUSTRIAL,medium
+IS121,Yotsukaido Electronics,140.1700,35.6700,MFS43,INDUSTRIAL,low
+IS122,Yokosuka Shipyard Complex,139.6600,35.2800,MFS18,INDUSTRIAL,high
+IS123,Zushi Precision Parts,139.5800,35.2900,MFS18,INDUSTRIAL,low
+IS124,Kamakura Tech Center,139.5500,35.3200,MFS17,INDUSTRIAL,low
+IS125,Fujisawa Manufacturing,139.4800,35.3400,MFS17,INDUSTRIAL,medium
+IS126,Chigasaki Industrial Zone,139.4000,35.3300,MFS17,INDUSTRIAL,medium
+IS127,Hiratsuka Chemical Complex,139.3400,35.3300,MFS22,INDUSTRIAL,high
+IS128,Odawara Manufacturing Park,139.1500,35.2600,MFS23,INDUSTRIAL,medium
+IS129,Atsugi Semiconductor,139.3600,35.4400,MFS26,INDUSTRIAL,high
+IS130,Ebina Electronics Zone,139.3900,35.4500,MFS26,INDUSTRIAL,medium
+IS131,Sagamihara Industrial Park,139.3600,35.5700,MFS26,INDUSTRIAL,high
+IS132,Machida Tech District,139.4500,35.5400,MFS09,INDUSTRIAL,medium
+IS133,Hachioji Western Industrial,139.3000,35.6600,MFS09,INDUSTRIAL,medium
+IS134,Ome Textile Complex,139.2600,35.7900,MFS09,INDUSTRIAL,low
+IS135,Akishima Manufacturing,139.3600,35.7000,MFS09,INDUSTRIAL,medium
+IS136,Tachikawa Aerospace Parts,139.4000,35.6900,MFS09,INDUSTRIAL,medium
+IS137,Hino Automotive Assembly,139.3900,35.6700,MFS09,INDUSTRIAL,high
+IS138,Fussa Military Contractor,139.3300,35.7400,MFS09,INDUSTRIAL,low
+IS139,Hamura Electronics,139.3100,35.7700,MFS09,INDUSTRIAL,low
+IS140,Mizuho Agricultural Processing,139.3500,35.7800,MFS09,INDUSTRIAL,low

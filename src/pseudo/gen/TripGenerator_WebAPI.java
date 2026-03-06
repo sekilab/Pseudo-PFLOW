@@ -53,8 +53,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import javax.net.ssl.SSLContext;
 
-import static org.apache.axis.management.ServiceAdmin.getTransport;
-
 public class TripGenerator_WebAPI {
 
 	private final ModeAccessor modeAcs;

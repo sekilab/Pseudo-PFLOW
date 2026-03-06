@@ -1,0 +1,79 @@
+zone_id,zone_type,name,center_lon,center_lat,radius_km,jobs_weight,shops_weight,nightlife_weight,residential_weight,transport_hub
+Z01,business,Marunouchi/Tokyo Station,139.7673,35.6809,1.5,1.0,0.5,0.2,0.1,1
+Z02,business,Otemachi,139.7649,35.6866,1.0,1.0,0.4,0.1,0.1,0
+Z03,commercial,Shinjuku,139.7005,35.6762,2.0,0.6,1.0,1.0,0.3,1
+Z04,commercial,Shibuya,139.7103,35.6586,1.5,0.5,1.0,1.0,0.2,1
+Z05,nightlife,Roppongi,139.7308,35.6642,1.2,0.4,0.7,1.0,0.2,0
+Z06,commercial,Ginza,139.7638,35.6719,1.5,0.7,1.0,0.8,0.1,0
+Z07,hub,Haneda Airport,139.7798,35.5494,2.5,0.5,0.4,0.3,0.1,1
+Z08,mixed,Ueno,139.8107,35.7100,1.5,0.5,0.8,0.6,0.4,1
+Z09,commercial,Ikebukuro,139.7111,35.7295,1.5,0.5,0.9,0.7,0.3,1
+Z10,residential,Setagaya,139.6533,35.6464,2.5,0.2,0.4,0.1,1.0,0
+Z11,residential,Meguro,139.6983,35.6336,1.5,0.3,0.5,0.3,0.9,0
+Z12,mixed,Koto,139.8173,35.6729,2.0,0.4,0.5,0.2,0.8,0
+Z13,hub,Shinagawa Station,139.7403,35.6284,1.5,0.8,0.6,0.3,0.2,1
+Z14,business,Akasaka,139.7368,35.6747,1.0,0.9,0.6,0.7,0.2,0
+Z15,commercial,Aoyama,139.7217,35.6657,1.2,0.5,0.9,0.5,0.3,0
+Z16,commercial,Harajuku/Omotesando,139.7026,35.6702,1.0,0.3,1.0,0.6,0.1,0
+Z17,mixed,Ebisu,139.7101,35.6467,1.0,0.4,0.8,0.8,0.3,0
+Z18,residential,Shinagawa Ward,139.7305,35.6089,2.0,0.4,0.5,0.2,0.8,0
+Z19,commercial,Akihabara,139.7737,35.6983,1.2,0.6,0.9,0.4,0.1,1
+Z20,nightlife,Kabukicho,139.7014,35.6946,0.8,0.3,0.7,1.0,0.1,0
+Z21,mixed,Nakano,139.6648,35.7062,1.5,0.4,0.7,0.5,0.6,0
+Z22,mixed,Kichijoji,139.5798,35.7033,1.5,0.3,0.8,0.6,0.5,0
+Z23,residential,Suginami,139.6364,35.6995,2.5,0.2,0.4,0.2,0.9,0
+Z24,residential,Nerima,139.6517,35.7357,2.5,0.2,0.3,0.1,1.0,0
+Z25,residential,Itabashi,139.7086,35.7512,2.0,0.3,0.4,0.2,0.9,0
+Z26,residential,Kita Ward,139.7339,35.7534,2.0,0.3,0.5,0.2,0.8,0
+Z27,mixed,Arakawa,139.7831,35.7364,1.8,0.3,0.5,0.3,0.7,0
+Z28,residential,Adachi,139.8044,35.7754,2.5,0.2,0.4,0.2,0.9,0
+Z29,residential,Katsushika,139.8489,35.7438,2.5,0.2,0.4,0.2,0.9,0
+Z30,mixed,Edogawa,139.8687,35.7068,2.5,0.3,0.5,0.2,0.8,0
+Z31,hub,Tokyo Skytree/Oshiage,139.8107,35.7101,1.5,0.4,0.7,0.4,0.3,1
+Z32,mixed,Sumida,139.8016,35.7108,2.0,0.3,0.5,0.3,0.7,0
+Z33,business,Toyosu,139.7960,35.6548,1.5,0.7,0.5,0.2,0.3,0
+Z34,mixed,Ariake/Odaiba,139.7753,35.6301,2.0,0.4,0.6,0.4,0.2,0
+Z35,residential,Ota Ward,139.7161,35.5610,2.5,0.3,0.4,0.2,0.9,0
+Z36,commercial,Gotanda,139.7233,35.6260,1.0,0.5,0.7,0.6,0.3,0
+Z37,commercial,Osaki,139.7286,35.6197,1.2,0.7,0.5,0.3,0.4,0
+Z38,nightlife,Akasaka-Mitsuke,139.7366,35.6797,0.8,0.6,0.7,0.9,0.2,0
+Z39,mixed,Monzen-nakacho,139.7968,35.6722,1.2,0.4,0.6,0.4,0.6,0
+Z40,residential,Bunkyo Ward,139.7524,35.7081,2.0,0.4,0.5,0.2,0.8,0
+Z41,mixed,Koishikawa,139.7442,35.7184,1.5,0.4,0.5,0.3,0.7,0
+Z42,residential,Toshima Ward,139.7157,35.7295,1.8,0.3,0.5,0.4,0.7,0
+Z43,hub,Narita Airport,140.3864,35.7648,3.0,0.5,0.4,0.2,0.1,1
+Z44,commercial,Shimbashi,139.7577,35.6657,1.0,0.8,0.7,0.6,0.1,0
+Z45,business,Kasumigaseki,139.7528,35.6745,1.0,1.0,0.3,0.1,0.1,0
+Z46,commercial,Yurakucho,139.7625,35.6750,0.8,0.7,0.8,0.5,0.1,0
+Z47,mixed,Asakusa,139.7967,35.7148,1.5,0.3,0.8,0.5,0.4,0
+Z48,commercial,Nihonbashi,139.7741,35.6828,1.2,0.8,0.7,0.4,0.2,0
+Z49,business,Toranomon,139.7485,35.6681,1.0,0.9,0.5,0.4,0.2,0
+Z50,residential,Taito Ward,139.7806,35.7107,1.8,0.3,0.5,0.3,0.7,0
+Z51,hub,Tokyo Station East,139.7717,35.6812,1.0,0.9,0.5,0.2,0.1,1
+Z52,commercial,Daikanyama,139.7006,35.6496,1.0,0.3,0.9,0.7,0.3,0
+Z53,mixed,Nakameguro,139.6989,35.6421,1.0,0.4,0.8,0.7,0.4,0
+Z54,residential,Minato Ward South,139.7396,35.6476,2.0,0.3,0.4,0.2,0.8,0
+Z55,commercial,Takadanobaba,139.7036,35.7128,1.0,0.4,0.7,0.5,0.3,0
+Z56,mixed,Mejiro,139.7064,35.7212,1.0,0.3,0.5,0.3,0.6,0
+Z57,commercial,Kanda,139.7703,35.6914,1.0,0.7,0.7,0.4,0.2,0
+Z58,business,Kyobashi,139.7704,35.6769,0.8,0.9,0.6,0.3,0.1,0
+Z59,mixed,Tsukiji,139.7709,35.6655,1.0,0.5,0.7,0.4,0.3,0
+Z60,hub,Shinagawa/Takanawa,139.7388,35.6262,1.2,0.7,0.5,0.3,0.2,1
+ZS01,hub,Shinyokohama Station Area,139.6181,35.5069,1.5,0.7,0.5,0.3,0.2,1
+ZS02,hub,Ueno Station Area,139.7720,35.7280,1.5,0.7,0.5,0.3,0.2,1
+ZP01,mixed,Ichihara,140.0869,35.5108,2.0,0.3,0.4,0.2,0.7,0
+ZP02,residential,Oamishirasato,140.3155,35.5220,2.0,0.2,0.3,0.1,0.9,0
+ZP03,residential,Yachimata,140.3160,35.6525,2.0,0.2,0.3,0.1,0.9,0
+ZP04,mixed,Yotsukaido,140.1671,35.6581,2.0,0.3,0.4,0.2,0.7,0
+ZP05,mixed,Urayasu,139.8914,35.6600,2.0,0.6,0.6,0.4,0.5,0
+ZP06,residential,Sakura,140.2305,35.7121,2.0,0.2,0.3,0.1,0.9,0
+ZP07,mixed,Yachiyo,140.1170,35.7130,2.0,0.3,0.4,0.2,0.7,0
+ZP08,residential,Shisui,140.2632,35.7181,2.0,0.2,0.3,0.1,0.9,0
+ZP09,mixed,Niiza,139.5656,35.7992,2.0,0.6,0.6,0.4,0.5,0
+ZP10,mixed,Kamagaya,140.0108,35.7551,2.0,0.6,0.6,0.4,0.5,0
+ZP11,residential,Narita,140.3134,35.7773,2.0,0.2,0.3,0.1,0.9,0
+ZP12,mixed,Shiroi,140.0584,35.7955,2.0,0.3,0.4,0.2,0.7,0
+ZP13,mixed,Misato,139.8724,35.8199,2.0,0.6,0.6,0.4,0.5,0
+ZP14,mixed,Yashio,139.8386,35.8182,2.0,0.6,0.6,0.4,0.5,0
+ZR01,hub,Chiba Port,140.0572,35.5785,2.0,0.4,0.2,0.1,0.2,1
+ZR02,hub,Tokyo Port,139.8338,35.5818,2.0,0.4,0.2,0.1,0.2,1

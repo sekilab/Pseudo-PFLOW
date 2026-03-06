@@ -1,0 +1,15 @@
+zone_id,zone_type,name,center_lon,center_lat,radius_km,jobs_weight,shops_weight,nightlife_weight,residential_weight,transport_hub
+Z01,hub,SHINYOKOHAMA,139.6181,35.5069,3.0,0.8,0.7,0.4,0.3,1
+Z02,hub,YOKOHAMA PORT,139.6997,35.4177,3.0,0.5,0.4,0.2,0.3,1
+Z03,residential,YAMATO,139.4573,35.4885,3.0,0.2,0.3,0.1,1.0,0
+Z04,hub,KAWASAKI PORT,139.8035,35.4820,3.0,0.5,0.4,0.2,0.3,1
+Z05,hub,TOKYO INTL,139.7780,35.5500,3.0,0.5,0.3,0.2,0.1,1
+Z06,hub,YOKOSUKA PORT,139.6614,35.3134,3.0,0.5,0.4,0.2,0.3,1
+Z07,residential,MACHIDA,139.4526,35.5399,3.0,0.2,0.3,0.1,1.0,0
+Z08,residential,ZUSHI,139.5803,35.2950,3.0,0.2,0.3,0.1,1.0,0
+Z09,hub,KISARAZU PORT,139.8313,35.3957,3.0,0.5,0.4,0.2,0.3,1
+Z10,hub,TOKYO PORT,139.8338,35.5818,3.0,0.5,0.4,0.2,0.3,1
+ZS01,hub,Shinagawa Station Area,139.7404,35.6309,1.5,0.7,0.5,0.3,0.2,1
+ZP01,residential,Hayama,139.5729,35.2686,2.0,0.2,0.3,0.1,0.9,0
+ZP02,residential,Ayase,139.4415,35.4311,2.0,0.2,0.3,0.1,0.9,0
+ZP03,residential,Tama,139.4399,35.6246,2.0,0.2,0.3,0.1,0.9,0

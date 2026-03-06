@@ -1,0 +1,56 @@
+zone_id,zone_type,name,center_lon,center_lat,radius_km,jobs_weight,shops_weight,nightlife_weight,residential_weight,transport_hub
+Z01,hub,SHINOSAKA,135.5011,34.7331,3.0,0.8,0.7,0.4,0.3,1
+Z02,residential,KADOMA,135.5879,34.7371,2.4,0.2,0.3,0.1,0.9,0
+Z03,residential,HIGASHIOSAKA,135.6008,34.6794,2.0,0.2,0.3,0.1,1.0,0
+Z04,residential,SETTSU,135.5622,34.7772,2.6,0.2,0.3,0.1,1.0,0
+Z05,residential,DAITO,135.6227,34.7034,2.0,0.2,0.3,0.1,1.0,0
+Z06,hub,OSAKA INTL,135.4320,34.7912,3.0,0.5,0.3,0.2,0.1,1
+Z07,residential,NEYAGAWA,135.6195,34.7622,1.6,0.2,0.3,0.1,1.0,0
+Z08,residential,SHIJONAWATE,135.6335,34.7404,1.6,0.2,0.3,0.1,1.0,0
+Z09,residential,MINO,135.4718,34.8218,3.0,0.2,0.3,0.1,1.0,0
+Z10,residential,TOYOURA,135.6428,34.6628,2.6,0.2,0.3,0.1,1.0,0
+Z11,residential,IBARAKI,135.5720,34.8158,2.6,0.2,0.3,0.1,1.0,0
+Z12,hub,YAO,135.5990,34.5985,3.0,0.5,0.3,0.2,0.1,1
+Z13,hub,AMAGASAKI-NISHINOMIYA-ASHIYA PORT,135.3355,34.6823,3.0,0.5,0.4,0.2,0.3,1
+Z14,residential,MATSUBARA,135.5573,34.5755,1.7,0.2,0.3,0.1,1.0,0
+Z15,hub,OSAKA PORT,135.3506,34.6298,3.0,0.5,0.4,0.2,0.3,1
+Z16,residential,KAWANISHI,135.4161,34.8300,2.7,0.2,0.3,0.1,1.0,0
+Z17,residential,FUJIIDERA,135.5890,34.5755,1.6,0.2,0.3,0.1,1.0,0
+Z18,hub,SAKAI-SENBOKU PORT,135.3882,34.5774,3.0,0.5,0.4,0.2,0.3,1
+Z19,residential,KASHIWARA,135.6238,34.5868,1.6,0.2,0.3,0.1,1.0,0
+Z20,residential,TAKARAZUKA,135.3504,34.8071,3.0,0.2,0.3,0.1,1.0,0
+Z21,residential,HIRAKATA,135.6523,34.8089,1.6,0.2,0.3,0.1,1.0,0
+Z22,residential,TAKATSUKI,135.6195,34.8469,3.0,0.2,0.3,0.1,1.0,0
+Z23,residential,KATANO,135.6786,34.7994,1.6,0.2,0.3,0.1,1.0,0
+Z24,residential,HABIKINO,135.6143,34.5496,2.2,0.2,0.3,0.1,1.0,0
+Z25,residential,HEGURI,135.6994,34.6285,3.0,0.2,0.3,0.1,1.0,0
+Z26,hub,KOBE PORT,135.2524,34.6637,2.2,0.5,0.4,0.2,0.3,1
+Z27,residential,TONDABAYASHI,135.6059,34.5003,2.6,0.2,0.3,0.1,1.0,0
+Z28,residential,TAISHI,135.6473,34.5189,2.6,0.2,0.3,0.1,1.0,0
+Z29,hub,KOBE,135.2286,34.6368,3.0,0.5,0.3,0.2,0.1,1
+Z30,hub,HANNAN PORT,135.3309,34.4854,3.0,0.5,0.4,0.2,0.3,1
+Z31,hub,KANSAI INTL,135.2417,34.4310,3.0,0.5,0.3,0.2,0.1,1
+ZS01,hub,Shinkobe Station Area,135.1958,34.7071,1.5,0.7,0.5,0.3,0.2,1
+ZP01,residential,Tajiri,135.2933,34.3859,2.0,0.2,0.3,0.1,0.9,0
+ZP02,residential,Kumatori,135.3624,34.3994,2.0,0.2,0.3,0.1,0.9,0
+ZP03,residential,Izumisano,135.3252,34.4121,2.0,0.2,0.3,0.1,0.9,0
+ZP04,residential,Kawachinagano,135.5753,34.4485,2.0,0.2,0.3,0.1,0.9,0
+ZP05,residential,Gose,135.7444,34.4604,2.0,0.2,0.3,0.1,0.9,0
+ZP06,residential,Chihayaakasaka,135.6240,34.4662,2.0,0.2,0.3,0.1,0.9,0
+ZP07,residential,Kanan,135.6289,34.4763,2.0,0.2,0.3,0.1,0.9,0
+ZP08,mixed,Izumi,135.4296,34.4813,2.0,0.3,0.4,0.2,0.7,0
+ZP09,residential,Katsuragi,135.7160,34.4872,2.0,0.2,0.3,0.1,0.9,0
+ZP10,mixed,Osakasayama,135.5563,34.4960,2.0,0.3,0.4,0.2,0.7,0
+ZP11,residential,Yamatotakada,135.7449,34.5079,2.0,0.2,0.3,0.1,0.9,0
+ZP12,residential,Kashiba,135.7138,34.5395,2.0,0.2,0.3,0.1,0.9,0
+ZP13,residential,Uemaki,135.7170,34.5622,2.0,0.2,0.3,0.1,0.9,0
+ZP14,residential,Kawai,135.7332,34.5763,2.0,0.2,0.3,0.1,0.9,0
+ZP15,mixed,Oji,135.7048,34.5943,2.0,0.3,0.4,0.2,0.7,0
+ZP16,residential,Ikaruga,135.7338,34.6056,2.0,0.2,0.3,0.1,0.9,0
+ZP17,mixed,Sango,135.7065,34.6063,2.0,0.3,0.4,0.2,0.7,0
+ZP18,mixed,Ikoma,135.7082,34.6896,2.0,0.3,0.4,0.2,0.7,0
+ZP19,residential,Arima,135.2491,34.7958,2.0,0.2,0.3,0.1,0.9,0
+ZP20,residential,Yawata,135.7008,34.8694,2.0,0.2,0.3,0.1,0.9,0
+ZP21,residential,Shimamoto,135.6723,34.8780,2.0,0.2,0.3,0.1,0.9,0
+ZP22,residential,Kumiyama,135.7356,34.8798,2.0,0.2,0.3,0.1,0.9,0
+ZP23,residential,Sanda,135.2248,34.8797,2.0,0.2,0.3,0.1,0.9,0
