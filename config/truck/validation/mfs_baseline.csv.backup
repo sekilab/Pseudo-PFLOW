@@ -1,0 +1,49 @@
+metric_name,category,survey_value,unit,tolerance_pct,source_file,notes,priority
+Avg Cargo per Delivery,cargo_metrics,5.277828729,tons/truck,15,File 18,1726420.0/327108 = 5.28,CRITICAL
+Average Distance per Movement,distance,91.18,km/movement,15,File 08,"55,403,820/607,657 = 91.18 (domestic only)",CRITICAL
+Total Distance Covered,distance_total,55403820,km/day,15,File 08,"Σ(trucks_ij × distance_ij) = 55,403,820 (domestic only)",CRITICAL
+Total Trucks,fleet_baseline,327108,vehicles/day,10,File 18,Direct extraction: 327108,CRITICAL
+Total Attracted Trucks,ga_balance,607657,trucks/day,15,File 08,"Aligned with Total Vehicle Movements after empty trip reduction (professor feedback)",HIGH
+Total Generated Trucks,ga_balance,607657,trucks/day,15,File 08,"Domestic O-D matrix sum: 607,657 (same as Total Vehicle Movements)",HIGH
+Total Logistics Volume,trip_volume,1726420,tons/day,15,File 18,Direct extraction: 1726420.0,CRITICAL
+Tons per Truck - Heavy (10t+),vehicle_conversion,11.46181899,tons/truck,10,File 18,977441.0/85278 = 11.46,CRITICAL
+Tons per Truck - Light (<2t),vehicle_conversion,0.781214697,tons/truck,10,File 18,72610.0/92945 = 0.78,CRITICAL
+Tons per Truck - Medium (4-10t),vehicle_conversion,7.636526783,tons/truck,10,File 18,421269.0/55165 = 7.64,CRITICAL
+Tons per Truck - Small (2-4t),vehicle_conversion,2.721937687,tons/truck,10,File 18,255100.0/93720 = 2.72,CRITICAL
+Heavy Truck Percentage,fleet_distribution,26.07028871,percent,10,File 18,(85278/327108) × 100 = 26.07%,HIGH
+Light Truck Percentage,fleet_distribution,28.41416291,percent,10,File 18,(92945/327108) × 100 = 28.41%,HIGH
+Medium Truck Percentage,fleet_distribution,16.86446067,percent,10,File 18,(55165/327108) × 100 = 16.86%,HIGH
+Small Truck Percentage,fleet_distribution,28.65108771,percent,10,File 18,(93720/327108) × 100 = 28.65%,HIGH
+Trucks Heavy (10t+),fleet_distribution,85278,vehicles/day,10,File 18,Direct extraction: 85278,HIGH
+Trucks Light (<2t),fleet_distribution,92945,vehicles/day,10,File 18,Direct extraction: 92945,HIGH
+Trucks Medium (4-10t),fleet_distribution,55165,vehicles/day,10,File 18,Direct extraction: 55165,HIGH
+Trucks Small (2-4t),fleet_distribution,93720,vehicles/day,10,File 18,Direct extraction: 93720,HIGH
+GA Balance Ratio,ga_balance,1.0,ratio,10,File 08,"O-D matrix symmetric: gen/att = 1.0 (trip-level counting)",HIGH
+GA Imbalance Percentage,ga_balance,0.0,percent,15,File 08,"O-D matrix symmetric: imbalance = 0% (trip-level counting)",HIGH
+Total Attracted Tons,ga_balance,1726420,tons/day,15,File 18,"Total logistics volume (truck survey): 1,726,420 — matches trip-level cargo",HIGH
+Total Generated Tons,ga_balance,1726420,tons/day,15,File 18,"Total logistics volume (truck survey): 1,726,420 — matches trip-level cargo",HIGH
+MFS Survey Zones,network,73,zones,15,File 08,Total zones in File 08: 73,HIGH
+Total Vehicle Movements,trip_volume,607657,movements/day,15,File 08,"Domestic O-D matrix sum: 607,657 (loaded trips)",HIGH
+DELIVERY Movement Share,movement_distribution,37.01,percent,10,File 18,"Light + 30% Small = 121,061/327,108 = 37.01%",HIGH
+MIXED Movement Share,movement_distribution,28.49,percent,10,File 18,"70% Small + 50% Medium = 93,187/327,108 = 28.49%",HIGH
+LONG_HAUL Movement Share,movement_distribution,34.5,percent,10,File 18,"Heavy + 50% Medium = 112,860/327,108 = 34.50%",HIGH
+Avg Distance DELIVERY,distance,11.12,km,300,File 08 Calculated,Weighted avg distance for O-D pairs < 30km — NOTE: classification mismatch (File 08 uses trip distance, sim uses vehicle size),LOW
+Avg Distance LONG_HAUL,distance,260.29,km,25,File 08 Calculated,Weighted avg distance for O-D pairs > 100km,MEDIUM
+Avg Distance MIXED_OPERATION,distance,55.04,km,25,File 08 Calculated,Weighted avg distance for O-D pairs 30-100km,MEDIUM
+Empty Trip Ratio,efficiency,7.5,percent,10,Professor Feedback,Target 5-10% empty ratio - trucks costly to operate without cargo,CRITICAL
+Weight-Limited Shipments,loading_constraints,35.89884212,percent,10,File 03,"330,563/920,818 × 100 = 35.9%",MEDIUM
+Average Movements per Truck,operational,1.8577,movements/truck,15,File 08 / File 18,"607,657/327,108 = 1.86 (loaded trips only)",MEDIUM
+Intra-zone Trip Ratio,spatial,20.67,percent,20,File 08,"125,608/607,657 × 100 = 20.67% (domestic matrix diagonal)",MEDIUM
+Heavy Vehicle Volume,trip_volume,977441,tons/day,10,File 18,Direct extraction: 977441.0,MEDIUM
+Light Vehicle Volume,trip_volume,72610,tons/day,10,File 18,Direct extraction: 72610.0,MEDIUM
+Medium Vehicle Volume,trip_volume,421269,tons/day,10,File 18,Direct extraction: 421269.0,MEDIUM
+Small Vehicle Volume,trip_volume,255100,tons/day,10,File 18,Direct extraction: 255100.0,MEDIUM
+daily_necessities commodity %,commodity_mix,27,percent,35,Files 03/04/06,MFS commodity distribution,MEDIUM
+agricultural_food commodity %,commodity_mix,22,percent,35,Files 03/04/06,MFS commodity distribution,MEDIUM
+publications commodity %,commodity_mix,11,percent,35,Files 03/04/06,MFS commodity distribution,MEDIUM
+light_industrial commodity %,commodity_mix,16,percent,35,Files 03/04/06,MFS commodity distribution,MEDIUM
+machinery commodity %,commodity_mix,7,percent,35,Files 03/04/06,MFS commodity distribution,MEDIUM
+forestry_mineral commodity %,commodity_mix,7,percent,35,Files 03/04/06,MFS commodity distribution,MEDIUM
+metal_products commodity %,commodity_mix,5,percent,35,Files 03/04/06,MFS commodity distribution,MEDIUM
+ceramic_chemical commodity %,commodity_mix,3,percent,35,Files 03/04/06,MFS commodity distribution,MEDIUM
+special_products commodity %,commodity_mix,2,percent,35,Files 03/04/06,MFS commodity distribution,MEDIUM
