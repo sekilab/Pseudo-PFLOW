@@ -1,0 +1,96 @@
+poi_id,name,lon,lat,zone_id,facility_type,capacity_level
+IS001,JFE Steel East Japan Works Keihin,139.7380,35.5220,MFS16,INDUSTRIAL,high
+IS002,Toshiba Kawasaki Complex,139.6950,35.5350,MFS16,INDUSTRIAL,high
+IS003,Nippon Steel Keihin Plant,139.7100,35.5180,MFS16,INDUSTRIAL,high
+IS004,Kawasaki Heavy Industries Keihin,139.7250,35.5280,MFS16,INDUSTRIAL,high
+IS005,Mitsubishi Chemical Kawasaki,139.7050,35.5400,MFS16,INDUSTRIAL,medium
+IS006,AGC Glass Keihin Plant,139.6980,35.5150,MFS16,INDUSTRIAL,medium
+IS007,Showa Denko Kawasaki,139.7180,35.5100,MFS16,INDUSTRIAL,medium
+IS008,Canon Kawasaki Office Factory,139.6900,35.5450,MFS16,INDUSTRIAL,medium
+IS009,Ebara Corporation Haneda Works,139.7500,35.5650,MFS02,INDUSTRIAL,high
+IS010,IHI Aeroengine Mizuho Plant,139.7350,35.6000,MFS02,INDUSTRIAL,high
+IS011,Ota Ward Automotive Parts District,139.7280,35.5800,MFS02,INDUSTRIAL,medium
+IS012,Shinagawa Metal Processing Center,139.7420,35.6150,MFS02,INDUSTRIAL,medium
+IS013,Omori Industrial Park,139.7300,35.5900,MFS02,INDUSTRIAL,medium
+IS014,Keikyu Kamata Factory Zone,139.7200,35.5700,MFS02,INDUSTRIAL,medium
+IS015,Haneda Airport Maintenance Facility,139.7600,35.5500,MFS02,INDUSTRIAL,high
+IS016,Ota Precision Machinery Cluster,139.7150,35.5850,MFS02,INDUSTRIAL,low
+IS017,Tsurumi JX Nippon Oil Refinery,139.6750,35.5050,MFS15,INDUSTRIAL,high
+IS018,Asahi Glass Tsurumi Works,139.6700,35.5100,MFS15,INDUSTRIAL,medium
+IS019,Toshiba Tsurumi Semiconductor,139.6800,35.5150,MFS15,INDUSTRIAL,medium
+IS020,Tsurumi Food Processing Center,139.6650,35.5200,MFS15,INDUSTRIAL,medium
+IS021,Kirin Brewery Yokohama,139.6550,35.5000,MFS15,INDUSTRIAL,medium
+IS022,Koto Ward Printing District,139.8100,35.6850,MFS04,INDUSTRIAL,medium
+IS023,Sumida Small Factory Cluster,139.8000,35.7050,MFS04,INDUSTRIAL,medium
+IS024,Shin-Kiba Timber Processing,139.8300,35.6500,MFS04,INDUSTRIAL,medium
+IS025,Koto Food Processing Zone,139.8200,35.6750,MFS04,INDUSTRIAL,medium
+IS026,Sumida Electronics Assembly,139.8050,35.7000,MFS04,INDUSTRIAL,low
+IS027,Ariake Industrial Hub,139.7900,35.6400,MFS04,INDUSTRIAL,medium
+IS028,Ojima Chemical Processing,139.8350,35.6900,MFS04,INDUSTRIAL,low
+IS029,Tatsumi Industrial Park,139.8150,35.6600,MFS04,INDUSTRIAL,medium
+IS030,Adachi Manufacturing Zone,139.8400,35.7500,MFS07,INDUSTRIAL,medium
+IS031,Katsushika Plastics Factory Area,139.8600,35.7450,MFS07,INDUSTRIAL,medium
+IS032,Adachi Metal Stamping Cluster,139.8350,35.7600,MFS07,INDUSTRIAL,low
+IS033,Ayase Food Processing,139.8500,35.7550,MFS07,INDUSTRIAL,low
+IS034,Hachioji Electronics Factory,139.3100,35.6550,MFS09,INDUSTRIAL,medium
+IS035,Hachioji Precision Instruments,139.3300,35.6600,MFS09,INDUSTRIAL,medium
+IS036,Olympus Hachioji Plant,139.3200,35.6400,MFS09,INDUSTRIAL,medium
+IS037,Yokohama Central Industrial Park,139.6450,35.4600,MFS11,INDUSTRIAL,medium
+IS038,Nissan Yokohama Plant,139.6500,35.4700,MFS11,INDUSTRIAL,high
+IS039,Yokohama Rubber Company Works,139.6350,35.4550,MFS11,INDUSTRIAL,medium
+IS040,Yokohama South Shipyard,139.6250,35.4050,MFS12,INDUSTRIAL,high
+IS041,JFE Steel Yokohama Works,139.6300,35.4150,MFS12,INDUSTRIAL,high
+IS042,Yokohama South Food Processing,139.6150,35.4200,MFS12,INDUSTRIAL,medium
+IS043,Saitama Industrial Complex,139.6550,35.8650,MFS27,INDUSTRIAL,medium
+IS044,Saitama Automotive Parts Center,139.6400,35.8700,MFS27,INDUSTRIAL,medium
+IS045,Saitama Food Processing Park,139.6600,35.8550,MFS27,INDUSTRIAL,medium
+IS046,Kawaguchi Foundry District,139.7250,35.8250,MFS28,INDUSTRIAL,medium
+IS047,Kawaguchi Iron Works Zone,139.7150,35.8350,MFS28,INDUSTRIAL,medium
+IS048,Warabi Metal Processing,139.7050,35.8200,MFS28,INDUSTRIAL,low
+IS049,Soka Chemical Plant,139.8100,35.8850,MFS30,INDUSTRIAL,medium
+IS050,Koshigaya Industrial Park,139.8300,35.8950,MFS30,INDUSTRIAL,medium
+IS051,Chiba Port Industrial Zone,140.1050,35.6050,MFS38,INDUSTRIAL,high
+IS052,JFE Steel Chiba Works,140.1200,35.5950,MFS38,INDUSTRIAL,high
+IS053,Chiba Food Processing District,140.1350,35.6150,MFS38,INDUSTRIAL,medium
+IS054,Chiba Pharmaceutical Park,140.1000,35.6200,MFS38,INDUSTRIAL,medium
+IS055,Ichikawa Steel Processing,139.9100,35.7050,MFS39,INDUSTRIAL,medium
+IS056,Funabashi Industrial Zone,139.9350,35.6950,MFS39,INDUSTRIAL,medium
+IS057,Ichikawa Chemical Complex,139.9250,35.7100,MFS39,INDUSTRIAL,medium
+IS058,Mitsui Chemicals Ichihara,140.1100,35.4950,MFS43,INDUSTRIAL,high
+IS059,Sumitomo Chemical Chiba Plant,140.1250,35.5050,MFS43,INDUSTRIAL,high
+IS060,Idemitsu Kosan Chiba Refinery,140.1050,35.4850,MFS43,INDUSTRIAL,high
+IS061,ENEOS Ichihara Refinery,140.1350,35.5100,MFS43,INDUSTRIAL,high
+IS062,Cosmo Oil Chiba Refinery,140.0950,35.4900,MFS43,INDUSTRIAL,high
+IS063,Ube Industries Ichihara,140.1150,35.5150,MFS43,INDUSTRIAL,medium
+IS064,Nippon Steel Kashima Works,140.6500,35.9650,MFS54,INDUSTRIAL,high
+IS065,Mitsubishi Chemical Kashima,140.6350,35.9750,MFS54,INDUSTRIAL,high
+IS066,Sumitomo Metal Kashima Complex,140.6450,35.9800,MFS54,INDUSTRIAL,high
+IS067,Kashima Petrochemical Complex,140.6550,35.9550,MFS54,INDUSTRIAL,medium
+IS068,Hitachi Ltd Hitachi Works,140.6500,36.6000,MFS55,INDUSTRIAL,high
+IS069,Hitachi High-Tech Naka Plant,140.4800,36.4000,MFS55,INDUSTRIAL,medium
+IS070,Mito Electronics Assembly,140.4600,36.3700,MFS55,INDUSTRIAL,medium
+IS071,Subaru Gunma Yajima Plant,139.0700,36.3800,MFS57,INDUSTRIAL,high
+IS072,Subaru Gunma Oizumi Plant,139.3900,36.2400,MFS58,INDUSTRIAL,high
+IS073,Sanyo Electric Gunma,139.3600,36.3200,MFS58,INDUSTRIAL,medium
+IS074,Kiryu Textile Industrial Area,139.3400,36.4100,MFS58,INDUSTRIAL,low
+IS075,Honda Tochigi Plant,139.8700,36.5500,MFS59,INDUSTRIAL,high
+IS076,Honda R&D Tochigi Proving Ground,139.9000,36.5700,MFS59,INDUSTRIAL,high
+IS077,Utsunomiya Industrial Park,139.8800,36.5400,MFS59,INDUSTRIAL,medium
+IS078,Kisarazu Steel Processing,139.9300,35.3850,MFS44,INDUSTRIAL,medium
+IS079,Futtsu Industrial Park,139.8600,35.3100,MFS44,INDUSTRIAL,medium
+IS080,Tsukuba Science City Manufacturing,140.1050,36.0750,MFS50,INDUSTRIAL,medium
+IS081,Tsukuba High-Tech Industrial Park,140.1200,36.0850,MFS50,INDUSTRIAL,medium
+IS082,CBD Tokyo Redevelopment Site A,139.7650,35.6850,MFS01,CONSTRUCTION_SITE,medium
+IS083,Toranomon Construction Zone,139.7500,35.6700,MFS01,CONSTRUCTION_SITE,high
+IS084,Shibuya Station Redevelopment,139.7020,35.6580,MFS01,CONSTRUCTION_SITE,high
+IS085,Shinagawa Gateway Construction,139.7400,35.6280,MFS02,CONSTRUCTION_SITE,high
+IS086,Yokohama Minato Mirai Construction,139.6320,35.4580,MFS11,CONSTRUCTION_SITE,medium
+IS087,Kawasaki Station Redevelopment,139.6970,35.5320,MFS16,CONSTRUCTION_SITE,medium
+IS088,Toyosu Market Expansion Site,139.7820,35.6460,MFS04,CONSTRUCTION_SITE,medium
+IS089,Saitama New Urban Center Build,139.6300,35.8580,MFS27,CONSTRUCTION_SITE,medium
+IS090,Chiba Makuhari Development,140.0350,35.6500,MFS39,CONSTRUCTION_SITE,medium
+IS091,Shizuoka Industrial Park,138.3900,34.9750,MFS70,INDUSTRIAL,medium
+IS092,Suzuki Motor Shizuoka Plant,138.3700,34.9900,MFS70,INDUSTRIAL,high
+IS093,Yamaha Motor Iwata Works,137.8700,34.7200,MFS70,INDUSTRIAL,medium
+IS094,Toyota Supplier Park Chubu,136.9000,35.0800,MFS71,INDUSTRIAL,high
+IS095,Nagoya Port Industrial Zone,136.8800,35.0500,MFS71,INDUSTRIAL,high

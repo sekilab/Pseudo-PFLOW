@@ -56,6 +56,9 @@ public class TruckTrip {
     public enum LoadingConstraint { CAPACITY, WEIGHT }
     private LoadingConstraint loadingConstraint;
 
+    // Inter-metropolitan flag (for deferred metrics recording in parallel mode)
+    private boolean interMetro;
+
     // Time window constraints (from MFS File 05)
     private boolean hasTimeWindow;
     private int earliestDeliveryHour;  // 0-23
@@ -156,6 +159,8 @@ public class TruckTrip {
     public void setLoadingConstraint(LoadingConstraint constraint) { this.loadingConstraint = constraint; }
     public void setOriginFacilityId(String poiId) { this.originFacilityId = poiId; }
     public void setDestFacilityId(String poiId) { this.destFacilityId = poiId; }
+    public void setInterMetro(boolean interMetro) { this.interMetro = interMetro; }
+    public boolean isInterMetro() { return interMetro; }
 
     // Time window setters
     public void setTimeWindow(int earliest, int latest) {

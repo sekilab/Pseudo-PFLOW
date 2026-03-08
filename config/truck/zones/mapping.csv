@@ -1,0 +1,75 @@
+mfs_zone_id,mfs_zone_name,sim_zone_id,sim_zone_name,aggregation_rule,notes
+1,tokyo_chiyoda_chuo_minato,MFS01,Chiyoda/Chuo/Minato (Central Tokyo CBD),direct,Tokyo 23 wards core
+2,tokyo_meguro_shinagawa_ota,MFS02,Meguro/Shinagawa/Ota (Southern Tokyo Port),direct,Tokyo 23 wards south
+3,tokyo_toshima_bunkyo_shinjuku_shibuya,MFS03,Toshima/Bunkyo/Shinjuku/Shibuya (Northwest),direct,Tokyo 23 wards northwest
+4,tokyo_arakawa_taito_sumida_koto,MFS04,Arakawa/Taito/Sumida/Koto (Eastern Industrial),direct,Tokyo 23 wards east
+5,tokyo_nakano_suginami_setagaya,MFS05,Nakano/Suginami/Setagaya (Western Residential),direct,Tokyo 23 wards west
+6,tokyo_nerima_itabashi_kita,MFS06,Nerima/Itabashi/Kita (Northern Tokyo),direct,Tokyo 23 wards north
+7,tokyo_adachi_katsushika_edogawa,MFS07,Adachi/Katsushika/Edogawa (Northeast Tokyo),direct,Tokyo 23 wards northeast
+8,chofu_nishitokyo_fuchu_musashino_etc,MFS08,Chofu/Nishitokyo/Fuchu/Musashino,direct,West Tokyo Tama
+9,machida_tama_hachioji_inagi_etc,MFS09,Machida/Tama/Hachioji/Inagi,direct,Tama region
+10,mizuho_fussa_hamura_akiruno_etc,MFS10,Mizuho/Fussa/Hamura/Akiruno,direct,Western Tama
+11,yokohama_nishi_naka,MFS11,Yokohama Nishi/Naka (Central),direct,Yokohama central
+12,yokohama_isogo_minami_kanazawa_konan,MFS12,Yokohama Isogo/Minami/Kanazawa/Konan (South Port),direct,Yokohama south port
+13,yokohama_hodogaya_totsuka_sakae_izumi_etc,MFS13,Yokohama Hodogaya/Totsuka/Sakae/Izumi (West),direct,Yokohama west
+14,yokohama_kohoku_tsuzuki_midori_aoba,MFS14,Yokohama Kohoku/Tsuzuki/Midori/Aoba (North),direct,Yokohama north
+15,yokohama_tsurumi_kanagawa,MFS15,Yokohama Tsurumi/Kanagawa (East),direct,Yokohama east
+16,kawasaki_kawasaki_saiwai_nakahara,MFS16,Kawasaki Kawasaki/Saiwai/Nakahara (Central),direct,Kawasaki central
+17,kawasaki_takatsu_miyamae_tama_asao,MFS17,Kawasaki Takatsu/Miyamae/Tama/Asao (North),direct,Kawasaki north
+18,sagamihara_city,MFS18,Sagamihara City,direct,Sagamihara
+19,yokosuka_miura,MFS19,Yokosuka/Miura,direct,Kanagawa south coast
+20,kamakura_zushi_hayama,MFS20,Kamakura/Zushi/Hayama,direct,Kanagawa coast
+21,fujisawa_chigasaki_samukawa,MFS21,Fujisawa/Chigasaki/Samukawa,direct,Kanagawa coast
+22,hiratsuka_oiso_ninomiya,MFS22,Hiratsuka/Oiso/Ninomiya,direct,Kanagawa far coast
+23,odawara_manazuru_yugawara_hakone,MFS23,Odawara/Manazuru/Yugawara/Hakone,direct,Kanagawa west
+24,minami_ashigara_nakai_oi_matsuda_etc,MFS24,Minami-Ashigara/Nakai/Oi/Matsuda,direct,Kanagawa west inland
+25,atsugi_hadano_kiyokawa_isehara_etc,MFS25,Atsugi/Hadano/Kiyokawa/Isehara,direct,Kanagawa central
+26,zama_yamato_ebina_ayase,MFS26,Zama/Yamato/Ebina/Ayase,direct,Kanagawa central
+27,saitama_city,MFS27,Saitama City (Urawa/Omiya),direct,Saitama metropolitan
+28,kawaguchi_warabi_toda,MFS28,Kawaguchi/Warabi/Toda,direct,South Saitama
+29,asaka_wako_niiza_tokorozawa_etc,MFS29,Asaka/Wako/Niiza/Tokorozawa,direct,South Saitama
+30,soka_kasukabe_misato_koshigaya_etc,MFS30,Soka/Kasukabe/Misato/Koshigaya,direct,East Saitama
+31,hanno_hidaka_moroyama_ogose_etc,MFS31,Hanno/Hidaka/Moroyama/Ogose,direct,West Saitama
+32,tsurugashima_sakado_kawajima_higashimatsuyama_etc,MFS32,Tsurugashima/Sakado/Kawajima/Higashimatsuyama,direct,Central Saitama
+33,ageo_konosu_okegawa_kitamoto_etc,MFS33,Ageo/Konosu/Okegawa/Kitamoto,direct,Central Saitama
+34,kuki_kazo_hanyu_gyoda_etc,MFS34,Kuki/Kazo/Hanyu/Gyoda,direct,North Saitama
+35,kumagaya_fukaya_ogawa_yorii_etc,MFS35,Kumagaya/Fukaya/Ogawa/Yorii,direct,North Saitama
+36,honjo_kamikawa_kamisato,MFS36,Honjo/Kamikawa/Kamisato,direct,North Saitama
+37,chichibu_yokoze_minano_nagatoro_etc,MFS37,Chichibu/Yokoze/Minano/Nagatoro,direct,North Saitama mountains
+38,chiba_city,MFS38,Chiba City,direct,Chiba metropolitan
+39,ichikawa_urayasu_narashino_funabashi,MFS39,Ichikawa/Urayasu/Narashino/Funabashi,direct,West Chiba
+40,matsudo_kamagaya_kashiwa_abiko,MFS40,Matsudo/Kamagaya/Kashiwa/Abiko,direct,North Chiba
+41,nagareyama_noda,MFS41,Nagareyama/Noda,direct,Northwest Chiba
+42,yachiyo_sakura_narita_shiroi_etc,MFS42,Yachiyo/Sakura/Narita/Shiroi,direct,Central Chiba
+43,ichihara_city,MFS43,Ichihara City,direct,South Chiba
+44,kisarazu_sodegaura_kimitsu_futtsu,MFS44,Kisarazu/Sodegaura/Kimitsu/Futtsu,direct,South Chiba coast
+45,katsuura_otaki_tateyama_kamogawa_etc,MFS45,Katsuura/Otaki/Tateyama/Kamogawa,direct,South Chiba coast
+46,choshi_asahi_sosa_katori_etc,MFS46,Choshi/Asahi/Sosa/Katori,direct,East Chiba
+47,togane_mobara_sanmu_oamishirasato_etc,MFS47,Togane/Mobara/Sanmu/Oamishirasato,direct,East Chiba
+48,tsuchiura_ishioka_omitama_kasumigaura_etc,MFS48,Tsuchiura/Ishioka/Omitama/Kasumigaura,direct,South Ibaraki
+49,koga_shimotsuma_yachiyo_goka_etc,MFS49,Koga/Shimotsuma/Yachiyo/Goka,direct,West Ibaraki
+50,tsukuba_city,MFS50,Tsukuba City,direct,Ibaraki research city
+51,joso_bando,MFS51,Joso/Bando,direct,West Ibaraki
+52,ryugasaki_toride_ushiku_moriya_etc,MFS52,Ryugasaki/Toride/Ushiku/Moriya,direct,South Ibaraki
+53,inashiki_miho_kawachi,MFS53,Inashiki/Miho/Kawachi,direct,Southeast Ibaraki
+54,kashima_kamisu_namegata_itako,MFS54,Kashima/Kamisu/Namegata/Itako,direct,East Ibaraki coast
+55,mito_hitachi_kasama_hitachinaka_etc,MFS55,Mito/Hitachi/Kasama/Hitachinaka,direct,Central Ibaraki
+56,yuki_chikusei_sakuragawa,MFS56,Yuki/Chikusei/Sakuragawa,direct,West Ibaraki
+57,maebashi_takasaki_isesaki_shibukawa_etc,MFS57,Maebashi/Takasaki/Isesaki/Shibukawa,direct,Central Gunma
+58,kiryu_ota_tatebayashi_midori_etc,MFS58,Kiryu/Ota/Tatebayashi/Midori,direct,East Gunma
+59,utsunomiya_kanuma_moka_kaminokawa_etc,MFS59,Utsunomiya/Kanuma/Moka/Kaminokawa,direct,Central Tochigi
+60,tochigi_oyama_shimotsuke_nogi_etc,MFS60,Tochigi/Oyama/Shimotsuke/Nogi,direct,South Tochigi
+61,ashikaga_sano,MFS61,Ashikaga/Sano,direct,Southwest Tochigi
+62,tokyo_islands,MFS62,Tokyo Islands (Izu/Ogasawara),direct,Tokyo Islands
+63,ibaraki_north,MFS63,Ibaraki North,direct,North Ibaraki
+64,tochigi_north,MFS64,Tochigi North,direct,North Tochigi
+65,gunma_north,MFS65,Gunma North,direct,North Gunma
+66,gunma_other_ueno_kanna_nanmoku,MFS66,Gunma Other (Ueno/Kanna/Nanmoku),direct,West Gunma mountains
+67,hokkaido_tohoku,MFS67,Hokkaido & Tohoku,direct,Long-haul northern regions
+68,hokuriku,MFS68,Hokuriku,direct,Long-haul Hokuriku
+69,yamanashi_nagano,MFS69,Yamanashi & Nagano,direct,Long-haul mountain regions
+70,shizuoka,MFS70,Shizuoka,direct,Long-haul Shizuoka
+71,chubu_west,MFS71,Chubu-West (Osaka/Nagoya),direct,Long-haul western regions
+72,overseas,EXTERNAL,Overseas,external,Overseas shipments
+73,unknown,EXTERNAL,Unknown,external,Unknown origin/destination
+74,all_regions,AGGREGATE,All Regions Aggregate,aggregate,Do not use for routing

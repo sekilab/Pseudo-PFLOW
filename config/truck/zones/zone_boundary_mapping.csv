@@ -1,0 +1,76 @@
+# Zone-to-Administrative-Code Boundary Mapping
+# Format: zone_id, semicolon-separated adm_codes (from N03-20250101.shp field: N03_007), notes
+# Auto-updated by tools/discover_missing_municipalities.py
+zone_id,adm_codes,notes
+MFS01,"13101;13102;13103",Central Tokyo CBD (Chiyoda Chuo Minato)
+MFS02,"13109;13111;00UNK",Southern Tokyo Port (Shinagawa Ota)
+MFS03,"13104;13113;13110;13112",Western Tokyo (Shibuya Shinjuku Meguro Setagaya)
+MFS04,"13106;13108;13107;00UNK",Eastern Tokyo (Sumida Koto Taito)
+MFS05,"13118;13121;13122;13123",Northern Tokyo (Arakawa Adachi Katsushika Edogawa)
+MFS06,"13105;13116;13117;13119",Northwest Tokyo (Bunkyo Toshima Kita Itabashi)
+MFS07,"13120;13115;13114",Southwest Tokyo (Nerima Suginami Nakano)
+MFS08,"13208;13229;13206;13203;13204;13219;13210;13211;13214;13215;14137;14135;13225",West Tokyo Tama (Chofu) + Asao/Tama-ku/Inagi overlap
+MFS09,"13209;13224;13201;13225;13212;13207;13202",Southwest Tama (Machida Tama Hachioji Inagi)
+MFS10,"13303;13218;13227;13228;13305;13205;13307;13308",Northwest Tama (Mizuho Fussa Hamura Akiruno)
+# MFS11-15: Yokohama ward-level polygons from N03 (18 wards across 5 zones)
+MFS11,"14103;14104",Yokohama Nishi/Naka (Central)
+MFS12,"14105;14107;14108;14111",Yokohama Minami/Isogo/Kanazawa/Konan (South Port)
+MFS13,"14106;14110;14112;14114;14115;14116",Yokohama Hodogaya/Totsuka/Asahi/Seya/Sakae/Izumi (West)
+MFS14,"14109;14113;14117;14118",Yokohama Kohoku/Midori/Aoba/Tsuzuki (North)
+MFS15,"14101;14102",Yokohama Tsurumi/Kanagawa (East)
+# MFS16-17: Kawasaki ward-level polygons from N03 (7 wards across 2 zones)
+MFS16,"14131;14132;14133",Kawasaki Kawasaki/Saiwai/Nakahara (Central)
+MFS17,"14134;14135;14136;14137;13225;13224;14117;14113;13209",Kawasaki North + Aoba/Midori-YH/Machida/Inagi/Tama overlap
+MFS18,"14151;14152;14153;14401;13209;13224",Sagamihara + Machida/Tama-city overlap
+MFS19,"14201;14210;14301;12226;12463;12205",Yokosuka Miura
+MFS20,"14204;14205;14321",Kamakura Zushi Hayama
+MFS21,"14207;14341",Fujisawa Chigasaki Samukawa
+MFS22,"14203;14361;14362",Hiratsuka Oiso Ninomiya
+MFS23,"14215;14382;14383;14384;14206",Odawara Manazuru Yugawara Hakone
+MFS24,"14342;14362;14363;14364",Minami-Ashigara Nakai Oi Matsuda
+MFS25,"14212;14213;14366;14214;14402;14211",Atsugi Hadano Kiyokawa Isehara
+MFS26,"14215;14208;14216;14217;14218",Zama Yamato Ebina Ayase
+MFS27,"11101;11102;11103;11104;11105;11106;11107;11108;11109;11110",Saitama City ward-level (all 10 wards)
+MFS28,"11203;11222;11223",Kawaguchi Warabi Toda
+MFS29,"11224;11214;11230;11208;11228;11229;13221;11324;11235;13222;11245;13213;13220",Asaka Wako Niiza Tokorozawa
+MFS30,"11221;11214;11237;11222;11465;11234",Soka Kasukabe Misato Koshigaya (East Saitama)
+MFS31,"11209;11237;11341;11327;11225;11242;11215;13223",Hanno Hidaka Moroyama Ogose
+MFS32,"11243;11227;11346;11212;11239;11241;11348;11201;11326;11347",Tsurugashima Sakado Kawajima Higashimatsuyama
+MFS33,"11217;11210;11231;11233;11301;11219;11445;11442",Ageo Konosu Okegawa Kitamoto
+MFS34,"11232;11238;11211;11206;11216;11240;10521;08204;10522;11464;08546",Kuki Kazo Hanyu Gyoda
+MFS35,"11202;11218;11343;11369;10523;11342",Kumagaya Fukaya Ogawa Yorii
+MFS36,"11383;11211;11385;10464;11408",Honjo Kamikawa Kamisato
+MFS37,"11207;11361;11381;11369;11362;11363;11365;11349",Chichibu Yokoze Minano Nagatoro
+MFS38,"12101;12102;12103;12104;12105;12106",Chiba City ward-level (all 6 wards)
+MFS39,"12203;12227;12204",Ichikawa Urayasu Narashino Funabashi
+MFS40,"12207;12224;12217;12232",Matsudo Kamagaya Kashiwa Abiko (North Chiba)
+MFS41,"12220;12218;12208",Nagareyama Noda (Northwest Chiba)
+MFS42,"12221;12212;12230;12322;12204",Yachiyo Sakura Narita Shiroi + Funabashi overlap (Central Chiba)
+MFS43,"12219;12426",Ichihara City
+MFS44,"12206;12229;12225;12213",Kisarazu Sodegaura Kimitsu Futtsu
+MFS45,"12235;12421;12238;12234;12427;12422;12423;12441;12424;12443;12223",Katsuura Otaki Tateyama Kamogawa
+MFS46,"12202;12231;12210;12349",Choshi Asahi Sosa Katori
+MFS47,"12215;12216;12237;12228;12402;12233;12403;12409;12410;12347",Togane Mobara Sanmu Oamishirasato
+MFS48,"08203;08205;08234;08235",Tsuchiura Ishioka Omitama Kasumigaura
+MFS49,"08211;08216;08229;08542;08521;08546",Koga Shimotsuma Yachiyo Goka
+MFS50,08220,Tsukuba City
+MFS51,"08224;08225",Joso Bando
+MFS52,"08212;08207;08230;08228;08208;08564;12329;12222",Ryugasaki Toride Ushiku Moriya
+MFS53,"08233;08442;08443;08447;12342;12211",Inashiki Miho Kawachi
+MFS54,"08222;08232;08236;08223;12236",Kashima Kamisu Namegata Itako
+MFS55,"08201;08202;08219;08221;08226;08302;08309;08341;08310",Mito Hitachi Kasama Hitachinaka
+MFS56,"08210;08227;08231;09216",Yuki Chikusei Sakuragawa
+MFS57,"10201;10202;10204;10206;10345;10344",Maebashi Takasaki Isesaki Shibukawa
+MFS58,"10203;10205;10207;10211;10524",Kiryu Ota Tatebayashi Midori
+MFS59,"09201;09203;09205;09361;09301;09345;09386;09344;09214;09342;09215;09343",Utsunomiya Kanuma Moka Kaminokawa
+MFS60,"09202;09209;09213;09364",Tochigi Oyama Shimotsuke Nogi
+MFS61,"09204;09208;10525;10212",Ashikaga Sano
+MFS63,"08212;08214;08215;08217;08364;09411",Ibaraki North (Hitachiota Takahagi Kitaibaraki Hitachiomiya)
+MFS64,"09206;09213;09210;09384;09211;09407",Tochigi North (Nikko Nasushiobara Sakura)
+MFS65,"10208;10209;10210;10428;10449;10444;10448;10421;10443;10426;10424;10425",Gunma North (Numata Kan'na Nakanojo)
+MFS66,"10366;10382;10429;10367;10383;10384",Gunma Other (Ueno Kanna Nanmoku)
+MFS67,"01xxx;02xxx;03xxx;04xxx;05xxx;06xxx;07xxx",Hokkaido and Tohoku Region (use regex pattern in mapper)
+MFS68,"15xxx;16xxx;17xxx;18xxx",Hokuriku Region (Niigata Toyama Ishikawa Fukui)
+MFS69,"19xxx;20xxx",Yamanashi and Nagano Region
+MFS70,22xxx,Shizuoka Prefecture (all municipalities)
+MFS71,"21xxx;23xxx;24xxx;25xxx;26xxx;27xxx;28xxx;29xxx;30xxx;00UNK",Chubu-West Region (Osaka Nagoya areas)

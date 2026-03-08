@@ -1,0 +1,47 @@
+zone_id,name,center_lon,center_lat,radius_km,warehouses_weight,retail_weight,construction_weight,residential_weight
+# Tokyo 23 Wards - MFS Zones 1-7 (all within 15km),,,,,,,,
+MFS01,Chiyoda/Chuo/Minato (Central Tokyo CBD),139.7673,35.6809,3.5,0.2,0.8,0.1,0.2
+MFS02,Meguro/Shinagawa/Ota (Southern Tokyo Port),139.7400,35.6100,3.5,1.0,0.3,0.4,0.3
+MFS03,Toshima/Bunkyo/Shinjuku/Shibuya (Northwest),139.7000,35.6950,3.5,0.2,1.0,0.2,0.6
+MFS04,Arakawa/Taito/Sumida/Koto (Eastern Industrial),139.8,35.68,3.5,1.0,0.4,0.6,0.4
+MFS05,Nakano/Suginami/Setagaya (Western Residential),139.6500,35.6700,4.0,0.1,0.6,0.2,1.0
+MFS06,Nerima/Itabashi/Kita (Northern Tokyo),139.6800,35.7500,3.5,0.4,0.5,0.3,0.8
+MFS07,Adachi/Katsushika/Edogawa (Northeast Tokyo),139.8500,35.7400,4.0,0.7,0.5,0.4,0.7
+# West Tokyo Tama - MFS Zones 8-10 (within 30km),,,,,,,,
+MFS08,Chofu/Nishitokyo/Fuchu/Musashino,139.5500,35.6700,4.0,0.4,0.5,0.3,0.7
+MFS09,Machida/Tama/Hachioji/Inagi,139.3200,35.6500,6.0,0.4,0.5,0.3,0.6
+MFS10,Mizuho/Fussa/Hamura/Akiruno,139.2500,35.7400,5.0,0.3,0.4,0.2,0.5
+# Yokohama - MFS Zones 11-15 (20-30km),,,,,,,,
+MFS11,Yokohama Nishi/Naka (Central),139.62,35.47,3.0,1.0,0.6,0.3,0.4
+MFS12,Yokohama Isogo/Minami/Kanazawa/Konan (South Port),139.6200,35.4100,3.0,1.0,0.4,0.5,0.3
+MFS13,Yokohama Hodogaya/Totsuka/Sakae/Izumi (West),139.5500,35.4400,4.5,0.7,0.5,0.3,0.5
+MFS14,Yokohama Kohoku/Tsuzuki/Midori/Aoba (North),139.5800,35.5300,4.0,0.6,0.5,0.3,0.6
+MFS15,Yokohama Tsurumi/Kanagawa (East),139.6600,35.5100,2.5,0.9,0.4,0.4,0.4
+# Kawasaki - MFS Zones 16-17 (15-25km),,,,,,,,
+MFS16,Kawasaki Kawasaki/Saiwai/Nakahara (Central),139.69,35.55,3.0,0.9,0.4,0.6,0.3
+MFS17,Kawasaki Takatsu/Miyamae/Tama/Asao (North),139.6000,35.5900,4.0,0.5,0.5,0.3,0.6
+# Sagamihara - MFS Zone 18 (30km),,,,,,,,
+MFS18,Sagamihara City,139.3700,35.5700,6.0,0.5,0.4,0.3,0.5
+# Kanagawa Near Coast - MFS Zones 19-21 (45-46km, within 50km limit),,,,,,,
+MFS19,Yokosuka/Miura,139.6500,35.2900,5.0,0.5,0.4,0.3,0.4
+MFS20,Kamakura/Zushi/Hayama,139.5500,35.3200,5.0,0.3,0.5,0.2,0.5
+MFS21,Fujisawa/Chigasaki/Samukawa,139.4800,35.3400,6.0,0.4,0.5,0.3,0.5
+# Kanagawa Central - MFS Zones 25-26 (36-48km, within 50km),,,,,,,
+MFS25,Atsugi/Hadano/Kiyokawa/Isehara,139.3300,35.4400,8.0,0.4,0.4,0.3,0.4
+MFS26,Zama/Yamato/Ebina/Ayase,139.4500,35.4800,6.0,0.5,0.5,0.3,0.5
+# Saitama South/Central - MFS Zones 27-33 (15-45km, within 50km),,,,,,,
+MFS27,Saitama City (Urawa/Omiya),139.6500,35.8600,5.0,0.5,0.6,0.3,0.7
+MFS28,Kawaguchi/Warabi/Toda,139.7200,35.8300,3.5,0.6,0.5,0.4,0.6
+MFS29,Asaka/Wako/Niiza/Tokorozawa,139.5700,35.8000,4.5,0.4,0.5,0.3,0.6
+MFS30,Soka/Kasukabe/Misato/Koshigaya (East Saitama),139.8200,35.8900,5.0,0.5,0.5,0.3,0.6
+MFS31,Hanno/Hidaka/Moroyama/Ogose,139.3300,35.8500,8.0,0.3,0.4,0.2,0.4
+MFS32,Tsurugashima/Sakado/Kawajima/Higashimatsuyama,139.4000,35.9500,7.0,0.3,0.4,0.3,0.4
+MFS33,Ageo/Konosu/Okegawa/Kitamoto,139.6000,36.0000,6.0,0.4,0.4,0.3,0.5
+# Chiba West/Central - MFS Zones 38-44 (15-40km, within 50km),,,,,,,
+MFS38,Chiba City,140.1200,35.6100,5.0,0.6,0.5,0.3,0.6
+MFS39,Ichikawa/Urayasu/Narashino/Funabashi,139.9200,35.7000,4.0,0.7,0.5,0.4,0.6
+MFS40,Matsudo/Kamagaya/Kashiwa/Abiko (North Chiba),139.9500,35.8400,5.0,0.5,0.5,0.3,0.6
+MFS41,Nagareyama/Noda (Northwest Chiba),139.9000,35.9500,4.5,0.4,0.4,0.3,0.5
+MFS42,Yachiyo/Sakura/Narita/Shiroi (Central Chiba),140.1500,35.7200,6.0,0.5,0.4,0.3,0.5
+MFS43,Ichihara City,140.1200,35.5000,8.0,0.5,0.4,0.3,0.4
+MFS44,Kisarazu/Sodegaura/Kimitsu/Futtsu,140.06,35.61,6.0,0.4,0.4,0.3,0.4

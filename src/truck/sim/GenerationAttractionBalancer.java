@@ -2,6 +2,8 @@ package truck.sim;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Enforces generation-attraction balance based on MFS survey data (File 21).
@@ -18,11 +20,9 @@ public class GenerationAttractionBalancer {
     // Zone capacity targets (from MFS File 21)
     private Map<String, ZoneCapacity> zoneCapacities;
 
-    // Running counts during simulation
+    // Running counts during simulation (ConcurrentHashMap for thread-safe parallel trip generation)
     private Map<String, Integer> currentGeneration;
     private Map<String, Integer> currentAttraction;
-
-    private Random random;
 
     /**
      * Zone capacity data structure.
@@ -46,11 +46,10 @@ public class GenerationAttractionBalancer {
         }
     }
 
-    public GenerationAttractionBalancer(Random random) {
-        this.random = random;
+    public GenerationAttractionBalancer() {
         this.zoneCapacities = new HashMap<>();
-        this.currentGeneration = new HashMap<>();
-        this.currentAttraction = new HashMap<>();
+        this.currentGeneration = new ConcurrentHashMap<>();
+        this.currentAttraction = new ConcurrentHashMap<>();
     }
 
     /**
@@ -101,6 +100,35 @@ public class GenerationAttractionBalancer {
 
         System.out.println("[G-A Balance] Total target generation: " + totalGen + " trips/day");
         System.out.println("[G-A Balance] Total target attraction: " + totalAtt + " trips/day");
+    }
+
+    /**
+     * Scale G-A targets so that total generation matches the expected
+     * number of loaded movements the simulation will produce.
+     *
+     * @param expectedTotalMovements Expected loaded movements for current fleet
+     */
+    public void scaleTargets(double expectedTotalMovements) {
+        int currentTotalGen = zoneCapacities.values().stream()
+            .mapToInt(z -> z.targetGeneration).sum();
+
+        if (currentTotalGen <= 0) return;
+
+        double scaleFactor = expectedTotalMovements / currentTotalGen;
+
+        for (ZoneCapacity capacity : zoneCapacities.values()) {
+            capacity.targetGeneration = Math.max(1, (int)(capacity.targetGeneration * scaleFactor));
+            capacity.targetAttraction = Math.max(1, (int)(capacity.targetAttraction * scaleFactor));
+            capacity.generatedTons *= scaleFactor;
+            capacity.attractedTons *= scaleFactor;
+        }
+
+        int totalGen = zoneCapacities.values().stream()
+            .mapToInt(z -> z.targetGeneration).sum();
+        int totalAtt = zoneCapacities.values().stream()
+            .mapToInt(z -> z.targetAttraction).sum();
+        System.out.printf("[G-A Balance] Scaled targets by %.4f: gen=%,d, att=%,d%n",
+            scaleFactor, totalGen, totalAtt);
     }
 
     /**
@@ -196,7 +224,7 @@ public class GenerationAttractionBalancer {
         double totalWeight = validCandidates.values().stream()
             .mapToDouble(Double::doubleValue).sum();
 
-        double rand = random.nextDouble() * totalWeight;
+        double rand = ThreadLocalRandom.current().nextDouble() * totalWeight;
         double cumulative = 0.0;
 
         for (Map.Entry<String, Double> entry : validCandidates.entrySet()) {

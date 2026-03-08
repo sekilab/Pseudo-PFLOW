@@ -27,10 +27,10 @@ public final class TruckSimulationConstants {
     // ========== Distance Decay Factors ==========
 
     /** Distance decay factor for DELIVERY truck short trips (exponential decay) */
-    public static final double DELIVERY_DISTANCE_DECAY_FACTOR = 3.8;
+    public static final double DELIVERY_DISTANCE_DECAY_FACTOR = 2.5;
 
     /** Distance decay factor for MIXED_OPERATION trucks */
-    public static final double MIXED_DISTANCE_DECAY_FACTOR = 90.0;
+    public static final double MIXED_DISTANCE_DECAY_FACTOR = 50.0;
 
     /** Distance decay factor for LONG_HAUL trucks */
     public static final double LONGHAUL_DISTANCE_DECAY_FACTOR = 310.0;
@@ -38,7 +38,7 @@ public final class TruckSimulationConstants {
     // ========== Probability Damping Factors ==========
 
     /** Intra-zone trip probability damping factor (calibrated for 20.67% intra-zone ratio) */
-    public static final double INTRAZONE_DAMPING_FACTOR = 0.012;
+    public static final double INTRAZONE_DAMPING_FACTOR = 0.0015;
 
     /** Empty trip probability (8% of all trips) */
     public static final double EMPTY_TRIP_PROBABILITY = 0.08;

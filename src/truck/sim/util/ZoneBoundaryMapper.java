@@ -23,8 +23,8 @@ public class ZoneBoundaryMapper {
     // zone_id -> list of adm_codes
     private Map<String, List<String>> zoneToAdmCodes;
 
-    // adm_code -> geometry (loaded from shapefile)
-    private Map<String, Geometry> admCodeToGeometry;
+    // adm_code -> list of geometries (loaded from shapefile; many codes have multiple polygon parts)
+    private Map<String, List<Geometry>> admCodeToGeometry;
 
     // adm_code -> SimpleFeature (for metadata access)
     private Map<String, SimpleFeature> admCodeToFeature;
@@ -97,7 +97,7 @@ public class ZoneBoundaryMapper {
 
     /**
      * Load boundary geometries from shapefile.
-     * Builds adm_code -> geometry index for fast lookup.
+     * Expects a pre-dissolved, WGS84-projected shapefile with N03_007 attribute.
      *
      * @param shapefilePath Path to shapefile
      */
@@ -106,11 +106,11 @@ public class ZoneBoundaryMapper {
 
         try {
             List<SimpleFeature> features = dcity.aggr.ShpLoader.load(shapefilePath);
-            int indexed = 0;
+            int totalFeatures = 0;
 
             for (SimpleFeature feature : features) {
-                // Get adm_code attribute
-                Object admCodeObj = feature.getAttribute("adm_code");
+                // Get adm_code attribute (N03_007 for MLIT N03 dataset)
+                Object admCodeObj = feature.getAttribute("N03_007");
                 if (admCodeObj == null) {
                     continue;
                 }
@@ -119,13 +119,15 @@ public class ZoneBoundaryMapper {
                 Geometry geom = (Geometry) feature.getDefaultGeometry();
 
                 if (geom != null && !admCode.isEmpty()) {
-                    admCodeToGeometry.put(admCode, geom);
+                    // Accumulate ALL geometries per admin code (many codes have multiple polygon parts)
+                    admCodeToGeometry.computeIfAbsent(admCode, k -> new ArrayList<>()).add(geom);
                     admCodeToFeature.put(admCode, feature);
-                    indexed++;
+                    totalFeatures++;
                 }
             }
 
-            System.out.println("[ZONE MAPPER] Indexed " + indexed + " boundary geometries by adm_code");
+            System.out.println("[ZONE MAPPER] Indexed " + totalFeatures +
+                " boundary features across " + admCodeToGeometry.size() + " admin codes");
         } catch (Exception e) {
             System.err.println("[ZONE MAPPER] Error loading shapefile: " + e.getMessage());
             e.printStackTrace();
@@ -166,10 +168,10 @@ public class ZoneBoundaryMapper {
 
                     // Find all geometries matching this prefecture
                     int prefectureMatches = 0;
-                    for (Map.Entry<String, Geometry> entry : admCodeToGeometry.entrySet()) {
+                    for (Map.Entry<String, List<Geometry>> entry : admCodeToGeometry.entrySet()) {
                         String code = entry.getKey();
                         if (code.startsWith(prefecturePrefix)) {
-                            polygons.add(entry.getValue());
+                            polygons.addAll(entry.getValue());
                             foundCodes.add(code);
                             prefectureMatches++;
                         }
@@ -183,10 +185,10 @@ public class ZoneBoundaryMapper {
                             "' matched no municipalities for zone " + zoneId);
                     }
                 } else {
-                    // Exact match
-                    Geometry geom = admCodeToGeometry.get(admCode);
-                    if (geom != null) {
-                        polygons.add(geom);
+                    // Exact match — add ALL polygon parts for this admin code
+                    List<Geometry> geoms = admCodeToGeometry.get(admCode);
+                    if (geoms != null && !geoms.isEmpty()) {
+                        polygons.addAll(geoms);
                         foundCodes.add(admCode);
                     } else {
                         System.err.println("[ZONE MAPPER] Warning: adm_code '" + admCode +
@@ -230,7 +232,8 @@ public class ZoneBoundaryMapper {
      * @return Geometry or null if not found
      */
     public Geometry getGeometryByAdmCode(String admCode) {
-        return admCodeToGeometry.get(admCode);
+        List<Geometry> geoms = admCodeToGeometry.get(admCode);
+        return (geoms != null && !geoms.isEmpty()) ? geoms.get(0) : null;
     }
 
     /**

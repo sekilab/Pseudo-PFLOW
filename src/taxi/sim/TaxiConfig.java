@@ -78,11 +78,13 @@ public class TaxiConfig {
     private int taxiBreakTime = 600;      // seconds
     private double manhattanFactor = 1.4;  // road distance = straight-line × factor
 
-    // ===== GEOGRAPHICAL PARAMETERS =====
-    private double tokyoBoundsMinLon = 139.6;
-    private double tokyoBoundsMaxLon = 139.9;
-    private double tokyoBoundsMinLat = 35.5;
-    private double tokyoBoundsMaxLat = 35.8;
+    // ===== CITY & GEOGRAPHICAL PARAMETERS =====
+    private String cityName = "Tokyo";            // City name for display
+    private String configDir = "config/taxi/";    // Directory containing config files
+    private double boundsMinLon = 139.6;
+    private double boundsMaxLon = 139.9;
+    private double boundsMinLat = 35.5;
+    private double boundsMaxLat = 35.8;
     private double earthRadiusKm = 6371.0;  // For Haversine formula
 
     // ===== HOTSPOT CONFIGURATION =====
@@ -136,6 +138,22 @@ public class TaxiConfig {
     private double attractivenessBeta3 = 0.6;  // Nightlife coefficient
     private double attractivenessBeta4 = 0.5;  // Residential coefficient
 
+    // ===== SPATIAL VALIDATION =====
+    private boolean spatialValidationEnabled = true;
+    private String shapefileDir = "src/taxi/gm-jp/";
+    private double riverBufferKm = 0.15;
+    private String prefectureCodes = "";  // e.g. "13,14" — filter polbnda_jpn.shp by adm_code prefix
+
+    // ===== TRANSPORT NETWORK INDEX =====
+    private boolean transportIndexEnabled = true;
+    private double stationProximityMaxKm = 2.0;     // Max distance for station boost
+    private double stationBiasProb = 0.4;           // Probability of station-biased point generation
+
+    // ===== ZONE ENRICHMENT FROM SHAPEFILES =====
+    private boolean zoneEnrichmentEnabled = true;
+    private double stationCoverageKm = 1.5;       // station is "covered" if within this of existing zone
+    private double settlementCoverageKm = 2.0;     // settlement is "covered" if within this of existing zone
+
     // ===== ZONE CONFIGURATION =====
     private String zonesFile = "zones.csv";  // Zone CSV file path
 
@@ -187,6 +205,9 @@ public class TaxiConfig {
             loadTimePeriods(props);
             loadAttractivenessCoefficients(props);
             loadZoneConfig(props);
+            loadSpatialConfig(props);
+            loadTransportIndexConfig(props);
+            loadZoneEnrichmentConfig(props);
 
             System.out.println("✓ Configuration loaded successfully from: " + configPath);
             return true;
@@ -281,13 +302,22 @@ public class TaxiConfig {
     }
 
     private void loadGeographicalParams(Properties props) {
-        tokyoBoundsMinLon = getDouble(props, "tokyo.bounds.min.lon", tokyoBoundsMinLon);
-        tokyoBoundsMaxLon = getDouble(props, "tokyo.bounds.max.lon", tokyoBoundsMaxLon);
-        tokyoBoundsMinLat = getDouble(props, "tokyo.bounds.min.lat", tokyoBoundsMinLat);
-        tokyoBoundsMaxLat = getDouble(props, "tokyo.bounds.max.lat", tokyoBoundsMaxLat);
+        cityName = props.getProperty("city.name", cityName);
+
+        // Support both new generic keys and legacy Tokyo keys for backward compatibility
+        boundsMinLon = getDouble(props, "city.bounds.min.lon",
+            getDouble(props, "tokyo.bounds.min.lon", boundsMinLon));
+        boundsMaxLon = getDouble(props, "city.bounds.max.lon",
+            getDouble(props, "tokyo.bounds.max.lon", boundsMaxLon));
+        boundsMinLat = getDouble(props, "city.bounds.min.lat",
+            getDouble(props, "tokyo.bounds.min.lat", boundsMinLat));
+        boundsMaxLat = getDouble(props, "city.bounds.max.lat",
+            getDouble(props, "tokyo.bounds.max.lat", boundsMaxLat));
         earthRadiusKm = getDouble(props, "earth.radius.km", earthRadiusKm);
-        System.out.println("  Bounds: [" + tokyoBoundsMinLon + "," + tokyoBoundsMinLat +
-            "] to [" + tokyoBoundsMaxLon + "," + tokyoBoundsMaxLat + "]");
+
+        System.out.println("  City: " + cityName);
+        System.out.println("  Bounds: [" + boundsMinLon + "," + boundsMinLat +
+            "] to [" + boundsMaxLon + "," + boundsMaxLat + "]");
     }
 
     private void loadHotspotConfig(Properties props) {
@@ -383,6 +413,43 @@ public class TaxiConfig {
     private void loadZoneConfig(Properties props) {
         zonesFile = props.getProperty("zones.file", zonesFile);
         System.out.println("  Zones file: " + zonesFile);
+    }
+
+    private void loadSpatialConfig(Properties props) {
+        spatialValidationEnabled = getBoolean(props, "spatial.validation.enabled", spatialValidationEnabled);
+        shapefileDir = props.getProperty("spatial.shapefile.dir", shapefileDir);
+        riverBufferKm = getDouble(props, "spatial.river.buffer.km", riverBufferKm);
+        prefectureCodes = props.getProperty("city.prefecture.codes", "").trim();
+        System.out.println("  Spatial validation: " + (spatialValidationEnabled ? "ENABLED" : "DISABLED"));
+        if (spatialValidationEnabled) {
+            System.out.println("  Shapefile dir: " + shapefileDir);
+            System.out.println("  River buffer: " + riverBufferKm + " km");
+        }
+        if (!prefectureCodes.isEmpty()) {
+            System.out.println("  Prefecture codes: " + prefectureCodes);
+        }
+    }
+
+    private void loadTransportIndexConfig(Properties props) {
+        transportIndexEnabled = getBoolean(props, "transport.index.enabled", transportIndexEnabled);
+        stationProximityMaxKm = getDouble(props, "transport.station.proximity.max.km", stationProximityMaxKm);
+        stationBiasProb = getDouble(props, "transport.station.bias.probability", stationBiasProb);
+        System.out.println("  Transport index: " + (transportIndexEnabled ? "ENABLED" : "DISABLED"));
+        if (transportIndexEnabled) {
+            System.out.println("  Station proximity max: " + stationProximityMaxKm + " km");
+            System.out.println("  Station bias probability: " + (stationBiasProb * 100) + "%");
+        }
+    }
+
+    private void loadZoneEnrichmentConfig(Properties props) {
+        zoneEnrichmentEnabled = getBoolean(props, "zone.enrichment.enabled", zoneEnrichmentEnabled);
+        stationCoverageKm = getDouble(props, "zone.enrichment.station.coverage.km", stationCoverageKm);
+        settlementCoverageKm = getDouble(props, "zone.enrichment.settlement.coverage.km", settlementCoverageKm);
+        System.out.println("  Zone enrichment: " + (zoneEnrichmentEnabled ? "ENABLED" : "DISABLED"));
+        if (zoneEnrichmentEnabled) {
+            System.out.println("  Station coverage threshold: " + stationCoverageKm + " km");
+            System.out.println("  Settlement coverage threshold: " + settlementCoverageKm + " km");
+        }
     }
 
     // ===== HELPER METHODS =====
@@ -490,11 +557,20 @@ public class TaxiConfig {
     public int getTaxiBreakTime() { return taxiBreakTime; }
     public double getManhattanFactor() { return manhattanFactor; }
 
-    public double getTokyoBoundsMinLon() { return tokyoBoundsMinLon; }
-    public double getTokyoBoundsMaxLon() { return tokyoBoundsMaxLon; }
-    public double getTokyoBoundsMinLat() { return tokyoBoundsMinLat; }
-    public double getTokyoBoundsMaxLat() { return tokyoBoundsMaxLat; }
+    public String getCityName() { return cityName; }
+    public String getConfigDir() { return configDir; }
+    public void setConfigDir(String dir) { this.configDir = dir; }
+    public double getBoundsMinLon() { return boundsMinLon; }
+    public double getBoundsMaxLon() { return boundsMaxLon; }
+    public double getBoundsMinLat() { return boundsMinLat; }
+    public double getBoundsMaxLat() { return boundsMaxLat; }
     public double getEarthRadiusKm() { return earthRadiusKm; }
+
+    // Backward compatibility — deprecated
+    @Deprecated public double getTokyoBoundsMinLon() { return boundsMinLon; }
+    @Deprecated public double getTokyoBoundsMaxLon() { return boundsMaxLon; }
+    @Deprecated public double getTokyoBoundsMinLat() { return boundsMinLat; }
+    @Deprecated public double getTokyoBoundsMaxLat() { return boundsMaxLat; }
 
     public boolean isUseHotspots() { return useHotspots; }
     public double getHotspotAirportNightMultiplier() { return hotspotAirportNightMultiplier; }
@@ -537,4 +613,20 @@ public class TaxiConfig {
     public double getAttractivenessBeta4() { return attractivenessBeta4; }
 
     public String getZonesFile() { return zonesFile; }
+
+    // Spatial validation getters
+    public boolean isSpatialValidationEnabled() { return spatialValidationEnabled; }
+    public String getShapefileDir() { return shapefileDir; }
+    public double getRiverBufferKm() { return riverBufferKm; }
+    public String getPrefectureCodes() { return prefectureCodes; }
+
+    // Transport index getters
+    public boolean isTransportIndexEnabled() { return transportIndexEnabled; }
+    public double getStationProximityMaxKm() { return stationProximityMaxKm; }
+    public double getStationBiasProb() { return stationBiasProb; }
+
+    // Zone enrichment getters
+    public boolean isZoneEnrichmentEnabled() { return zoneEnrichmentEnabled; }
+    public double getStationCoverageKm() { return stationCoverageKm; }
+    public double getSettlementCoverageKm() { return settlementCoverageKm; }
 }

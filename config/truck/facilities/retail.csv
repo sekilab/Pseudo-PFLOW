@@ -1,0 +1,274 @@
+poi_id,name,lon,lat,zone_id,facility_type,business_type
+RS001,Ginza Shopping District,139.7640,35.6722,MFS01,SMALL_RETAIL,shopping_district
+RS002,Shibuya Commercial Center,139.7005,35.6617,MFS03,SMALL_RETAIL,retail_cluster
+RS003,Shinjuku Retail Hub,139.7000,35.6938,MFS03,SMALL_RETAIL,shopping_district
+RS004,Akihabara Electronics Quarter,139.7730,35.6983,MFS04,SMALL_RETAIL,electronics
+RS005,Ikebukuro Shopping Area,139.7101,35.7295,MFS03,SMALL_RETAIL,shopping_district
+RS006,Ueno Shopping Street,139.7787,35.7141,MFS04,SMALL_RETAIL,retail_cluster
+RS007,Asakusa Traditional Shops,139.795,35.71,MFS04,SMALL_RETAIL,traditional
+RS008,Roppongi Commercial,139.7294,35.6634,MFS03,SMALL_RETAIL,business_district
+RS009,Meguro Retail District,139.7167,35.6333,MFS02,SMALL_RETAIL,retail_cluster
+RS010,Shinagawa Commercial,139.7400,35.6280,MFS02,SMALL_RETAIL,business_district
+RS011,Setagaya Shopping Streets,139.6500,35.6450,MFS05,SMALL_RETAIL,residential_retail
+RS012,Nakano Broadway,139.6650,35.7050,MFS05,SMALL_RETAIL,shopping_center
+RS013,Kichijoji Shops,139.5800,35.7050,MFS05,SMALL_RETAIL,shopping_district
+RS014,Tachikawa Commercial,139.4130,35.6980,MFS09,SMALL_RETAIL,suburban_center
+RS015,Machida Retail Center,139.4460,35.5430,MFS09,SMALL_RETAIL,suburban_center
+RS016,Urawa Shopping District,139.6500,35.8590,MFS27,SMALL_RETAIL,retail_cluster
+RS017,Omiya Commercial Area,139.6270,35.9060,MFS27,SMALL_RETAIL,shopping_district
+RS018,Funabashi Shopping,139.9830,35.6950,MFS39,SMALL_RETAIL,retail_cluster
+RS019,Ichikawa Retail District,139.9300,35.7220,MFS39,SMALL_RETAIL,residential_retail
+RS020,Koto Shopping Streets,139.8170,35.6730,MFS04,SMALL_RETAIL,residential_retail
+RS021,Sumida Commercial,139.8,35.7,MFS04,SMALL_RETAIL,retail_cluster
+RS022,Arakawa Shops,139.7830,35.7360,MFS04,SMALL_RETAIL,residential_retail
+RS023,Adachi Shopping Area,139.8050,35.7750,MFS07,SMALL_RETAIL,residential_retail
+RS024,Katsushika Retail,139.8480,35.7480,MFS07,SMALL_RETAIL,residential_retail
+RS025,Edogawa Shopping,139.8680,35.7070,MFS07,SMALL_RETAIL,residential_retail
+RS026,Itabashi Commercial,139.7100,35.7510,MFS06,SMALL_RETAIL,residential_retail
+RS027,Kita Shopping District,139.7350,35.7530,MFS06,SMALL_RETAIL,retail_cluster
+RS028,Nerima Retail Shops,139.6530,35.7360,MFS06,SMALL_RETAIL,residential_retail
+RS029,Chofu Shopping Center,139.5420,35.6550,MFS08,SMALL_RETAIL,suburban_center
+RS030,Fuchu Retail District,139.4780,35.6690,MFS08,SMALL_RETAIL,suburban_center
+RS031,Nishitokyo Shops,139.5380,35.7250,MFS08,SMALL_RETAIL,residential_retail
+RS032,Kawasaki Commercial,139.695,35.54,MFS16,SMALL_RETAIL,retail_cluster
+RS033,Kawasaki Lazona Area,139.6970,35.5290,MFS16,SMALL_RETAIL,shopping_center
+RS034,Yokohama Shopping District,139.6230,35.4650,MFS11,SMALL_RETAIL,retail_cluster
+RS035,Yokohama Chinatown,139.635,35.45,MFS11,SMALL_RETAIL,tourist_area
+RS036,Tsukiji Outer Market,139.7750,35.6660,MFS01,SMALL_RETAIL,market
+RS037,Nihonbashi Shopping,139.7750,35.6830,MFS01,SMALL_RETAIL,traditional
+RS038,Marunouchi Business Retail,139.7640,35.6810,MFS01,SMALL_RETAIL,business_district
+RS039,Yotsuya Shopping,139.7300,35.6860,MFS01,SMALL_RETAIL,retail_cluster
+RS040,Ochanomizu Shops,139.7660,35.6990,MFS01,SMALL_RETAIL,retail_cluster
+RS041,Jimbocho Book District,139.7570,35.6960,MFS01,SMALL_RETAIL,specialized
+RS042,Harajuku Fashion Street,139.7030,35.6702,MFS03,SMALL_RETAIL,fashion
+RS043,Takadanobaba Shops,139.7040,35.7130,MFS03,SMALL_RETAIL,retail_cluster
+RS044,Mejiro Shopping,139.7063,35.7210,MFS03,SMALL_RETAIL,residential_retail
+RS045,Sugamo Shopping Street,139.7390,35.7330,MFS03,SMALL_RETAIL,traditional
+RS046,Sengoku Retail Area,139.7450,35.7250,MFS03,SMALL_RETAIL,residential_retail
+RS047,Komagome Shops,139.7470,35.7360,MFS03,SMALL_RETAIL,residential_retail
+RS048,Tabata Shopping,139.7610,35.7380,MFS03,SMALL_RETAIL,residential_retail
+RS049,Nippori Retail District,139.7710,35.7280,MFS04,SMALL_RETAIL,retail_cluster
+RS050,Kinshicho Commercial,139.8140,35.6970,MFS04,SMALL_RETAIL,shopping_center
+RS051,Ome Station Shops,139.2500,35.7900,MFS10,SMALL_RETAIL,suburban_center
+RS052,Akiruno Retail Area,139.2900,35.7300,MFS10,SMALL_RETAIL,residential_retail
+RS053,Higashimurayama Shopping,139.4700,35.7600,MFS10,SMALL_RETAIL,residential_retail
+RS054,Yokohama Motomachi Shopping,139.64,35.45,MFS11,SMALL_RETAIL,shopping_district
+RS055,Yokohama Isezakicho,139.628,35.45,MFS11,SMALL_RETAIL,traditional
+RS056,Yokohama Noge Shops,139.622,35.455,MFS11,SMALL_RETAIL,traditional
+RS057,Yokosuka Dobuita Street,139.6700,35.2800,MFS12,SMALL_RETAIL,traditional
+RS058,Yokosuka Chuo Shops,139.6700,35.2850,MFS12,SMALL_RETAIL,retail_cluster
+RS059,Totsuka Station Retail,139.5350,35.4000,MFS13,SMALL_RETAIL,suburban_center
+RS060,Futamatagawa Shops,139.5300,35.4500,MFS13,SMALL_RETAIL,residential_retail
+RS061,Shin-Yokohama Shops,139.6200,35.5100,MFS14,SMALL_RETAIL,business_district
+RS062,Center Minami Shopping,139.5700,35.5400,MFS14,SMALL_RETAIL,suburban_center
+RS063,Azamino Retail Area,139.5600,35.5600,MFS14,SMALL_RETAIL,residential_retail
+RS064,Yokohama Seya Shops,139.4900,35.4700,MFS15,SMALL_RETAIL,residential_retail
+RS065,Izumi-chuo Retail,139.5000,35.4300,MFS15,SMALL_RETAIL,suburban_center
+RS066,Kawasaki Musashikosugi,139.6600,35.5700,MFS16,SMALL_RETAIL,retail_cluster
+RS067,Kawasaki Mizonokuchi Shops,139.6100,35.5900,MFS17,SMALL_RETAIL,suburban_center
+RS068,Kawasaki Shinyurigaoka,139.5100,35.6000,MFS17,SMALL_RETAIL,suburban_center
+RS069,Kawasaki Noborito Area,139.5700,35.6200,MFS17,SMALL_RETAIL,residential_retail
+RS070,Sagamihara Station Shops,139.3700,35.5800,MFS18,SMALL_RETAIL,suburban_center
+RS071,Sagamiono Retail,139.4000,35.5300,MFS18,SMALL_RETAIL,shopping_center
+RS072,Hashimoto Shopping Area,139.3400,35.5900,MFS18,SMALL_RETAIL,suburban_center
+RS073,Kamakura Komachi Street,139.5600,35.3200,MFS19,SMALL_RETAIL,traditional
+RS074,Zushi Station Shops,139.5800,35.2900,MFS19,SMALL_RETAIL,residential_retail
+RS075,Fujisawa Station Retail,139.4900,35.3400,MFS20,SMALL_RETAIL,suburban_center
+RS076,Enoshima Shopping,139.4800,35.3100,MFS20,SMALL_RETAIL,tourist_area
+RS077,Chigasaki Southern Shops,139.4000,35.3300,MFS20,SMALL_RETAIL,residential_retail
+RS078,Hiratsuka Station Retail,139.3500,35.3300,MFS21,SMALL_RETAIL,suburban_center
+RS079,Hadano Shopping Area,139.2200,35.3800,MFS21,SMALL_RETAIL,residential_retail
+RS080,Isehara Retail,139.3100,35.4000,MFS21,SMALL_RETAIL,residential_retail
+RS081,Odawara Shopping District,139.1600,35.2600,MFS22,SMALL_RETAIL,shopping_district
+RS082,Minamiashigara Shops,139.1100,35.3100,MFS22,SMALL_RETAIL,residential_retail
+RS083,Hakone Yumoto Shops,139.1000,35.2400,MFS23,SMALL_RETAIL,tourist_area
+RS084,Gotemba Station Retail,138.9300,35.3100,MFS24,SMALL_RETAIL,suburban_center
+RS085,Atsugi Central Shopping,139.3600,35.4400,MFS25,SMALL_RETAIL,suburban_center
+RS086,Atsugi Honmoku Shops,139.3700,35.4300,MFS25,SMALL_RETAIL,traditional
+RS087,Ebina Station Retail,139.3900,35.4600,MFS26,SMALL_RETAIL,suburban_center
+RS088,Yamato Tsuruma Shops,139.4600,35.4800,MFS26,SMALL_RETAIL,residential_retail
+RS089,Zama Shopping Area,139.4100,35.4900,MFS26,SMALL_RETAIL,residential_retail
+RS090,Saitama Urawa Parco Area,139.6600,35.8600,MFS27,SMALL_RETAIL,shopping_district
+RS091,Saitama Shintoshin Shops,139.6300,35.8900,MFS27,SMALL_RETAIL,retail_cluster
+RS092,Kawaguchi Station Retail,139.7200,35.8000,MFS28,SMALL_RETAIL,suburban_center
+RS093,Warabi Nishi Shops,139.6900,35.8300,MFS28,SMALL_RETAIL,residential_retail
+RS094,Kawagoe Ichibangai,139.4900,35.9300,MFS29,SMALL_RETAIL,traditional
+RS095,Tokorozawa Prope Shops,139.5800,35.7900,MFS29,SMALL_RETAIL,suburban_center
+RS096,Fujimino Station Retail,139.5200,35.8600,MFS29,SMALL_RETAIL,residential_retail
+RS097,Koshigaya Station Shops,139.7900,35.8900,MFS30,SMALL_RETAIL,suburban_center
+RS098,Misato Retail Area,139.8700,35.8300,MFS30,SMALL_RETAIL,residential_retail
+RS099,Hanno Shopping District,139.3300,35.8500,MFS31,SMALL_RETAIL,residential_retail
+RS100,Sayama City Shops,139.4100,35.8500,MFS31,SMALL_RETAIL,residential_retail
+RS101,Kumagaya Station Retail,139.3900,36.1500,MFS32,SMALL_RETAIL,suburban_center
+RS102,Fukaya Shopping Area,139.2800,36.2000,MFS32,SMALL_RETAIL,residential_retail
+RS103,Kazo Station Shops,139.6000,36.0300,MFS33,SMALL_RETAIL,residential_retail
+RS104,Kuki Shopping Center,139.6700,36.0600,MFS33,SMALL_RETAIL,suburban_center
+RS105,Gyoda Retail Area,139.4600,36.1400,MFS34,SMALL_RETAIL,residential_retail
+RS106,Honjo Station Shops,139.1892,36.2492,MFS34,SMALL_RETAIL,residential_retail
+RS107,Hanyu Shopping Street,139.5500,36.1700,MFS35,SMALL_RETAIL,residential_retail
+RS108,Kazo Kita Shops,139.3900,36.1500,MFS35,SMALL_RETAIL,residential_retail
+RS109,Ogawa Town Retail,139.2600,36.0600,MFS36,SMALL_RETAIL,residential_retail
+RS110,Yorii Station Shops,139.1900,36.1200,MFS36,SMALL_RETAIL,residential_retail
+RS111,Chichibu Shops,139.0900,35.9900,MFS37,SMALL_RETAIL,traditional
+RS112,Nagatoro Tourist Retail,139.1100,36.1000,MFS37,SMALL_RETAIL,tourist_area
+RS113,Chiba Station Retail,140.1200,35.6100,MFS38,SMALL_RETAIL,suburban_center
+RS114,Chiba Central Shopping,140.1300,35.6200,MFS38,SMALL_RETAIL,shopping_district
+RS115,Ichikawa Station Shops,139.9200,35.7300,MFS39,SMALL_RETAIL,suburban_center
+RS116,Motoyawata Shopping,139.9300,35.7200,MFS39,SMALL_RETAIL,retail_cluster
+RS117,Matsudo Station Retail,139.9000,35.7900,MFS40,SMALL_RETAIL,suburban_center
+RS118,Shin-Matsudo Shops,139.9200,35.8200,MFS40,SMALL_RETAIL,residential_retail
+RS119,Kashiwa Station Shopping,139.9800,35.8600,MFS41,SMALL_RETAIL,shopping_district
+RS120,Nagareyama Otakanomori,139.9300,35.8700,MFS41,SMALL_RETAIL,suburban_center
+RS121,Tsudanuma Station Retail,140.0200,35.6900,MFS42,SMALL_RETAIL,suburban_center
+RS122,Narashino Shops,140.02,35.67,MFS42,SMALL_RETAIL,residential_retail
+RS123,Chiba Makuhari Shops,140.030,35.650,MFS43,SMALL_RETAIL,retail_cluster
+RS124,Inage Station Retail,140.1100,35.6300,MFS43,SMALL_RETAIL,residential_retail
+RS125,Kisarazu Station Shopping,139.915,35.38,MFS44,SMALL_RETAIL,suburban_center
+RS126,Kimitsu Retail Area,139.895,35.34,MFS44,SMALL_RETAIL,residential_retail
+RS127,Tateyama Shopping,139.8700,34.9900,MFS45,SMALL_RETAIL,traditional
+RS128,Kamogawa Station Shops,140.095,35.12,MFS45,SMALL_RETAIL,residential_retail
+RS129,Choshi Station Retail,140.8300,35.7300,MFS46,SMALL_RETAIL,traditional
+RS130,Asahi Retail Area,140.6500,35.7200,MFS46,SMALL_RETAIL,residential_retail
+RS131,Narita Station Shopping,140.3200,35.7800,MFS47,SMALL_RETAIL,suburban_center
+RS132,Sakura City Shops,140.2200,35.7200,MFS47,SMALL_RETAIL,residential_retail
+RS133,Tsukuba Center Retail,140.1100,36.0800,MFS48,SMALL_RETAIL,suburban_center
+RS134,Tsukuba Research Park Shops,140.1300,36.0600,MFS48,SMALL_RETAIL,business_district
+RS135,Koga Station Retail,139.8200,36.1800,MFS49,SMALL_RETAIL,residential_retail
+RS136,Tsuchiura Station Shops,140.2000,36.0800,MFS50,SMALL_RETAIL,suburban_center
+RS137,Moriya Shopping Area,139.9800,35.9600,MFS51,SMALL_RETAIL,suburban_center
+RS138,Toride Station Retail,140.0500,35.9100,MFS52,SMALL_RETAIL,residential_retail
+RS139,Ushiku Station Shops,140.1500,35.9800,MFS52,SMALL_RETAIL,residential_retail
+RS140,Kashima Retail Area,140.6300,35.9700,MFS53,SMALL_RETAIL,residential_retail
+RS141,Mito Station Shopping,140.4700,36.3700,MFS55,SMALL_RETAIL,shopping_district
+RS142,Hitachinaka Shops,140.5300,36.4000,MFS55,SMALL_RETAIL,residential_retail
+RS143,Hitachi City Retail,140.6500,36.6000,MFS56,SMALL_RETAIL,suburban_center
+RS144,Maebashi Station Shops,139.0700,36.3900,MFS57,SMALL_RETAIL,suburban_center
+RS145,Takasaki Station Retail,139.0100,36.3200,MFS57,SMALL_RETAIL,shopping_district
+RS146,Ota Gunma Shopping,139.3800,36.3000,MFS58,SMALL_RETAIL,suburban_center
+RS147,Utsunomiya Station Retail,139.8900,36.5600,MFS59,SMALL_RETAIL,shopping_district
+RS148,Oyama Station Shops,139.8000,36.3100,MFS60,SMALL_RETAIL,suburban_center
+RS149,Sano Outlet Area,139.5800,36.3200,MFS61,SMALL_RETAIL,shopping_district
+RS150,Ashikaga Shopping,139.4500,36.3400,MFS61,SMALL_RETAIL,traditional
+RS151,Sendai Ichibancho,140.7400,38.2600,MFS67,SMALL_RETAIL,shopping_district
+RS153,Nagano Zenkoji Shops,138.5000,36.0000,MFS69,SMALL_RETAIL,traditional
+RS154,Shizuoka Aoba Street,138.3800,34.9800,MFS70,SMALL_RETAIL,shopping_district
+RS155,Nagoya Sakae Retail,136.9070,35.1720,MFS71,SMALL_RETAIL,shopping_district
+RS156,Odaiba Shopping District,139.7750,35.6255,MFS02,SMALL_RETAIL,entertainment_district
+RS157,Daikanyama Boutiques,139.7000,35.6500,MFS03,SMALL_RETAIL,fashion_district
+RS158,Ebisu Garden Place Shops,139.7100,35.6450,MFS03,SMALL_RETAIL,shopping_center
+RS159,Harajuku Fashion Street,139.7030,35.6700,MFS03,SMALL_RETAIL,fashion_district
+RS160,Omotesando Boutiques,139.7100,35.6650,MFS03,SMALL_RETAIL,luxury_retail
+RS161,Aoyama Fashion District,139.7200,35.6650,MFS01,SMALL_RETAIL,luxury_retail
+RS162,Marunouchi Business Retail,139.7650,35.6800,MFS01,SMALL_RETAIL,business_district
+RS163,Tokyo Station Shopping,139.7673,35.6809,MFS01,SMALL_RETAIL,station_retail
+RS164,Nihonbashi Department Stores,139.7750,35.6850,MFS01,SMALL_RETAIL,shopping_district
+RS165,Kanda Bookstore District,139.7700,35.6950,MFS01,SMALL_RETAIL,specialty_retail
+RS166,Ochanomizu Student Retail,139.7650,35.6990,MFS01,SMALL_RETAIL,student_district
+RS167,Jimbocho Book Town,139.7580,35.6960,MFS01,SMALL_RETAIL,specialty_retail
+RS168,Tsukiji Outer Market,139.7720,35.6655,MFS01,SMALL_RETAIL,market_retail
+RS169,Monzennakacho Shopping,139.7950,35.6730,MFS04,SMALL_RETAIL,residential_retail
+RS170,Kiyosumi Traditional Shops,139.7988,35.6792,MFS04,SMALL_RETAIL,residential_retail
+RS171,Toyosu Shopping Complex,139.7950,35.6600,MFS04,SMALL_RETAIL,residential_retail
+RS172,Kiba Retail Area,139.8100,35.6800,MFS04,SMALL_RETAIL,residential_retail
+RS173,Kameido Shopping Street,139.8250,35.6970,MFS04,SMALL_RETAIL,shopping_district
+RS174,Kinshicho Retail Hub,139.8135,35.6957,MFS04,SMALL_RETAIL,shopping_district
+RS175,Ryogoku Traditional Shops,139.7930,35.6970,MFS04,SMALL_RETAIL,traditional
+RS176,Koiwa Shopping Street,139.8800,35.7300,MFS07,SMALL_RETAIL,residential_retail
+RS177,Katsushika Retail Cluster,139.8500,35.7400,MFS07,SMALL_RETAIL,residential_retail
+RS178,Shin-Koiwa Commercial,139.8850,35.7200,MFS07,SMALL_RETAIL,residential_retail
+RS179,Mizue Shopping Area,139.8950,35.7100,MFS07,SMALL_RETAIL,residential_retail
+RS180,Funabori Retail District,139.9000,35.6900,MFS07,SMALL_RETAIL,residential_retail
+RS181,Kasai Retail Cluster,139.8700,35.6700,MFS04,SMALL_RETAIL,residential_retail
+RS182,Nishi-Kasai Shopping,139.8600,35.6650,MFS04,SMALL_RETAIL,residential_retail
+RS183,Gyotoku Shopping Street,139.9100,35.6800,MFS39,SMALL_RETAIL,residential_retail
+RS184,Myoden Retail Area,139.9050,35.6950,MFS39,SMALL_RETAIL,residential_retail
+RS185,Motoyawata Shopping,139.9250,35.7150,MFS39,SMALL_RETAIL,shopping_district
+RS186,Ichikawa Retail Hub,139.9300,35.7250,MFS39,SMALL_RETAIL,shopping_district
+RS187,Kokubunji Shopping District,139.4625,35.7100,MFS09,SMALL_RETAIL,shopping_district
+RS188,Kunitachi Retail Area,139.4420,35.6840,MFS09,SMALL_RETAIL,residential_retail
+RS189,Fuchu Shopping Center,139.4770,35.6690,MFS09,SMALL_RETAIL,shopping_district
+RS190,Chofu Shopping Street,139.5400,35.6550,MFS08,SMALL_RETAIL,shopping_district
+RS191,Mitaka Shopping District,139.5590,35.6830,MFS05,SMALL_RETAIL,shopping_district
+RS192,Musashisakai Retail Hub,139.5550,35.7050,MFS05,SMALL_RETAIL,shopping_district
+RS193,Higashimurayama Commercial,139.4690,35.7545,MFS06,SMALL_RETAIL,suburban_center
+RS194,Tanashi Shopping Street,139.5380,35.7260,MFS06,SMALL_RETAIL,residential_retail
+RS195,Hoya Retail District,139.5520,35.7400,MFS06,SMALL_RETAIL,residential_retail
+RS196,Hibarigaoka Shopping,139.5400,35.7620,MFS06,SMALL_RETAIL,shopping_district
+RS197,Soka Shopping District,139.8050,35.8250,MFS27,SMALL_RETAIL,shopping_district
+RS198,Yashio Retail Area,139.8380,35.8220,MFS27,SMALL_RETAIL,residential_retail
+RS199,Misato Shopping Center,139.8750,35.8300,MFS28,SMALL_RETAIL,shopping_district
+RS200,Yoshikawa Retail District,139.8400,35.8900,MFS28,SMALL_RETAIL,residential_retail
+RS201,Satte Shopping Area,139.7250,36.0700,MFS30,SMALL_RETAIL,suburban_center
+RS202,Koshigaya Shopping District,139.7900,35.8900,MFS27,SMALL_RETAIL,shopping_district
+RS203,Kasukabe Retail Hub,139.7500,35.9750,MFS30,SMALL_RETAIL,shopping_district
+RS204,Ageo Shopping Center,139.5930,35.9770,MFS30,SMALL_RETAIL,shopping_district
+RS205,Okegawa Retail Area,139.5550,35.9950,MFS30,SMALL_RETAIL,suburban_center
+RS206,Kitamoto Shopping District,139.5280,36.0280,MFS30,SMALL_RETAIL,suburban_center
+RS207,Urawa Shopping District,139.6580,35.8610,MFS27,SMALL_RETAIL,shopping_district
+RS208,Omiya Retail Hub,139.6240,35.9070,MFS27,SMALL_RETAIL,shopping_district
+RS209,Kawaguchi Shopping Center,139.7240,35.8080,MFS27,SMALL_RETAIL,shopping_district
+RS210,Warabi Retail District,139.6800,35.8250,MFS27,SMALL_RETAIL,residential_retail
+RS211,Toda Shopping Area,139.6770,35.8180,MFS27,SMALL_RETAIL,residential_retail
+RS212,Asaka Retail Hub,139.5940,35.7970,MFS27,SMALL_RETAIL,residential_retail
+RS213,Shiki Shopping District,139.5800,35.8370,MFS27,SMALL_RETAIL,residential_retail
+RS214,Fujimi Retail Area,139.5490,35.8570,MFS27,SMALL_RETAIL,residential_retail
+RS215,Kashiwa Shopping District,139.9750,35.8676,MFS43,SMALL_RETAIL,shopping_district
+RS216,Matsudo Retail Hub,139.9020,35.7870,MFS43,SMALL_RETAIL,shopping_district
+RS217,Abiko Shopping Center,140.0260,35.8650,MFS43,SMALL_RETAIL,shopping_district
+RS218,Nagareyama Shopping District,139.9025,35.8560,MFS28,SMALL_RETAIL,shopping_district
+RS219,Noda Retail Area,139.8750,35.9560,MFS43,SMALL_RETAIL,suburban_center
+RS220,Kamagaya Shopping Center,140.0010,35.7770,MFS43,SMALL_RETAIL,residential_retail
+RS221,Funabashi Shopping District,139.9840,35.6950,MFS39,SMALL_RETAIL,shopping_district
+RS222,Nishi-Funabashi Retail,139.9580,35.7100,MFS39,SMALL_RETAIL,shopping_district
+RS223,Tsudanuma Shopping Hub,140.0150,35.6910,MFS39,SMALL_RETAIL,shopping_district
+RS224,Narashino Retail Area,140.0240,35.6770,MFS43,SMALL_RETAIL,residential_retail
+RS225,Yachiyo Shopping Center,140.0990,35.7230,MFS43,SMALL_RETAIL,suburban_center
+RS226,Konosu Retail Center,139.5200,36.0600,MFS08,SMALL_RETAIL,suburban_center
+RS227,Gyoda Shopping District,139.4600,36.1300,MFS08,SMALL_RETAIL,commercial_district
+RS228,Yashio Shopping Area,139.8500,35.8300,MFS19,SMALL_RETAIL,suburban_center
+RS229,Misato Commercial Street,139.8600,35.8600,MFS19,SMALL_RETAIL,residential_retail
+RS230,Iruma Shopping District,139.4000,35.8016,MFS24,SMALL_RETAIL,suburban_center
+RS231,Hanno Retail Area,139.1800,35.8600,MFS24,SMALL_RETAIL,residential_retail
+RS232,Chichibu Downtown,139.0900,36.0000,MFS31,SMALL_RETAIL,commercial_district
+RS233,Nagatoro Retail,139.1200,36.1000,MFS32,SMALL_RETAIL,residential_retail
+RS234,Kumagaya Shopping,139.3800,36.1500,MFS33,SMALL_RETAIL,commercial_district
+RS235,Gyoda Commercial Zone,139.4700,36.1400,MFS33,SMALL_RETAIL,suburban_center
+RS236,Kodama Retail,139.3484,36.1992,MFS34,SMALL_RETAIL,residential_retail
+RS237,Honjo Shopping District,139.1800,36.2400,MFS35,SMALL_RETAIL,commercial_district
+RS238,Fukaya Retail Center,139.2600,36.2000,MFS35,SMALL_RETAIL,suburban_center
+RS239,Kamisato Commercial,139.1500,36.2500,MFS36,SMALL_RETAIL,residential_retail
+RS240,Higashi-Matsuyama Shops,139.2208,36.1492,MFS36,SMALL_RETAIL,suburban_center
+RS241,Yoshida Retail,139.0500,36.1000,MFS37,SMALL_RETAIL,residential_retail
+RS242,Ogose Shopping,139.0800,35.9500,MFS37,SMALL_RETAIL,suburban_center
+RS243,Noda Commercial District,139.8700,35.9500,MFS40,SMALL_RETAIL,commercial_district
+RS244,Chiba NE Retail,140.1008,35.9192,MFS40,SMALL_RETAIL,suburban_center
+RS245,Abiko Shopping Center,140.0300,35.8700,MFS42,SMALL_RETAIL,suburban_center
+RS246,Choshi Commercial,140.7392,35.7316,MFS45,SMALL_RETAIL,commercial_district
+RS247,Chiba S Retail,140.3800,35.2000,MFS46,SMALL_RETAIL,suburban_center
+RS248,Itako Shopping,140.5500,35.9500,MFS49,SMALL_RETAIL,residential_retail
+RS249,Hokota Commercial,140.5192,36.1175,MFS49,SMALL_RETAIL,suburban_center
+RS250,Yuki Shopping District,139.8800,36.3000,MFS51,SMALL_RETAIL,commercial_district
+RS251,Makabe Retail,140.0617,36.4516,MFS52,SMALL_RETAIL,residential_retail
+RS252,Kasama Commercial,140.3000,36.3500,MFS52,SMALL_RETAIL,suburban_center
+RS253,Tsuchiura Shopping,140.2000,36.0800,MFS53,SMALL_RETAIL,commercial_district
+RS254,Ushiku Retail,140.1500,35.9500,MFS53,SMALL_RETAIL,suburban_center
+RS255,Chikusei Commercial,139.9784,36.3716,MFS56,SMALL_RETAIL,residential_retail
+RS256,Yuki Central Shopping,139.8484,36.3416,MFS56,SMALL_RETAIL,commercial_district
+RS257,Hitachiota Retail,140.5300,36.5500,MFS57,SMALL_RETAIL,commercial_district
+RS258,Hitachi Commercial,140.6550,36.5950,MFS57,SMALL_RETAIL,suburban_center
+RS259,Nikko Retail Area,139.6200,36.7500,MFS60,SMALL_RETAIL,commercial_district
+RS260,Utsunomiya West Shops,139.7792,36.5492,MFS61,SMALL_RETAIL,residential_retail
+RS261,Nasu Retail,140.1500,37.0500,MFS64,SMALL_RETAIL,commercial_district
+RS262,Sendai Shopping District,140.8700,38.2600,MFS67,SMALL_RETAIL,commercial_district
+RS263,Sendai Suburban Retail,140.9200,38.3000,MFS67,SMALL_RETAIL,suburban_center
+RS264,Niigata Commercial,139.0300,37.9200,MFS68,SMALL_RETAIL,commercial_district
+RS266,Nagano Commercial Street,138.1800,36.6500,MFS69,SMALL_RETAIL,commercial_district
+RS267,Matsumoto Shopping,137.9800,36.2600,MFS69,SMALL_RETAIL,suburban_center
+RS268,Shizuoka Shopping District,138.4200,35.0100,MFS70,SMALL_RETAIL,commercial_district
+RS269,Hamamatsu Commercial,137.7400,34.7200,MFS70,SMALL_RETAIL,commercial_district
+RS270,Nagoya Shopping District,136.9200,35.1700,MFS71,SMALL_RETAIL,commercial_district
+RS271,Osaka Commercial Area,135.5100,34.6800,MFS71,SMALL_RETAIL,commercial_district
+RS272,Kyoto Retail Center,135.7600,35.0100,MFS71,SMALL_RETAIL,commercial_district
+RS273,Kobe Commercial District,135.1950,34.6900,MFS71,SMALL_RETAIL,commercial_district
+RS274,Nagoya Meieki Shopping,136.8830,35.1703,MFS71,SMALL_RETAIL,commercial_hub
+RS275,Osu Shopping District,136.9050,35.1570,MFS71,SMALL_RETAIL,traditional

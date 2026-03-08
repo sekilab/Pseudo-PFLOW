@@ -92,6 +92,17 @@ public class ValidationEngine {
         }
     }
 
+    /**
+     * Returns true if the unit represents an absolute quantity that scales
+     * linearly with fleet size (e.g., vehicles/day, tons/day, km/day).
+     * Returns false for ratio units (percent, tons/truck, km/movement).
+     */
+    private static boolean isAbsoluteUnit(String unit) {
+        if (unit == null) return false;
+        String u = unit.toLowerCase().trim();
+        return u.endsWith("/day");
+    }
+
     // ========================================================================
     // VALIDATION RESULT
     // ========================================================================
@@ -347,6 +358,18 @@ public class ValidationEngine {
         simMetrics.calculateAllMetrics();
         Map<String, Double> metricValues = simMetrics.getAllMetrics();
 
+        // Fleet scaling: when running at reduced scale, absolute metrics
+        // (vehicles/day, tons/day, etc.) need their baseline targets scaled down
+        // proportionally. Ratio metrics (percent, tons/truck) are unaffected.
+        double baselineFleetSize = getBaselineValue("Total Trucks");
+        double simFleetSize = trucks.size();
+        double fleetScaleFactor = (baselineFleetSize > 0) ? simFleetSize / baselineFleetSize : 1.0;
+        boolean isScaledRun = Math.abs(fleetScaleFactor - 1.0) > 0.05;
+        if (isScaledRun) {
+            System.out.printf("[Validation] Fleet scale factor: %.4f (sim=%,.0f, baseline=%,.0f)%n",
+                fleetScaleFactor, simFleetSize, baselineFleetSize);
+        }
+
         List<ValidationResult> results = new ArrayList<>();
         List<String> missingMetrics = new ArrayList<>();
 
@@ -357,11 +380,18 @@ public class ValidationEngine {
 
             if (metricValues.containsKey(metricName)) {
                 double actual = metricValues.get(metricName);
+                double target = baseline.surveyValue;
+
+                // Scale absolute targets when running at reduced fleet size
+                if (isScaledRun && isAbsoluteUnit(baseline.unit)) {
+                    target *= fleetScaleFactor;
+                }
+
                 results.add(new ValidationResult(
                     metricName,
                     baseline.category,
                     actual,
-                    baseline.surveyValue,
+                    target,
                     baseline.toleranceFraction()
                 ));
             } else {

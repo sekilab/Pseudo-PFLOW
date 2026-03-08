@@ -27,6 +27,13 @@ public class DestinationZone {
     // V4.0: Transport hub identification
     private final boolean isTransportHub;    // true for airports, major stations
 
+    // V5.0: Transport proximity metadata (enriched from shapefiles at initialization)
+    private double nearestStationDistKm = Double.MAX_VALUE;
+    private String nearestStationName = null;
+    private int stationsWithin1km = 0;
+    private double nearestAirportDistKm = Double.MAX_VALUE;
+    private String nearestAirportName = null;
+
     /**
      * Constructor for DestinationZone (V4.0 with zone type and transport hub)
      */
@@ -90,7 +97,17 @@ public class DestinationZone {
                 break;
         }
 
-        return baseScore * timeMultiplier;
+        // V5.0: Station proximity boost — zones near stations generate more taxi demand
+        double transportBoost = getStationProximityBoost();
+
+        // Multi-station bonus — zones with many stations (interchange hubs) get extra boost
+        if (stationsWithin1km >= 3) {
+            transportBoost *= 1.3;  // Major interchange
+        } else if (stationsWithin1km >= 2) {
+            transportBoost *= 1.15; // Double station
+        }
+
+        return baseScore * timeMultiplier * transportBoost;
     }
 
     /**
@@ -138,6 +155,45 @@ public class DestinationZone {
     public double getNightlifeWeight() { return nightlifeWeight; }
     public double getResidentialWeight() { return residentialWeight; }
     public boolean isTransportHub() { return isTransportHub; }  // V4.0
+
+    // V5.0: Transport proximity setters (called during zone enrichment)
+    public void setNearestStation(double distKm, String name) {
+        this.nearestStationDistKm = distKm;
+        this.nearestStationName = name;
+    }
+
+    public void setStationsWithin1km(int count) {
+        this.stationsWithin1km = count;
+    }
+
+    public void setNearestAirport(double distKm, String name) {
+        this.nearestAirportDistKm = distKm;
+        this.nearestAirportName = name;
+    }
+
+    // V5.0: Transport proximity getters
+    public double getNearestStationDistKm() { return nearestStationDistKm; }
+    public String getNearestStationName() { return nearestStationName; }
+    public int getStationsWithin1km() { return stationsWithin1km; }
+    public double getNearestAirportDistKm() { return nearestAirportDistKm; }
+    public String getNearestAirportName() { return nearestAirportName; }
+
+    /** @return true if a railway station is within 2km of zone center */
+    public boolean isNearStation() { return nearestStationDistKm < 2.0; }
+
+    /** @return true if an airport is within 5km of zone center */
+    public boolean isNearAirport() { return nearestAirportDistKm < 5.0; }
+
+    /**
+     * V5.0: Station proximity boost for attractiveness calculation.
+     * Exponential decay: ~2.0× at 0km, ~1.4× at 0.5km, ~1.0× at 2km+
+     *
+     * @return Multiplicative boost factor (1.0 = no boost)
+     */
+    public double getStationProximityBoost() {
+        if (nearestStationDistKm >= 2.0) return 1.0;
+        return 1.0 + Math.exp(-nearestStationDistKm / 0.5);
+    }
 
     @Override
     public String toString() {

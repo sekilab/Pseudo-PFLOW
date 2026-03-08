@@ -15,6 +15,9 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 
+// Density-weighted spatial sampling (Phase 2 spatial quality)
+import truck.sim.spatial.BuiltUpIndex;
+
 /**
  * Represents a delivery zone with time-dependent attractiveness for truck agents.
  * 
@@ -57,6 +60,9 @@ public class DeliveryZone {
 
     // Phase 3: Network-aware generation (cached roads for performance)
     private List<truck.sim.spatial.RoadSegment> cachedRoads = null;
+
+    // Density-weighted Built-up pixel sampling index (Phase 2 spatial quality)
+    private BuiltUpIndex builtUpIndex;
 
     /**
      * Constructor for DeliveryZone.
@@ -230,9 +236,14 @@ public class DeliveryZone {
     // POLYGON-BASED ZONE SUPPORT (Phase 2)
     // ============================================================================
 
+    // Filter out tiny polygon fragments (< 0.0001 deg² ≈ ~1 km²)
+    // Removes N03 coastline noise, river islands, and tiny uninhabited islets
+    private static final double MIN_POLYGON_AREA_DEG2 = 0.0001;
+
     /**
      * Set polygon boundaries for this zone.
-     * Creates union polygon and prepared geometry for fast point-in-polygon testing.
+     * Filters out tiny polygon fragments, creates union polygon and prepared geometry
+     * for fast point-in-polygon testing.
      * For zones with many polygons (>50), uses individual polygon testing instead of union.
      */
     public void setBoundaryPolygons(List<Geometry> polygons) {
@@ -240,7 +251,27 @@ public class DeliveryZone {
             return;
         }
 
-        this.boundaryPolygons = new ArrayList<>(polygons);
+        // Filter out tiny polygon fragments (coastline noise, islets)
+        List<Geometry> filtered = new ArrayList<>();
+        int droppedCount = 0;
+        for (Geometry g : polygons) {
+            if (g.getArea() >= MIN_POLYGON_AREA_DEG2) {
+                filtered.add(g);
+            } else {
+                droppedCount++;
+            }
+        }
+        // Fallback: keep all if filtering removes everything
+        if (filtered.isEmpty()) {
+            this.boundaryPolygons = new ArrayList<>(polygons);
+        } else {
+            this.boundaryPolygons = filtered;
+        }
+        if (droppedCount > 0) {
+            System.out.println("[ZONE] " + zoneId + " filtered out " + droppedCount +
+                " tiny polygon fragments (< " + MIN_POLYGON_AREA_DEG2 + " deg²), " +
+                this.boundaryPolygons.size() + " polygons remain");
+        }
 
         // For large polygon sets (>50), don't create union - too expensive
         // Instead, we'll test against individual polygons
@@ -338,11 +369,11 @@ public class DeliveryZone {
             return generateRandomPointInPolygon(random);
         }
 
-        // For large zones with many individual polygons, pick random polygon and sample from it
+        // For large zones with many individual polygons, pick area-weighted random polygon
         if (boundaryPolygons != null && !boundaryPolygons.isEmpty()) {
-            // Pick a random polygon from the zone
-            Geometry randomPolygon = boundaryPolygons.get(random.nextInt(boundaryPolygons.size()));
-            return generateRandomPointInSinglePolygon(randomPolygon, random);
+            // Area-weighted selection: larger polygons get proportionally more samples
+            Geometry selectedPolygon = selectPolygonByArea(random);
+            return generateRandomPointInSinglePolygon(selectedPolygon, random);
         }
 
         // Fallback to radius-based generation
@@ -373,6 +404,25 @@ public class DeliveryZone {
         // Fallback: return centroid if sampling fails
         Coordinate centroid = unionPolygon.getCentroid().getCoordinate();
         return new double[]{centroid.x, centroid.y};
+    }
+
+    /**
+     * Select a polygon from boundaryPolygons weighted by area.
+     * Larger polygons (main ward areas) are proportionally more likely to be selected
+     * than tiny fragments (islands, exclaves), preventing wasted sampling attempts.
+     */
+    private Geometry selectPolygonByArea(Random random) {
+        double totalArea = 0;
+        for (Geometry g : boundaryPolygons) {
+            totalArea += g.getArea();
+        }
+        double r = random.nextDouble() * totalArea;
+        double cumulative = 0;
+        for (Geometry g : boundaryPolygons) {
+            cumulative += g.getArea();
+            if (r <= cumulative) return g;
+        }
+        return boundaryPolygons.get(boundaryPolygons.size() - 1);
     }
 
     /**
@@ -467,6 +517,15 @@ public class DeliveryZone {
             return unionPolygon.getEnvelopeInternal();
         }
 
+        // For large zones with individual polygons (>50, no union), compute combined envelope
+        if (boundaryPolygons != null && !boundaryPolygons.isEmpty()) {
+            org.locationtech.jts.geom.Envelope combined = new org.locationtech.jts.geom.Envelope();
+            for (Geometry polygon : boundaryPolygons) {
+                combined.expandToInclude(polygon.getEnvelopeInternal());
+            }
+            return combined;
+        }
+
         // Construct envelope from radius for zones without polygons
         double degPerKm = 1.0 / 111.0;
         return new org.locationtech.jts.geom.Envelope(
@@ -493,6 +552,8 @@ public class DeliveryZone {
     public void setFacilityType(FacilityType facilityType) { this.facilityType = facilityType; }
     public void setPOIs(List<PointOfInterest> pois) { this.pois = pois != null ? pois : new ArrayList<>(); }
     public List<PointOfInterest> getPOIs() { return pois; }
+    public BuiltUpIndex getBuiltUpIndex() { return builtUpIndex; }
+    public void setBuiltUpIndex(BuiltUpIndex index) { this.builtUpIndex = index; }
 
     @Override
     public String toString() {

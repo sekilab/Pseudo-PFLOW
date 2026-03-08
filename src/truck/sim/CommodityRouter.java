@@ -5,7 +5,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Commodity-based routing and vehicle selection.
@@ -19,8 +19,6 @@ import java.util.Random;
  */
 public class CommodityRouter {
 
-    private final Random random;
-    
     // Maps
     // Commodity -> Vehicle Size -> Loading Rate
     private final Map<String, Map<String, Double>> loadingRates;
@@ -42,8 +40,7 @@ public class CommodityRouter {
     /**
      * Constructor - initialize with MFS commodity data.
      */
-    public CommodityRouter(Random random) {
-        this.random = random;
+    public CommodityRouter() {
         this.loadingRates = new HashMap<>();
         this.weightConstraintProbs = new HashMap<>();
         this.facilityFlows = new HashMap<>();
@@ -175,7 +172,7 @@ public class CommodityRouter {
         }
         
         Map<String, Double> probs = facilityFlows.get(originKey);
-        double roll = random.nextDouble();
+        double roll = ThreadLocalRandom.current().nextDouble();
         double cumulative = 0.0;
         
         for (Map.Entry<String, Double> entry : probs.entrySet()) {
@@ -290,7 +287,7 @@ public class CommodityRouter {
     public boolean isWeightLimited(String commodityType) {
         String commKey = normalizeCommodity(commodityType);
         double prob = weightConstraintProbs.getOrDefault(commKey, DEFAULT_WEIGHT_CONSTRAINT_PROB);
-        return random.nextDouble() < prob;
+        return ThreadLocalRandom.current().nextDouble() < prob;
     }
 
     /**
@@ -348,7 +345,7 @@ public class CommodityRouter {
      */
     public String selectCommodityForTruckType(TruckType truckType) {
         // Commodity distribution varies by truck type
-        double roll = random.nextDouble();
+        double roll = ThreadLocalRandom.current().nextDouble();
 
         switch (truckType) {
             case DELIVERY:
@@ -364,14 +361,15 @@ public class CommodityRouter {
                 else return "ceramic_chemical";                   // 1%
 
             case LONG_HAUL:
-                // LONG_HAUL (14% of trips): Industrial + bulk commodities
-                if (roll < 0.20) return "forestry_mineral";       // 20%
-                else if (roll < 0.38) return "machinery";         // 18%
-                else if (roll < 0.51) return "ceramic_chemical";  // 13%
-                else if (roll < 0.63) return "metal_products";    // 12%
-                else if (roll < 0.76) return "light_industrial";  // 13%
-                else if (roll < 0.92) return "daily_necessities"; // 16%
-                else return "special_products";                   // 8%
+                // LONG_HAUL (17% of trips): Industrial + bulk commodities
+                // Calibrated: ceramic_chemical 9%, special_products 5% to match MFS targets
+                if (roll < 0.22) return "forestry_mineral";       // 22%
+                else if (roll < 0.40) return "machinery";         // 18%
+                else if (roll < 0.49) return "ceramic_chemical";  // 9%
+                else if (roll < 0.61) return "metal_products";    // 12%
+                else if (roll < 0.76) return "light_industrial";  // 15%
+                else if (roll < 0.95) return "daily_necessities"; // 19%
+                else return "special_products";                   // 5%
 
             case MIXED_OPERATION:
                 // MIXED (23% of trips): Balanced across all commodity types
@@ -435,7 +433,7 @@ public class CommodityRouter {
     public boolean requiresTimeWindow(String commodityType) {
         String commKey = normalizeCommodity(commodityType);
         double prob = timeWindowRequiredPct.getOrDefault(commKey, 0.0);
-        return random.nextDouble() < prob;
+        return ThreadLocalRandom.current().nextDouble() < prob;
     }
 
     /**
@@ -462,7 +460,7 @@ public class CommodityRouter {
         }
 
         Map<String, Double> probs = industryFlows.get(originIndustry);
-        double roll = random.nextDouble();
+        double roll = ThreadLocalRandom.current().nextDouble();
         double cumulative = 0.0;
 
         for (Map.Entry<String, Double> entry : probs.entrySet()) {

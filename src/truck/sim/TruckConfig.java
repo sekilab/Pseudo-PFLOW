@@ -62,6 +62,7 @@ public class TruckConfig {
     private double capacityLargeTons;
     private double capacityMediumTons;
     private double capacitySmallTons;
+    private double capacityLightTons;
     
     // Goods type distribution
     private String[] goodsTypes;
@@ -129,6 +130,7 @@ public class TruckConfig {
     private long randomSeed;
     
     // Export configuration
+    private String outputDirectory;
     private String dateTimeFormat;
     private String timeFormat;
     
@@ -203,6 +205,7 @@ public class TruckConfig {
         capacityLargeTons = getDoubleProperty("vehicle.capacity.large.tons", 10.0);
         capacityMediumTons = getDoubleProperty("vehicle.capacity.medium.tons", 4.0);
         capacitySmallTons = getDoubleProperty("vehicle.capacity.small.tons", 2.0);
+        capacityLightTons = getDoubleProperty("vehicle.capacity.light.tons", 1.5);
         
         // Goods types (simplified)
         goodsTypes = new String[] {
@@ -273,6 +276,7 @@ public class TruckConfig {
         randomSeed = getLongProperty("random.seed", 42L);
         
         // Export
+        outputDirectory = getProperty("export.output.dir", "data/output/truck");
         dateTimeFormat = getProperty("export.datetime.format", "yyyy-MM-dd HH:mm:ss");
         timeFormat = getProperty("export.time.format", "HH:mm:ss");
     }
@@ -418,6 +422,7 @@ public class TruckConfig {
     public double getCapacityLargeTons() { return capacityLargeTons; }
     public double getCapacityMediumTons() { return capacityMediumTons; }
     public double getCapacitySmallTons() { return capacitySmallTons; }
+    public double getCapacityLightTons() { return capacityLightTons; }
     
     public String[] getGoodsTypes() { return goodsTypes; }
     public double[] getGoodsTypeProbabilities() { return goodsTypeProbabilities; }
@@ -465,7 +470,24 @@ public class TruckConfig {
     public boolean getUseEmptyTrips() { return useEmptyTrips; }
     public double getEmptyTripProbability() { return emptyTripProbability; }
     public double getEmptyTripThresholdKm() { return emptyTripThresholdKm; }
-    
+    public double getDeliveryRandomDestRatio() {
+        return getDoubleProperty("delivery.random.dest.ratio", 0.50);
+    }
+    public double getLongHaulRandomDestRatio() {
+        return getDoubleProperty("longhaul.random.dest.ratio", 0.35);
+    }
+    public double getMixedRandomDestRatio() {
+        return getDoubleProperty("mixed.random.dest.ratio", 0.50);
+    }
+    /** Radius threshold (km) above which a zone is treated as rural/mountain for bypass purposes. */
+    public double getRuralZoneRadiusThresholdKm() {
+        return getDoubleProperty("zone.rural.radius.threshold.km", 20.0);
+    }
+    /** Bypass ratio for large rural/mountain zones — directs most trips to actual POIs. */
+    public double getRuralZoneBypassRatio() {
+        return getDoubleProperty("zone.rural.bypass.ratio", 0.10);
+    }
+
     public double getCargoWeightMean() { return cargoWeightMean; }
     public double getCargoWeightStddev() { return cargoWeightStddev; }
     public double getCargoWeightGammaShape() { return cargoWeightGammaShape; }
@@ -473,6 +495,7 @@ public class TruckConfig {
     
     public long getRandomSeed() { return randomSeed; }
     
+    public String getOutputDirectory() { return outputDirectory; }
     public String getDateTimeFormat() { return dateTimeFormat; }
     public String getTimeFormat() { return timeFormat; }
 

@@ -5,7 +5,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 import truck.sim.TruckTrip.LoadingConstraint;
 
@@ -20,7 +20,6 @@ import truck.sim.TruckTrip.LoadingConstraint;
  */
 public class TripGenerator {
 
-    private final Random random;
     private final TruckConfig config;
     
     // SubRegion -> Industry -> Facility -> Rate
@@ -32,8 +31,7 @@ public class TripGenerator {
     
     private static final double DEFAULT_MEAN_WEIGHT = 4.8;
 
-    public TripGenerator(Random random, TruckConfig config) {
-        this.random = random;
+    public TripGenerator(TruckConfig config) {
         this.config = config;
         this.subRegionRates = new HashMap<>();
         this.inoutRatios = new HashMap<>();
@@ -150,65 +148,62 @@ public class TripGenerator {
 
     /**
      * Generate cargo weight based on MFS File 18 utilization rates.
-     * MFS shows vehicle-specific capacity utilization:
-     * - Light (<2t): 39% utilization → 0.78 tons avg
-     * - Small (2-4t): 54% utilization → 2.72 tons avg
-     * - Medium (4-10t): 76% utilization → 7.64 tons avg
-     * - Heavy (10t+): 76% utilization → 11.46 tons avg
+     * Calibrated for trip counts: DELIVERY=3, MIXED=2, LONG_HAUL=1.
+     *
+     * MFS targets (tons/truck/day):
+     * - Light (<2t): 0.78 (capacity 2.0t, ~39% utilization)
+     * - Small (2-4t): 2.72 (capacity 5.0t, ~54% utilization)
+     * - Medium (4-10t): 7.64 (capacity 8.0t, ~76% utilization)
+     * - Heavy (10t+): 11.46 (capacity 20.0t, ~57% utilization)
      */
     public double generateCargoWeight(FacilityType facilityType, String commodity, String vehicleSize,
                                       double vehicleCapacity, CommodityRouter router, LoadingConstraint constraint) {
-        // Vehicle-specific cargo generation based on MFS H25 data
         double cargoWeight;
 
         switch (vehicleSize.toLowerCase()) {
             case "light":
-                // Target: 0.78t/truck/day with ~1.9 loaded trips → ~0.41t/trip
-                // gamma(1.5, 0.19) → mean ~0.29, then cap at 1.5t
-                cargoWeight = Math.min(generateGamma(1.5, 0.19), 1.5);
+                // Target: 0.78t/truck/day ÷ ~2.8 loaded trips = ~0.28t/trip
+                cargoWeight = generateGamma(1.5, 0.19);
                 break;
             case "small":
-                // Target: 2.72t/truck/day with ~2.0 loaded trips → ~1.36t/trip
-                // gamma(1.8, 0.70) → mean ~1.26, then cap at 4.0t
-                cargoWeight = Math.min(generateGamma(1.8, 0.70), 4.0);
+                // Target: 2.72t/truck/day ÷ ~1.9 effective loaded trips = ~1.43t/trip
+                cargoWeight = generateGamma(1.8, 0.80);
                 break;
             case "medium":
-                // Target: 7.64t/truck/day with ~2.0 loaded trips → ~3.82t/trip
-                // gamma(2.0, 4.5) → mean ~9.0, then cap at 10t
-                cargoWeight = Math.min(generateGamma(2.0, 4.5), 10.0);
+                // Target: 7.64t/truck/day ÷ ~1.15 effective loaded trips = ~6.6t/trip
+                cargoWeight = generateGamma(2.0, 3.50);
                 break;
             case "heavy":
-                // Target: 11.46t/truck/day with ~1.6 loaded trips → ~7.2t/trip
-                // gamma(2.5, 9.5) → mean ~23.75, then cap at 25t
-                cargoWeight = Math.min(generateGamma(2.5, 9.5), 25.0);
+                // Target: 11.46t/truck/day ÷ ~1.0 loaded trip = ~11.5t/trip
+                cargoWeight = generateGamma(2.5, 4.6);
                 break;
             default:
-                // Fallback to original behavior
                 double mean = facilityMeanWeights.getOrDefault(facilityType, DEFAULT_MEAN_WEIGHT);
                 cargoWeight = generateGamma(2.0, mean / 2.0);
-                double loadingRate = router.getLoadingRate(commodity, vehicleSize);
-                cargoWeight = Math.min(cargoWeight, vehicleCapacity * loadingRate);
+                break;
         }
 
-        // For capacity-constrained shipments, still respect vehicle limits
+        // Always respect vehicle capacity (physical limit)
+        cargoWeight = Math.min(cargoWeight, vehicleCapacity);
+
+        // For capacity-constrained shipments, further limit by loading rate
         if (constraint == LoadingConstraint.CAPACITY) {
             double loadingRate = router.getLoadingRate(commodity, vehicleSize);
-            double maxCapacity = vehicleCapacity * loadingRate;
-            cargoWeight = Math.min(cargoWeight, maxCapacity);
+            cargoWeight = Math.min(cargoWeight, vehicleCapacity * loadingRate);
         }
 
-        return Math.max(0.1, cargoWeight); // Minimum 100kg cargo
+        return Math.max(0.1, cargoWeight);
     }
     
     private double generateGamma(double shape, double scale) {
-        if (shape < 1.0) return generateGamma(shape + 1.0, scale) * Math.pow(random.nextDouble(), 1.0 / shape);
+        if (shape < 1.0) return generateGamma(shape + 1.0, scale) * Math.pow(ThreadLocalRandom.current().nextDouble(), 1.0 / shape);
         double d = shape - 1.0 / 3.0;
         double c = 1.0 / Math.sqrt(9.0 * d);
         while (true) {
             double x, v;
             do { x = randomGaussian(); v = 1.0 + c * x; } while (v <= 0.0);
             v = v * v * v;
-            double u = random.nextDouble();
+            double u = ThreadLocalRandom.current().nextDouble();
             if (u < 1.0 - 0.0331 * (x * x * x * x)) return d * v * scale;
             if (Math.log(u) < 0.5 * x * x + d * (1.0 - v + Math.log(v))) return d * v * scale;
         }
@@ -218,7 +213,7 @@ public class TripGenerator {
         if (lambda <= 0) return 0;
         if (lambda < 30.0) {
             double L = Math.exp(-lambda); int k = 0; double p = 1.0;
-            do { k++; p *= random.nextDouble(); } while (p > L);
+            do { k++; p *= ThreadLocalRandom.current().nextDouble(); } while (p > L);
             return k - 1;
         } else {
             double sample = lambda + Math.sqrt(lambda) * randomGaussian();
@@ -227,7 +222,7 @@ public class TripGenerator {
     }
 
     private double randomGaussian() {
-        double u1 = random.nextDouble(); double u2 = random.nextDouble();
+        double u1 = ThreadLocalRandom.current().nextDouble(); double u2 = ThreadLocalRandom.current().nextDouble();
         return Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
     }
 }

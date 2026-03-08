@@ -4,6 +4,7 @@ import truck.sim.util.DistanceCalculator;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 
@@ -20,8 +21,6 @@ import java.util.stream.Collectors;
  */
 public class POIManager {
 
-    private final Random random;
-
     private List<PointOfInterest> allPOIs;
     private List<PointOfInterest> logisticCenters;
     private List<PointOfInterest> retailShops;
@@ -37,16 +36,16 @@ public class POIManager {
     // NEW: landChecker returns TRUE if point is ON land (to accept)
     private BiPredicate<Double, Double> landChecker;
 
+    // JAXA land use raster checker — returns land use category (0-15) at (lon, lat)
+    private java.util.function.BiFunction<Double, Double, Integer> landUseChecker;
+
     // Network-aware POI filtering (Phase 3 - optional enhancement)
     private truck.sim.spatial.TransportNetworkIndex networkIndex;
 
     /**
      * Constructor.
-     *
-     * @param random Random generator for stochastic selection
      */
-    public POIManager(Random random) {
-        this.random = random;
+    public POIManager() {
         this.allPOIs = new ArrayList<>();
         this.logisticCenters = new ArrayList<>();
         this.retailShops = new ArrayList<>();
@@ -64,6 +63,16 @@ public class POIManager {
      */
     public void setLandChecker(BiPredicate<Double, Double> checker) {
         this.landChecker = checker;
+    }
+
+    /**
+     * Set JAXA land use raster checker for POI validation at load time.
+     * Rejects POIs on Water(1) or Wetland(13) pixels.
+     *
+     * @param checker BiFunction returning JAXA category (0-15) for (lon, lat)
+     */
+    public void setLandUseChecker(java.util.function.BiFunction<Double, Double, Integer> checker) {
+        this.landUseChecker = checker;
     }
 
     /**
@@ -190,6 +199,17 @@ public class POIManager {
                     continue;
                 }
 
+                // JAXA raster check — reject POIs on water/wetland pixels
+                if (landUseChecker != null) {
+                    int lu = landUseChecker.apply(lon, lat);
+                    if (lu == 1 || lu == 13) {
+                        System.out.println("[POI] Skipped " + poiId + " (" + name +
+                            ") - JAXA raster: water/wetland pixel at " + lon + ", " + lat);
+                        skippedCount++;
+                        continue;
+                    }
+                }
+
                 // Parse facility type
                 FacilityType facilityType;
                 try {
@@ -288,7 +308,7 @@ public class POIManager {
         // Select weighted random POI
         // TODO: Weight by O-D flows and time-dependent attractiveness
         // For now: simple random selection
-        return landPOIs.get(random.nextInt(landPOIs.size()));
+        return landPOIs.get(ThreadLocalRandom.current().nextInt(landPOIs.size()));
     }
 
     /**
@@ -347,7 +367,7 @@ public class POIManager {
         }
         if (matched.isEmpty()) matched = new ArrayList<>(zonePOIs);
 
-        return matched.get(random.nextInt(matched.size()));
+        return matched.get(ThreadLocalRandom.current().nextInt(matched.size()));
     }
 
     /**
@@ -390,7 +410,7 @@ public class POIManager {
         }
 
         // Weighted random selection
-        return landPOIs.get(random.nextInt(landPOIs.size()));
+        return landPOIs.get(ThreadLocalRandom.current().nextInt(landPOIs.size()));
     }
 
     /**
@@ -570,8 +590,8 @@ public class POIManager {
      */
     private double[] generateRandomPointInZone(DeliveryZone zone) {
         // Generate random point within zone radius
-        double angle = random.nextDouble() * 2 * Math.PI;
-        double distance = random.nextDouble() * zone.getRadiusKm();
+        double angle = ThreadLocalRandom.current().nextDouble() * 2 * Math.PI;
+        double distance = ThreadLocalRandom.current().nextDouble() * zone.getRadiusKm();
 
         // Convert to lat/lon offset
         double lonOffset = distance / 111.32 * Math.cos(Math.toRadians(zone.getCenterLatitude()));

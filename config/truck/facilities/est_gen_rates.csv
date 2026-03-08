@@ -1,0 +1,15 @@
+industry,rate_office,rate_factory,rate_logistics,rate_other
+chemical_manufacturing,8.8,13.6,7.8,12.7
+steel_manufacturing,8.3,7.4,8.5,1.8
+metal_product_manufacturing,2.8,3.7,8.7,2.6
+machinery_manufacturing,2.8,3.5,14.8,2.8
+light_misc_manufacturing,3.5,6.4,9.2,3.4
+road_freight_transport,15.9,0.0,18.8,22.5
+water_transport,30.2,0.0,12.8,6.8
+air_transport,1.0,0.0,0.0,8.3
+warehousing,17.9,0.0,22.5,42.2
+transport_related_services,20.8,0.0,31.5,52.6
+raw_material_wholesale,4.9,6.6,7.9,5.3
+product_wholesale,4.7,5.0,9.2,6.7
+service_industry,5.0,8.2,13.9,3.3
+other,7.0,8.7,40.0,4.6

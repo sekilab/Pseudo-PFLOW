@@ -89,7 +89,7 @@ public class TruckDataExporter {
         String filename = runDirectory + "/trucks.csv";
         int truckCount = 0;
 
-        try (PrintWriter writer = new PrintWriter(new FileWriter(filename))) {
+        try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(filename), 65536))) {
             // Header
             writer.println("truck_id,truck_type,vehicle_size,capacity_tons,primary_goods_type," +
                 "home_lon,home_lat,home_poi_id,familiar_radius_km,familiar_area_zone," +
@@ -140,7 +140,7 @@ public class TruckDataExporter {
         String filename = runDirectory + "/trips.csv";
         int tripCount = 0;
 
-        try (PrintWriter writer = new PrintWriter(new FileWriter(filename))) {
+        try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(filename), 65536))) {
             // Header
             writer.println("trip_id,truck_id,origin_lon,origin_lat,dest_lon,dest_lat," +
                 "origin_zone,dest_zone,origin_facility_id,dest_facility_id," +
@@ -212,7 +212,7 @@ public class TruckDataExporter {
         int deliveryTrips = 0;
         int emptyTrips = 0;
 
-        try (PrintWriter writer = new PrintWriter(new FileWriter(filename))) {
+        try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(filename), 65536))) {
             // Header - Pseudo PFLOW standard columns + truck-specific extensions
             writer.println("id,sim_day,starttime,start_lon,start_lat,end_lon,end_lat," +
                 "transport_mode,purpose,occupation," +
@@ -283,7 +283,7 @@ public class TruckDataExporter {
             truckMap.put(truck.getTruckId(), truck);
         }
 
-        try (PrintWriter writer = new PrintWriter(new FileWriter(filename))) {
+        try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(filename), 65536))) {
             // Header
             writer.println("trip_id,truck_id,truck_type,vehicle_size,capacity_tons," +
                 "origin_lon,origin_lat,dest_lon,dest_lat," +
@@ -335,7 +335,7 @@ public class TruckDataExporter {
     private void exportSummary(List<TruckAgent> trucks, List<TruckTrip> trips) {
         String filename = runDirectory + "/summary.csv";
 
-        try (PrintWriter writer = new PrintWriter(new FileWriter(filename))) {
+        try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(filename), 65536))) {
             // Calculate statistics
             int totalTrucks = trucks.size();
             int totalTrips = trips.size();

@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Origin-Destination Matrix for realistic flow-based routing.
@@ -23,16 +23,13 @@ public class OriginDestinationMatrix {
     private final int numZones;
     private final double[][] flowMatrix;  // [origin][destination] = flow weight (normalized to probabilities)
     private double[] rawOutflowTotals;    // Pre-normalization row sums from MFS CSV
-    private final Random random;
-
     /**
      * Create O-D matrix with specified number of zones.
      */
-    public OriginDestinationMatrix(int numZones, Random random) {
+    public OriginDestinationMatrix(int numZones) {
         this.numZones = numZones;
         this.flowMatrix = new double[numZones][numZones];
         this.rawOutflowTotals = new double[numZones];  // zero until CSV loaded
-        this.random = random;
 
         // Initialize with default uniform distribution
         initializeDefaultFlows();
@@ -271,6 +268,14 @@ public class OriginDestinationMatrix {
             while ((line = reader.readLine()) != null) {
                 if (line.trim().isEmpty()) continue;
 
+                // Stop at section boundary — Section 1 is total truck movements/day,
+                // Sections 2-22 are per-commodity tonnage (different unit, must not mix)
+                if (line.startsWith("\u25CB") || line.startsWith("○")) {
+                    System.out.println("[O-D] Reached section boundary at row " + rowCount +
+                        ", stopping (Section 1 = truck movements/day only)");
+                    break;
+                }
+
                 String[] parts = line.split(",");
                 if (parts.length < 3) continue;
 
@@ -370,6 +375,39 @@ public class OriginDestinationMatrix {
             System.out.println("[O-D] Warning: " + zeroFlowOrigins +
                 " zones had no outbound flows (using uniform distribution)");
         }
+
+        // Log outflow summary for diagnostic purposes
+        logOutflowSummary();
+    }
+
+    /**
+     * Log top/bottom zones by raw outflow total for diagnostics.
+     */
+    private void logOutflowSummary() {
+        double totalFlow = 0;
+        int maxIdx = 0, minIdx = 0;
+        for (int i = 0; i < numZones; i++) {
+            totalFlow += rawOutflowTotals[i];
+            if (rawOutflowTotals[i] > rawOutflowTotals[maxIdx]) maxIdx = i;
+            if (rawOutflowTotals[i] < rawOutflowTotals[minIdx]) minIdx = i;
+        }
+
+        // Sort indices by outflow for top/bottom 5
+        Integer[] indices = new Integer[numZones];
+        for (int i = 0; i < numZones; i++) indices[i] = i;
+        java.util.Arrays.sort(indices, (a, b) -> Double.compare(rawOutflowTotals[b], rawOutflowTotals[a]));
+
+        StringBuilder top5 = new StringBuilder("[O-D] Top 5 outflow zones: ");
+        StringBuilder bot5 = new StringBuilder("[O-D] Bottom 5 outflow zones: ");
+        for (int i = 0; i < Math.min(5, numZones); i++) {
+            if (i > 0) { top5.append(", "); bot5.append(", "); }
+            top5.append("zone").append(indices[i]).append("=").append(String.format("%.0f", rawOutflowTotals[indices[i]]));
+            int botIdx = numZones - 1 - i;
+            bot5.append("zone").append(indices[botIdx]).append("=").append(String.format("%.0f", rawOutflowTotals[indices[botIdx]]));
+        }
+        System.out.println(top5);
+        System.out.println(bot5);
+        System.out.println("[O-D] Total raw outflow across all zones: " + String.format("%.0f", totalFlow));
     }
 
     /**
@@ -445,7 +483,7 @@ public class OriginDestinationMatrix {
     public int selectDestination(int originZoneIndex) {
         if (originZoneIndex < 0 || originZoneIndex >= numZones) {
             // Invalid origin, return random
-            return random.nextInt(numZones);
+            return ThreadLocalRandom.current().nextInt(numZones);
         }
 
         // Calculate total weight for normalization
@@ -456,11 +494,11 @@ public class OriginDestinationMatrix {
 
         if (totalWeight <= 0.0) {
             // No flows defined, return random
-            return random.nextInt(numZones);
+            return ThreadLocalRandom.current().nextInt(numZones);
         }
 
         // Select destination using weighted random selection
-        double roll = random.nextDouble() * totalWeight;
+        double roll = ThreadLocalRandom.current().nextDouble() * totalWeight;
         double cumulative = 0.0;
 
         for (int dest = 0; dest < numZones; dest++) {

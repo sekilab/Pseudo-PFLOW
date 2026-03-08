@@ -689,7 +689,42 @@ public class MetricsTracker {
             }
         }
 
+        // Export zone-level trip counts for diagnostic verification
+        exportZoneTripCounts(outputDir);
+
         System.out.println("[✓] Metrics exported to: " + outputDir);
+    }
+
+    /**
+     * Export per-zone origin and destination trip counts.
+     * Helps identify zones with zero or low trips (dead zones).
+     */
+    private void exportZoneTripCounts(String outputDir) throws IOException {
+        // Aggregate origin trips and destination trips per zone from O-D flows
+        Map<String, Integer> originTrips = new HashMap<>();
+        Map<String, Integer> destTrips = new HashMap<>();
+
+        for (Map.Entry<String, Integer> entry : odFlows.entrySet()) {
+            String[] parts = entry.getKey().split("-");
+            if (parts.length == 2) {
+                originTrips.put(parts[0], originTrips.getOrDefault(parts[0], 0) + entry.getValue());
+                destTrips.put(parts[1], destTrips.getOrDefault(parts[1], 0) + entry.getValue());
+            }
+        }
+
+        // Collect all zone IDs
+        java.util.TreeSet<String> allZones = new java.util.TreeSet<>();
+        allZones.addAll(originTrips.keySet());
+        allZones.addAll(destTrips.keySet());
+
+        try (PrintWriter pw = new PrintWriter(new File(outputDir, "metrics_zone_trips.csv"))) {
+            pw.println("zone_id,origin_trips,dest_trips,total_trips");
+            for (String zone : allZones) {
+                int orig = originTrips.getOrDefault(zone, 0);
+                int dest = destTrips.getOrDefault(zone, 0);
+                pw.println(zone + "," + orig + "," + dest + "," + (orig + dest));
+            }
+        }
     }
 
     /**

@@ -30,13 +30,19 @@ public class TaxiSimulation {
     private TaxiConfig config;
 
     // Default config file path
-    private static final String DEFAULT_CONFIG_FILE = "config/taxi_config.properties";
+    private static final String DEFAULT_CONFIG_FILE = "config/taxi/tokyo/taxi_config.properties";
 
     // Data structures
     private List<TaxiAgent> taxiFleet;
     private List<TaxiTrip> allTrips;  // V3.1: Now includes both passenger and empty trips
     private List<DestinationZone> destinationZones;
     private Random random;
+
+    // Spatial validation (null if disabled)
+    private TaxiGeoValidator geoValidator;
+
+    // Transport network index for station/airport proximity (null if disabled)
+    private TaxiTransportIndex transportIndex;
 
     // ==================== LEGACY HOTSPOT SYSTEM (REMOVED IN V4.0) ====================
     //
@@ -133,6 +139,27 @@ public class TaxiSimulation {
         // Load configuration from file
         config.loadFromFile(configPath);
 
+        // Derive config directory from config file path for zone file resolution
+        java.io.File configFile = new java.io.File(configPath);
+        String configDir = configFile.getParent();
+        if (configDir != null) {
+            config.setConfigDir(configDir.replace('\\', '/') + "/");
+        }
+
+        // Initialize spatial validator if enabled
+        if (config.isSpatialValidationEnabled()) {
+            geoValidator = new TaxiGeoValidator(config.getShapefileDir());
+            geoValidator.setRiverBufferKm(config.getRiverBufferKm());
+            double[] configBounds = {
+                config.getBoundsMinLon(), config.getBoundsMaxLon(),
+                config.getBoundsMinLat(), config.getBoundsMaxLat()
+            };
+            geoValidator.loadAll(config.getPrefectureCodes(), configBounds);
+        } else {
+            System.out.println("[SPATIAL] Spatial validation DISABLED");
+            geoValidator = null;
+        }
+
         // Initialize random generator with seed from config
         int seed = config.getRandomSeed();
         if (seed >= 0) {
@@ -143,6 +170,317 @@ public class TaxiSimulation {
 
         // Initialize destination zones
         initializeDestinationZones();
+
+        // Initialize transport network index and enrich zones
+        initializeTransportIndex();
+    }
+
+    /**
+     * V5.0: Initialize transport network index from station/airport shapefiles
+     * and enrich destination zones with proximity metadata.
+     */
+    private void initializeTransportIndex() {
+        if (!config.isTransportIndexEnabled()) {
+            System.out.println("[TRANSPORT] Transport network index DISABLED");
+            transportIndex = null;
+            return;
+        }
+
+        transportIndex = new TaxiTransportIndex();
+        transportIndex.loadStations(config.getShapefileDir() + "rstatp_jpn.shp");
+        transportIndex.loadAirports(config.getShapefileDir() + "airp_jpn.shp");
+        transportIndex.loadSettlements(config.getShapefileDir() + "builtupp_jpn.shp");
+        transportIndex.loadPorts(config.getShapefileDir() + "portp_jpn.shp");
+
+        if (!transportIndex.hasStations() && !transportIndex.hasAirports()) {
+            System.out.println("[TRANSPORT] No station or airport data loaded — skipping zone enrichment");
+            transportIndex = null;
+            return;
+        }
+
+        // Enrich zones with nearest station/airport metadata
+        for (DestinationZone zone : destinationZones) {
+            // Find nearest railway station
+            if (transportIndex.hasStations()) {
+                TaxiTransportIndex.NearestResult station =
+                    transportIndex.findNearestStation(
+                        zone.getCenterLon(), zone.getCenterLat(), 5.0);
+                if (station != null) {
+                    zone.setNearestStation(station.distanceKm, station.name);
+                }
+
+                int stationCount = transportIndex.countStationsInRadius(
+                    zone.getCenterLon(), zone.getCenterLat(), 1.0);
+                zone.setStationsWithin1km(stationCount);
+            }
+
+            // Find nearest airport
+            if (transportIndex.hasAirports()) {
+                TaxiTransportIndex.NearestResult airport =
+                    transportIndex.findNearestAirport(
+                        zone.getCenterLon(), zone.getCenterLat(), 10.0);
+                if (airport != null) {
+                    zone.setNearestAirport(airport.distanceKm, airport.name);
+                }
+            }
+        }
+
+        // Log enrichment results
+        long zonesNearStation = destinationZones.stream()
+            .filter(DestinationZone::isNearStation).count();
+        long zonesNearAirport = destinationZones.stream()
+            .filter(DestinationZone::isNearAirport).count();
+        System.out.println("[TRANSPORT] Enriched " + destinationZones.size() + " zones: " +
+            zonesNearStation + " near stations, " + zonesNearAirport + " near airports");
+
+        // Print top zones by station proximity
+        destinationZones.stream()
+            .filter(DestinationZone::isNearStation)
+            .sorted((a, b) -> Double.compare(a.getNearestStationDistKm(), b.getNearestStationDistKm()))
+            .limit(5)
+            .forEach(z -> System.out.println("  " + z.getName() + " → " +
+                z.getNearestStationName() + " (" +
+                String.format("%.1f", z.getNearestStationDistKm()) + " km, " +
+                z.getStationsWithin1km() + " stations within 1km)"));
+
+        // Append additional zones from shapefile features not covered by existing zones
+        enrichZonesFromShapefiles();
+    }
+
+    /**
+     * V5.1: Discover geographic features from shapefiles within the metro bounds
+     * and append them as new zones — both in-memory (for this run) and permanently
+     * to the zones.csv file.
+     *
+     * <p>Only skips exact location duplicates (within 0.3km of an existing zone center).
+     * Uses the config bounds (with margin) to filter features.
+     *
+     * <p>Zone IDs use prefixes: ZS=station, ZP=settlement, ZA=airport, ZR=port.
+     */
+    private void enrichZonesFromShapefiles() {
+        if (!config.isZoneEnrichmentEnabled()) {
+            System.out.println("[ENRICH] Zone enrichment from shapefiles DISABLED");
+            return;
+        }
+
+        int csvZoneCount = destinationZones.size();
+        double dedupKm = 0.3;  // Only skip near-exact duplicates
+
+        // ── Compute metro center and radius from existing zones ──────────
+        double totalWeight = 0, weightedLon = 0, weightedLat = 0;
+        for (DestinationZone z : destinationZones) {
+            double w = z.getJobsWeight() + 0.01;
+            totalWeight += w;
+            weightedLon += z.getCenterLon() * w;
+            weightedLat += z.getCenterLat() * w;
+        }
+        double centerLon = weightedLon / totalWeight;
+        double centerLat = weightedLat / totalWeight;
+
+        double metroRadiusKm = 0;
+        for (DestinationZone z : destinationZones) {
+            double d = haversineKm(centerLon, centerLat, z.getCenterLon(), z.getCenterLat());
+            if (d > metroRadiusKm) metroRadiusKm = d;
+        }
+        double searchRadiusKm = metroRadiusKm + 5.0;
+
+        System.out.println("[ENRICH] Metro center: " + String.format("%.4f,%.4f", centerLon, centerLat) +
+            " radius=" + String.format("%.1f", metroRadiusKm) + "km, search=" +
+            String.format("%.1f", searchRadiusKm) + "km");
+
+        java.util.List<String> newCsvLines = new java.util.ArrayList<>();
+        int stationsAdded = 0, settlementsAdded = 0, airportsAdded = 0, portsAdded = 0;
+        int stationCounter = 1, settlementCounter = 1, airportCounter = 1, portCounter = 1;
+
+        // ── 1. Stations → hub zones ─────────────────────────────────────
+        if (transportIndex.hasStations()) {
+            java.util.List<TaxiTransportIndex.NearestResult> stations =
+                transportIndex.findStationsInRadius(centerLon, centerLat, searchRadiusKm);
+            for (TaxiTransportIndex.NearestResult st : stations) {
+                if (!isWithinBounds(st.lon, st.lat)) continue;
+                if (isLocationCovered(st.lon, st.lat, dedupKm)) continue;
+
+                String id = String.format("ZS%02d", stationCounter++);
+                String name = st.name + " Station Area";
+                DestinationZone zone = new DestinationZone(
+                    id, "hub", name, st.lon, st.lat, 1.5,
+                    0.7, 0.5, 0.3, 0.2, true);
+                destinationZones.add(zone);
+                newCsvLines.add(formatZoneCsv(id, "hub", name, st.lon, st.lat, 1.5,
+                    0.7, 0.5, 0.3, 0.2, true));
+                stationsAdded++;
+            }
+        }
+
+        // ── 2. Settlements → type by distance from center ───────────────
+        if (transportIndex.hasSettlements()) {
+            java.util.List<TaxiTransportIndex.NearestResult> settlements =
+                transportIndex.findSettlementsInRadius(centerLon, centerLat, searchRadiusKm);
+            for (TaxiTransportIndex.NearestResult st : settlements) {
+                if (!isWithinBounds(st.lon, st.lat)) continue;
+                if (isLocationCovered(st.lon, st.lat, dedupKm)) continue;
+
+                double distFromCenter = haversineKm(centerLon, centerLat, st.lon, st.lat);
+                double normalizedDist = (metroRadiusKm > 0) ? distFromCenter / metroRadiusKm : 0.5;
+
+                String zoneType;
+                double jobs, shops, nightlife, residential;
+                if (normalizedDist < 0.20) {
+                    zoneType = "commercial";
+                    jobs = 0.9; shops = 0.8; nightlife = 0.6; residential = 0.2;
+                } else if (normalizedDist < 0.45) {
+                    zoneType = "mixed";
+                    jobs = 0.6; shops = 0.6; nightlife = 0.4; residential = 0.5;
+                } else if (normalizedDist < 0.70) {
+                    zoneType = "mixed";
+                    jobs = 0.3; shops = 0.4; nightlife = 0.2; residential = 0.7;
+                } else {
+                    zoneType = "residential";
+                    jobs = 0.2; shops = 0.3; nightlife = 0.1; residential = 0.9;
+                }
+
+                String id = String.format("ZP%02d", settlementCounter++);
+                DestinationZone zone = new DestinationZone(
+                    id, zoneType, st.name, st.lon, st.lat, 2.0,
+                    jobs, shops, nightlife, residential, false);
+                destinationZones.add(zone);
+                newCsvLines.add(formatZoneCsv(id, zoneType, st.name, st.lon, st.lat, 2.0,
+                    jobs, shops, nightlife, residential, false));
+                settlementsAdded++;
+            }
+        }
+
+        // ── 3. Airports → hub zones ─────────────────────────────────────
+        if (transportIndex.hasAirports()) {
+            java.util.List<TaxiTransportIndex.NearestResult> airports =
+                transportIndex.findAirportsInRadius(centerLon, centerLat, searchRadiusKm);
+            for (TaxiTransportIndex.NearestResult ap : airports) {
+                if (!isWithinBounds(ap.lon, ap.lat)) continue;
+                if (isLocationCovered(ap.lon, ap.lat, dedupKm)) continue;
+
+                String id = String.format("ZA%02d", airportCounter++);
+                DestinationZone zone = new DestinationZone(
+                    id, "hub", ap.name, ap.lon, ap.lat, 3.0,
+                    0.5, 0.3, 0.2, 0.1, true);
+                destinationZones.add(zone);
+                newCsvLines.add(formatZoneCsv(id, "hub", ap.name, ap.lon, ap.lat, 3.0,
+                    0.5, 0.3, 0.2, 0.1, true));
+                airportsAdded++;
+            }
+        }
+
+        // ── 4. Ports → hub zones ────────────────────────────────────────
+        if (transportIndex.hasPorts()) {
+            java.util.List<TaxiTransportIndex.NearestResult> ports =
+                transportIndex.findPortsInRadius(centerLon, centerLat, searchRadiusKm);
+            for (TaxiTransportIndex.NearestResult pt : ports) {
+                if (!isWithinBounds(pt.lon, pt.lat)) continue;
+                if (isLocationCovered(pt.lon, pt.lat, dedupKm)) continue;
+
+                String id = String.format("ZR%02d", portCounter++);
+                // Avoid "Port Port" if name already ends with "Port"
+                String name = pt.name.toLowerCase().endsWith("port") ? pt.name : pt.name + " Port";
+                DestinationZone zone = new DestinationZone(
+                    id, "hub", name, pt.lon, pt.lat, 2.0,
+                    0.4, 0.2, 0.1, 0.2, true);
+                destinationZones.add(zone);
+                newCsvLines.add(formatZoneCsv(id, "hub", name, pt.lon, pt.lat, 2.0,
+                    0.4, 0.2, 0.1, 0.2, true));
+                portsAdded++;
+            }
+        }
+
+        int totalAdded = stationsAdded + settlementsAdded + airportsAdded + portsAdded;
+        if (totalAdded > 0) {
+            System.out.println("[ENRICH] Appended " + totalAdded + " zones from shapefiles " +
+                "(stations=" + stationsAdded + ", settlements=" + settlementsAdded +
+                ", airports=" + airportsAdded + ", ports=" + portsAdded + ")");
+            System.out.println("[ENRICH] Total zones: " + csvZoneCount + " (CSV) + " +
+                totalAdded + " (shapefile) = " + destinationZones.size());
+
+            // Write enriched zones to CSV file permanently
+            appendZonesToCsv(newCsvLines);
+        } else {
+            System.out.println("[ENRICH] No new zones to add from shapefiles");
+        }
+    }
+
+    /**
+     * Append new zone CSV lines to the zones.csv file.
+     * Preserves all existing hand-crafted zones.
+     */
+    private void appendZonesToCsv(java.util.List<String> newLines) {
+        String zonesFile = config.getZonesFile();
+        String zonesPath = config.getConfigDir() + zonesFile;
+        try (java.io.FileWriter fw = new java.io.FileWriter(zonesPath, true)) {  // append mode
+            for (String line : newLines) {
+                fw.write(line + "\n");
+            }
+            System.out.println("[ENRICH] Written " + newLines.size() + " new zones to " + zonesPath);
+        } catch (java.io.IOException e) {
+            System.err.println("[ENRICH] Warning: Could not write to " + zonesPath + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * Format a zone entry as a CSV line matching the 11-column zones.csv schema.
+     */
+    private String formatZoneCsv(String id, String type, String name, double lon, double lat,
+                                  double radius, double jobs, double shops, double nightlife,
+                                  double residential, boolean hub) {
+        return String.format("%s,%s,%s,%.4f,%.4f,%.1f,%.1f,%.1f,%.1f,%.1f,%d",
+            id, type, name, lon, lat, radius, jobs, shops, nightlife, residential, hub ? 1 : 0);
+    }
+
+    /**
+     * Check if a location is a near-duplicate of any existing zone center.
+     * Uses tight threshold (0.3km) — only prevents true duplicates.
+     */
+    private boolean isLocationCovered(double lon, double lat, double thresholdKm) {
+        for (DestinationZone zone : destinationZones) {
+            if (zone.getDistanceFromCenter(lon, lat) < thresholdKm) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Check if coordinates fall within the actual zone extent (computed from
+     * existing zone positions, not config bounds which may be narrower).
+     * Uses 0.05° margin (~5km) beyond the outermost zone centers.
+     */
+    private boolean isWithinBounds(double lon, double lat) {
+        // Compute extent from actual zone positions (lazy-init on first call)
+        if (boundsMinLon == 0 && boundsMaxLon == 0) {
+            boundsMinLon = Double.MAX_VALUE; boundsMaxLon = -Double.MAX_VALUE;
+            boundsMinLat = Double.MAX_VALUE; boundsMaxLat = -Double.MAX_VALUE;
+            for (DestinationZone z : destinationZones) {
+                boundsMinLon = Math.min(boundsMinLon, z.getCenterLon());
+                boundsMaxLon = Math.max(boundsMaxLon, z.getCenterLon());
+                boundsMinLat = Math.min(boundsMinLat, z.getCenterLat());
+                boundsMaxLat = Math.max(boundsMaxLat, z.getCenterLat());
+            }
+            double margin = 0.05;  // ~5km margin
+            boundsMinLon -= margin; boundsMaxLon += margin;
+            boundsMinLat -= margin; boundsMaxLat += margin;
+        }
+        return lon >= boundsMinLon && lon <= boundsMaxLon
+            && lat >= boundsMinLat && lat <= boundsMaxLat;
+    }
+    private double boundsMinLon, boundsMaxLon, boundsMinLat, boundsMaxLat;
+
+    /**
+     * Haversine distance in kilometers between two WGS84 points.
+     */
+    private double haversineKm(double lon1, double lat1, double lon2, double lat2) {
+        double R = config.getEarthRadiusKm();
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+            + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+            * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
     /**
@@ -153,8 +491,7 @@ public class TaxiSimulation {
         System.out.println("[CHECKPOINT] Loading destination zones from CSV...");
 
         String zonesFile = config.getZonesFile();
-        String configDir = "config/";
-        String zonesPath = configDir + zonesFile;
+        String zonesPath = config.getConfigDir() + zonesFile;
 
         try (java.io.BufferedReader reader = new java.io.BufferedReader(
                 new java.io.FileReader(zonesPath))) {
@@ -229,11 +566,15 @@ public class TaxiSimulation {
         int localCount = 0, citywideCount = 0, hubCount = 0;
 
         for (int i = 0; i < numTaxis; i++) {
-            // Random home location within Tokyo bounds
-            double homeLon = config.getTokyoBoundsMinLon() +
-                random.nextDouble() * (config.getTokyoBoundsMaxLon() - config.getTokyoBoundsMinLon());
-            double homeLat = config.getTokyoBoundsMinLat() +
-                random.nextDouble() * (config.getTokyoBoundsMaxLat() - config.getTokyoBoundsMinLat());
+            // Random home location within city bounds, with spatial validation
+            double homeLon, homeLat;
+            int homeAttempt = 0;
+            double[] homeBounds = getSamplingBounds();
+            do {
+                homeLon = homeBounds[0] + random.nextDouble() * (homeBounds[1] - homeBounds[0]);
+                homeLat = homeBounds[2] + random.nextDouble() * (homeBounds[3] - homeBounds[2]);
+                homeAttempt++;
+            } while (homeAttempt < 50 && !isValidLocation(homeLon, homeLat));
 
             // Determine taxi type based on configured probabilities
             TaxiType taxiType;
@@ -379,16 +720,20 @@ public class TaxiSimulation {
                         pickupLon = lastDropoffLon + lonOffset * Math.cos(angle);
                         pickupLat = lastDropoffLat + latOffset * Math.sin(angle);
 
-                        // Clamp to Tokyo bounds
-                        pickupLon = Math.max(config.getTokyoBoundsMinLon(),
-                            Math.min(config.getTokyoBoundsMaxLon(), pickupLon));
-                        pickupLat = Math.max(config.getTokyoBoundsMinLat(),
-                            Math.min(config.getTokyoBoundsMaxLat(), pickupLat));
+                        // Spatial validation for nearby pickup (city boundary + land check)
+                        if (!isValidLocation(pickupLon, pickupLat)) {
+                            continue;  // retry with new random offset
+                        }
                     } else {
                         // Use smart destination selection based on taxi type and time
                         double[] pickupLocation = selectSmartDestination(taxi, currentTime);
                         pickupLon = pickupLocation[0];
                         pickupLat = pickupLocation[1];
+
+                        // Spatial validation for smart pickup
+                        if (!isValidLocation(pickupLon, pickupLat)) {
+                            continue;  // retry
+                        }
                     }
 
                     // Generate dropoff using smart destination selection
@@ -396,11 +741,8 @@ public class TaxiSimulation {
                     double dropoffLon = dropoffLocation[0];
                     double dropoffLat = dropoffLocation[1];
 
-                    // Validate dropoff is within bounds
-                    if (dropoffLon < config.getTokyoBoundsMinLon() ||
-                        dropoffLon > config.getTokyoBoundsMaxLon() ||
-                        dropoffLat < config.getTokyoBoundsMinLat() ||
-                        dropoffLat > config.getTokyoBoundsMaxLat()) {
+                    // Validate dropoff (city boundary + land check)
+                    if (!isValidLocation(dropoffLon, dropoffLat)) {
                         continue;  // Try again
                     }
 
@@ -540,6 +882,37 @@ public class TaxiSimulation {
     }
 
     /**
+     * Validate coordinates against spatial layers (shapefile-based land/water check).
+     * Returns true if point is on valid driveable land, or if spatial validation is disabled.
+     *
+     * @param lon Longitude
+     * @param lat Latitude
+     * @return true if valid location for taxi operation
+     */
+    private boolean isValidLocation(double lon, double lat) {
+        if (geoValidator == null) return true;  // validation disabled
+        return geoValidator.isValidLocation(lon, lat);
+    }
+
+    /**
+     * Returns sampling bounds for random point generation.
+     * Uses city polygon envelope if prefecture boundary is configured,
+     * otherwise falls back to config rectangle bounds.
+     *
+     * @return double[] {minLon, maxLon, minLat, maxLat}
+     */
+    private double[] getSamplingBounds() {
+        if (geoValidator != null && geoValidator.isCityBoundaryEnabled()) {
+            org.locationtech.jts.geom.Envelope env = geoValidator.getCityEnvelope();
+            return new double[]{env.getMinX(), env.getMaxX(), env.getMinY(), env.getMaxY()};
+        }
+        return new double[]{
+            config.getBoundsMinLon(), config.getBoundsMaxLon(),
+            config.getBoundsMinLat(), config.getBoundsMaxLat()
+        };
+    }
+
+    /**
      * V4.0: Select a transport hub zone using weighted probability
      * Time-dependent: airports boosted during night hours
      *
@@ -570,9 +943,11 @@ public class TaxiSimulation {
             double weight = 1.0;
 
             // Boost airports during night hours (22:00-06:00)
-            if (isNight && (zone.getName().contains("Airport") ||
-                            zone.getName().contains("Narita") ||
-                            zone.getName().contains("Haneda"))) {
+            // V5.0: Use shapefile-based airport detection instead of name heuristics
+            if (isNight && zone.isNearAirport()) {
+                weight *= config.getHotspotAirportNightMultiplier();
+            } else if (isNight && zone.getName().toLowerCase().contains("airport")) {
+                // Fallback: string matching for zones without transport index enrichment
                 weight *= config.getHotspotAirportNightMultiplier();
             }
 
@@ -608,17 +983,23 @@ public class TaxiSimulation {
         if (taxiType == TaxiType.HUB) {
             DestinationZone hubZone = selectTransportHubZone(currentTime);
 
-            // Generate random point within selected hub zone
-            double angle = random.nextDouble() * 2 * Math.PI;
-            double distance = random.nextDouble() * hubZone.getRadiusKm();
+            // Generate random point within selected hub zone, with spatial validation retry
+            for (int retry = 0; retry <= 5; retry++) {
+                double angle = random.nextDouble() * 2 * Math.PI;
+                double distance = random.nextDouble() * hubZone.getRadiusKm();
 
-            double lonOffset = distance / 111.32 * Math.cos(Math.toRadians(hubZone.getCenterLat()));
-            double latOffset = distance / 111.32;
+                double lonOffset = distance / 111.32 * Math.cos(Math.toRadians(hubZone.getCenterLat()));
+                double latOffset = distance / 111.32;
 
-            return new double[]{
-                hubZone.getCenterLon() + lonOffset * Math.cos(angle),
-                hubZone.getCenterLat() + latOffset * Math.sin(angle)
-            };
+                double lon = hubZone.getCenterLon() + lonOffset * Math.cos(angle);
+                double lat = hubZone.getCenterLat() + latOffset * Math.sin(angle);
+
+                if (retry == 5 || isValidLocation(lon, lat)) {
+                    return new double[]{lon, lat};
+                }
+            }
+            // Unreachable — loop always returns
+            return new double[]{hubZone.getCenterLon(), hubZone.getCenterLat()};
         }
 
         // Get time period for attractiveness calculation
@@ -672,7 +1053,29 @@ public class TaxiSimulation {
             }
         }
 
-        // Generate random point within selected zone
+        // V5.0: Station-biased point generation — 40% chance to generate near station
+        if (transportIndex != null && selectedZone.isNearStation() &&
+            random.nextDouble() < config.getStationBiasProb()) {
+            TaxiTransportIndex.NearestResult station = transportIndex.findNearestStation(
+                selectedZone.getCenterLon(), selectedZone.getCenterLat(), 2.0);
+            if (station != null) {
+                // Generate within 500m of station
+                double stationAngle = random.nextDouble() * 2 * Math.PI;
+                double stationDist = random.nextDouble() * 0.5;  // 0-500m
+                double lonOff = stationDist / 111.32 * Math.cos(Math.toRadians(station.lat));
+                double latOff = stationDist / 111.32;
+                double sLon = station.lon + lonOff * Math.cos(stationAngle);
+                double sLat = station.lat + latOff * Math.sin(stationAngle);
+
+                // Validate (city boundary + land check)
+                if (isValidLocation(sLon, sLat)) {
+                    return new double[]{sLon, sLat};
+                }
+                // If invalid (e.g., station is near river), fall through to normal generation
+            }
+        }
+
+        // Generate random point within selected zone, with spatial validation retry
         double angle = random.nextDouble() * 2 * Math.PI;
         double distance = random.nextDouble() * selectedZone.getRadiusKm();
 
@@ -682,11 +1085,18 @@ public class TaxiSimulation {
         double lon = selectedZone.getCenterLon() + lonOffset * Math.cos(angle);
         double lat = selectedZone.getCenterLat() + latOffset * Math.sin(angle);
 
-        // Clamp to Tokyo bounds
-        lon = Math.max(config.getTokyoBoundsMinLon(),
-            Math.min(config.getTokyoBoundsMaxLon(), lon));
-        lat = Math.max(config.getTokyoBoundsMinLat(),
-            Math.min(config.getTokyoBoundsMaxLat(), lat));
+        // Spatial validation — if invalid, retry up to 10 times with new random point in same zone
+        if (geoValidator != null && !geoValidator.isValidLocation(lon, lat)) {
+            for (int retry = 0; retry < 10; retry++) {
+                angle = random.nextDouble() * 2 * Math.PI;
+                distance = random.nextDouble() * selectedZone.getRadiusKm();
+                lonOffset = distance / 111.32 * Math.cos(Math.toRadians(selectedZone.getCenterLat()));
+                latOffset = distance / 111.32;
+                lon = selectedZone.getCenterLon() + lonOffset * Math.cos(angle);
+                lat = selectedZone.getCenterLat() + latOffset * Math.sin(angle);
+                if (geoValidator.isValidLocation(lon, lat)) break;
+            }
+        }
 
         return new double[]{lon, lat};
     }
@@ -816,18 +1226,23 @@ public class TaxiSimulation {
      * Main simulation execution
      */
     public void run(String[] args) {
-        System.out.println("═══════════════════════════════════════════════════════");
-        System.out.println("  TOKYO TAXI ABM V3.1 - PSEUDO PFLOW COMPATIBLE");
-        System.out.println("═══════════════════════════════════════════════════════");
-
         // Load configuration
         String configFile = (args.length > 0) ? args[0] : DEFAULT_CONFIG_FILE;
         loadConfiguration(configFile);
+
+        System.out.println("═══════════════════════════════════════════════════════");
+        System.out.println("  " + config.getCityName().toUpperCase() + " TAXI ABM V5.0 - MULTI-CITY PSEUDO PFLOW");
+        System.out.println("═══════════════════════════════════════════════════════");
 
         // Run simulation phases
         initializeTaxis();
         generateTrips();
         printStatistics();
+
+        // Print spatial validation stats if enabled
+        if (geoValidator != null) {
+            geoValidator.printStatistics();
+        }
 
         // Export results
         System.out.println("\n[CHECKPOINT] Exporting results...");
