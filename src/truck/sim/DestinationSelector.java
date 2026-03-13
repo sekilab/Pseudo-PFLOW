@@ -389,6 +389,91 @@ public class DestinationSelector {
     }
 
     // ════════════════════════════════════════════════════════════════════════
+    // DELIVERY TOUR STOP (V5.2)
+    // ════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Selects destination for a delivery tour stop with progressive distance constraint.
+     *
+     * <p>For the first stop (stopNumber=0), uses wider radius and softer decay from depot.
+     * For subsequent stops (stopNumber>0), uses tight radius and aggressive decay to
+     * produce realistic 2-5km inter-stop legs.
+     *
+     * @param truck       The truck agent
+     * @param origin      Current position [lon, lat]
+     * @param maxDistKm   Max allowed distance (first stop: 15km, subsequent: 5km)
+     * @param decayFactor Distance decay for exp(-dist/decayFactor) scoring
+     * @param originZoneId Pre-computed origin zone ID
+     * @param currentTime  Current simulation time
+     * @param commodityType Commodity being carried
+     * @return DestinationResult with coordinates and zone
+     */
+    public DestinationResult selectDeliveryTourStop(TruckAgent truck, double[] origin,
+                                                     double maxDistKm, double decayFactor,
+                                                     String originZoneId, long currentTime,
+                                                     String commodityType) {
+        List<DeliveryZone> zones = zoneManager.getZones();
+        List<DeliveryZone> candidateZones = new ArrayList<>();
+        List<Double> candidateScores = new ArrayList<>();
+
+        for (DeliveryZone zone : zones) {
+            if (zone.getZoneId().equals("MFS62")) continue;
+
+            double dist = zoneManager.calculateDistanceFast(origin[0], origin[1],
+                zone.getCenterLongitude(), zone.getCenterLatitude());
+
+            if (dist > maxDistKm) continue;
+
+            // Score = attractiveness × distance decay
+            double score = zone.calculateAttractiveness(0,
+                config.getAttractivenessBeta1(), config.getAttractivenessBeta2(),
+                config.getAttractivenessBeta3(), config.getAttractivenessBeta4());
+
+            score *= Math.exp(-dist / decayFactor);
+
+            // Slight intra-zone damping to avoid trivial same-point trips
+            if (zone.getZoneId().equals(originZoneId)) {
+                score *= INTRAZONE_DAMPING_FACTOR;
+            }
+
+            if (score > 1e-10) {
+                candidateZones.add(zone);
+                candidateScores.add(score);
+            }
+        }
+
+        if (!candidateZones.isEmpty()) {
+            int selectedIndex = utils.Roulette.choice(candidateScores, ThreadLocalRandom.current().nextDouble());
+            DeliveryZone selectedZone = candidateZones.get(selectedIndex);
+            String selectedZoneId = selectedZone.getZoneId();
+
+            // POI-based destination within selected zone
+            if (poiManager != null && poiManager.hasPOIs()
+                    && ThreadLocalRandom.current().nextDouble() >= getZoneAwareBypass(selectedZone, config.getDeliveryRandomDestRatio())) {
+                int timePeriod = zoneManager.getTimePeriod(currentTime);
+                PointOfInterest targetPOI = poiManager.selectPOIForTrip(
+                    truck, selectedZoneId, commodityType, timePeriod);
+                if (targetPOI != null
+                        && geoValidator.isOnLand(targetPOI.getLongitude(), targetPOI.getLatitude())
+                        && geoValidator.isValidPOILandUse(targetPOI.getLongitude(), targetPOI.getLatitude())) {
+                    double[] coords = pointGenerator.jitterPoint(
+                        targetPOI.getLongitude(), targetPOI.getLatitude(), selectedZone.getRadiusKm());
+                    return new DestinationResult(coords, selectedZoneId, targetPOI.getPoiId());
+                }
+            }
+
+            double[] coords = pointGenerator.generatePointInZone(selectedZone);
+            return DestinationResult.withZone(coords, selectedZoneId);
+        }
+
+        // Fallback: nearest zone
+        int nearestIdx = zoneManager.findNearestZoneIndex(origin[0], origin[1]);
+        DeliveryZone nearestZone = zones.get(Math.max(0, nearestIdx));
+        double[] coords = pointGenerator.generatePointInZone(nearestZone);
+        return DestinationResult.withZone(coords, nearestZone.getZoneId());
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
     // INTER-ZONE DESTINATION (LONG_HAUL)
     // ════════════════════════════════════════════════════════════════════════
 

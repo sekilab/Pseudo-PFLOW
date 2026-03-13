@@ -1,0 +1,44 @@
+zone_id,zone_type,name,center_lon,center_lat,radius_km,jobs_weight,shops_weight,nightlife_weight,residential_weight,transport_hub
+Z01,hub,Sannomiya Station,135.1958,34.6932,1.2,0.9,0.9,0.7,0.2,1
+Z02,hub,Shin-Kobe Station,135.1958,34.7071,1.0,0.6,0.5,0.3,0.3,1
+Z03,commercial,Motomachi/Nankinmachi,135.188,34.688,1.0,0.4,0.9,0.7,0.2,0
+Z04,hub,Kobe Station/Harborland,135.1815,34.6795,1.2,0.6,0.8,0.5,0.2,1
+Z05,commercial,Tor Road/Kitano,135.192,34.698,0.8,0.4,0.8,0.6,0.3,0
+Z06,business,Kobe City Hall/Flower Road,135.193,34.69,0.8,0.8,0.5,0.3,0.2,0
+Z07,nightlife,Sannomiya Higashi,135.201,34.693,0.8,0.4,0.6,1.0,0.2,0
+Z08,hub,Kobe Port/Meriken Park,135.187,34.677,1.2,0.4,0.5,0.4,0.1,1
+Z09,mixed,Port Island South,135.21,34.66,2.0,0.6,0.4,0.2,0.3,0
+Z10,hub,Kobe Airport,135.2235,34.6328,2.0,0.5,0.3,0.2,0.1,1
+Z11,mixed,Rokko Island,135.238,34.695,1.5,0.5,0.5,0.3,0.4,0
+Z12,mixed,Hyogo-ku/Shinkaichi,135.166,34.674,1.2,0.4,0.6,0.5,0.5,1
+Z13,residential,Nagata-ku,135.154,34.668,1.5,0.3,0.5,0.3,0.8,0
+Z14,residential,Suma-ku,135.13,34.65,2.0,0.2,0.4,0.2,0.9,0
+Z15,residential,Tarumi-ku,135.061,34.634,2.0,0.2,0.4,0.2,0.9,0
+Z16,residential,Nishi-ku/Gakuentoshi,135.01,34.685,2.5,0.3,0.5,0.2,0.8,0
+Z17,mixed,Seishin-Chuo,134.978,34.692,1.5,0.4,0.6,0.3,0.7,1
+Z18,mixed,Higashinada-ku/Okamoto,135.244,34.716,1.5,0.4,0.6,0.4,0.6,0
+Z19,residential,Nada-ku,135.228,34.71,1.5,0.4,0.5,0.3,0.7,0
+Z20,mixed,Mikage/Uozaki,135.255,34.717,1.2,0.3,0.5,0.3,0.7,0
+Z21,commercial,Rokko Station Area,135.236,34.725,1.0,0.3,0.6,0.4,0.5,0
+Z22,residential,Kita-ku/Tanigami,135.178,34.74,2.0,0.2,0.3,0.1,0.9,0
+Z23,residential,Kita-ku/Suzurandai,135.13,34.72,2.0,0.2,0.4,0.2,0.9,0
+Z24,residential,Arima Onsen,135.2491,34.7958,1.5,0.2,0.4,0.3,0.7,0
+Z25,residential,Ashiya,135.303,34.727,1.5,0.2,0.4,0.2,0.9,0
+Z26,mixed,Nishinomiya/Kitaguchi,135.346,34.748,1.5,0.4,0.6,0.4,0.6,1
+Z27,commercial,Nishinomiya Gardens,135.342,34.737,1.2,0.3,0.8,0.4,0.4,0
+Z28,mixed,Akashi Station,134.9874,34.6432,1.5,0.5,0.6,0.4,0.5,1
+Z29,residential,Nishi-Akashi,134.949,34.653,1.5,0.3,0.4,0.2,0.8,0
+Z30,mixed,Amagasaki Station,135.428,34.733,1.5,0.5,0.6,0.4,0.5,1
+Z31,mixed,Kaigan-dori/Kyomachi,135.185,34.683,0.8,0.5,0.5,0.3,0.3,0
+Z32,residential,Kobe University Area,135.235,34.73,1.0,0.4,0.3,0.2,0.6,0
+Z33,mixed,HAT Kobe/Wakihama,135.215,34.703,1.2,0.5,0.5,0.3,0.4,0
+Z34,commercial,Kobe Sanda Premium Outlets,135.2248,34.8797,1.5,0.2,0.7,0.2,0.5,0
+Z35,residential,Takarazuka,135.3504,34.8071,1.5,0.3,0.5,0.4,0.7,0
+Z36,residential,Sanda,135.2248,34.8797,2.0,0.2,0.3,0.1,0.9,0
+Z37,mixed,Kakogawa,134.838,34.7668,2.0,0.4,0.5,0.3,0.7,0
+Z38,residential,Miki,134.994,34.794,2.0,0.2,0.3,0.1,0.9,0
+ZS01,hub,JR Suma Station,135.132,34.638,1.0,0.3,0.4,0.2,0.6,1
+ZS02,hub,Hanshin Amagasaki,135.41,34.733,1.2,0.4,0.5,0.3,0.5,1
+ZP01,residential,Inagawa,135.377,34.895,2.0,0.2,0.3,0.1,0.9,0
+ZP02,residential,Kawanishi,135.4161,34.83,1.5,0.2,0.3,0.2,0.9,0
+ZR01,hub,Kobe Port Terminal,135.185,34.668,1.5,0.4,0.2,0.1,0.2,1

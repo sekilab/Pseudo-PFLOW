@@ -1,75 +1,65 @@
 zone_id,zone_type,name,center_lon,center_lat,radius_km,jobs_weight,shops_weight,nightlife_weight,residential_weight,transport_hub
-Z01,hub,CHIBA PORT,140.0572,35.5785,3.0,0.5,0.4,0.2,0.3,1
-Z02,residential,YOTSUKAIDO,140.1671,35.6581,3.0,0.2,0.4,0.2,0.9,0
-Z03,residential,YACHIYO,140.1170,35.7130,3.0,0.2,0.3,0.1,0.9,0
-Z04,residential,ICHIHARA,140.0869,35.5108,3.0,0.2,0.3,0.1,0.9,0
-Z05,residential,SAKURA,140.2305,35.7121,1.8,0.2,0.3,0.1,1.0,0
-Z06,residential,SHISUI,140.2632,35.7181,1.8,0.2,0.3,0.1,1.0,0
-Z07,residential,KAMAGAYA,140.0108,35.7551,3.0,0.2,0.3,0.1,1.0,0
-Z08,residential,URAYASU,139.8914,35.6600,3.0,0.2,0.3,0.1,1.0,0
-Z09,residential,SHIROI,140.0584,35.7955,3.0,0.2,0.3,0.1,1.0,0
-Z10,residential,NAGARA,140.2337,35.4282,3.0,0.2,0.3,0.1,1.0,0
-Z11,hub,TOKYO PORT,139.8338,35.5818,3.0,0.5,0.4,0.2,0.3,1
-Z12,residential,SODEGAURA,139.9536,35.4211,3.0,0.2,0.3,0.1,1.0,0
-Z13,residential,MOBARA,140.2912,35.4261,3.0,0.2,0.3,0.1,1.0,0
-Z14,hub,NARITA INTERNATIONAL AIRPORT,140.3804,35.7643,3.0,0.5,0.3,0.2,0.1,1
-Z15,hub,TOKYO INTL,139.7780,35.5500,3.0,0.5,0.3,0.2,0.1,1
-Z16,hub,KAWASAKI PORT,139.8035,35.4820,3.0,0.5,0.4,0.2,0.3,1
-Z17,hub,KISARAZU PORT,139.8313,35.3957,3.0,0.5,0.4,0.2,0.3,1
-Z18,hub,IBARAKI,140.4145,36.1825,3.0,0.5,0.3,0.2,0.1,1
-ZS01,hub,Shinagawa Station Area,139.7404,35.6309,1.5,0.7,0.5,0.3,0.2,1
-ZS02,hub,Tokyo Station Area,139.7652,35.6753,1.5,0.7,0.5,0.3,0.2,1
-ZS03,hub,Ueno Station Area,139.7720,35.7280,1.5,0.7,0.5,0.3,0.2,1
-ZP01,mixed,Mutsuzawa,140.3176,35.3565,2.0,0.3,0.4,0.2,0.7,0
-ZP02,mixed,Kisarazu,139.9267,35.3814,2.0,0.6,0.6,0.4,0.5,0
-ZP03,mixed,Chonan,140.2236,35.3928,2.0,0.3,0.4,0.2,0.7,0
-ZP04,mixed,Ichinomiya,140.3625,35.3712,2.0,0.3,0.4,0.2,0.7,0
-ZP05,mixed,Chosei,140.3466,35.4092,2.0,0.3,0.4,0.2,0.7,0
-ZP06,mixed,Shirako,140.3825,35.4399,2.0,0.3,0.4,0.2,0.7,0
-ZP07,mixed,Kujukuri,140.4422,35.5259,2.0,0.3,0.4,0.2,0.7,0
-ZP08,mixed,Togane,140.3651,35.5466,2.0,0.6,0.6,0.4,0.5,0
-ZP09,mixed,Sanmu,140.4089,35.6062,2.0,0.3,0.4,0.2,0.7,0
-ZP10,mixed,Shibayama,140.4121,35.6931,2.0,0.3,0.4,0.2,0.7,0
-ZP11,mixed,Oamishirasato,140.3155,35.5220,2.0,0.6,0.6,0.4,0.5,0
-ZP12,mixed,Yachimata,140.3160,35.6525,2.0,0.6,0.6,0.4,0.5,0
-ZP13,mixed,Narita,140.3134,35.7773,2.0,0.6,0.6,0.4,0.5,0
-ZP14,mixed,Misato,139.8724,35.8199,2.0,0.6,0.6,0.4,0.5,0
-ZP15,mixed,Inzai,140.1407,35.8339,2.0,0.6,0.6,0.4,0.5,0
-ZP16,mixed,Sakae,140.2374,35.8374,2.0,0.6,0.6,0.4,0.5,0
-ZP17,mixed,Nagareyama,139.9015,35.8545,2.0,0.6,0.6,0.4,0.5,0
-ZP18,mixed,Kashiwa,139.9633,35.8545,2.0,0.6,0.6,0.4,0.5,0
-ZP19,mixed,Tone,140.1429,35.8560,2.0,0.6,0.6,0.4,0.5,0
-ZP20,mixed,Abiko,140.0139,35.8705,2.0,0.6,0.6,0.4,0.5,0
-ZP21,mixed,Tomisato,140.3429,35.7246,2.0,0.6,0.6,0.4,0.5,0
-ZP22,mixed,Kozaki,140.4015,35.8996,2.0,0.3,0.4,0.2,0.7,0
-ZP23,mixed,Yashio,139.8386,35.8182,2.0,0.6,0.6,0.4,0.5,0
-ZP24,mixed,Soka,139.7964,35.8298,2.0,0.3,0.4,0.2,0.7,0
-ZP25,mixed,Hatogaya,139.7352,35.8311,2.0,0.3,0.4,0.2,0.7,0
-ZP26,mixed,Koshigaya,139.7827,35.8873,2.0,0.3,0.4,0.2,0.7,0
-ZP27,mixed,Yoshikawa,139.8419,35.8911,2.0,0.3,0.4,0.2,0.7,0
-ZP28,mixed,Matsubushi,139.8144,35.9193,2.0,0.3,0.4,0.2,0.7,0
-ZP29,mixed,Kawachi,140.2416,35.8767,2.0,0.3,0.4,0.2,0.7,0
-ZP30,mixed,Toride,140.0716,35.8944,2.0,0.6,0.6,0.4,0.5,0
-ZP31,mixed,Ryugasaki,140.1851,35.8996,2.0,0.3,0.4,0.2,0.7,0
-ZP32,mixed,Moriya,139.9818,35.9305,2.0,0.3,0.4,0.2,0.7,0
-ZP33,mixed,Noda,139.8651,35.9435,2.0,0.3,0.4,0.2,0.7,0
-ZP34,mixed,Inashiki,140.3160,35.9527,2.0,0.3,0.4,0.2,0.7,0
-ZP35,mixed,Tsukubamirai,140.0372,35.9631,2.0,0.3,0.4,0.2,0.7,0
-ZP36,mixed,Ushiku,140.1402,35.9640,2.0,0.3,0.4,0.2,0.7,0
-ZP37,mixed,Miho,140.2957,36.0094,2.0,0.3,0.4,0.2,0.7,0
-ZP38,mixed,Joso,139.9821,36.0190,2.0,0.3,0.4,0.2,0.7,0
-ZP39,mixed,Kasukabe,139.7590,35.9715,2.0,0.3,0.4,0.2,0.7,0
-ZP40,residential,Sugito,139.7286,36.0284,2.0,0.2,0.3,0.1,0.9,0
-ZP41,residential,Sakai,139.7909,36.1080,2.0,0.2,0.3,0.1,0.9,0
-ZP42,mixed,Ami,140.2049,36.0285,2.0,0.3,0.4,0.2,0.7,0
-ZP43,mixed,Tsukuba,140.0761,36.0285,2.0,0.3,0.4,0.2,0.7,0
-ZP44,residential,Bando,139.8786,36.0484,2.0,0.2,0.3,0.1,0.9,0
-ZP45,residential,Tsuchiura,140.1943,36.0769,2.0,0.2,0.3,0.1,0.9,0
-ZP46,residential,Kasumigaura,140.2440,36.1564,2.0,0.2,0.3,0.1,0.9,0
-ZP47,residential,Yachiyo,139.8849,36.1763,2.0,0.2,0.3,0.1,0.9,0
-ZP48,residential,Shimotsuma,139.9546,36.1823,2.0,0.2,0.3,0.1,0.9,0
-ZP49,residential,Ishioka,140.2798,36.1840,2.0,0.2,0.3,0.1,0.9,0
-ZP50,residential,Goka,139.7413,36.1175,2.0,0.2,0.3,0.1,0.9,0
-ZP51,residential,Koga,139.7329,36.1857,2.0,0.2,0.3,0.1,0.9,0
-ZP52,residential,Omitama,140.3495,36.2324,2.0,0.2,0.3,0.1,0.9,0
-ZP53,residential,Nogi,139.7308,36.2324,2.0,0.2,0.3,0.1,0.9,0
+Z01,hub,Chiba Station,140.1131,35.6132,1.5,0.7,0.8,0.5,0.3,1
+Z02,commercial,Chiba Central Park Area,140.122,35.605,1.0,0.5,0.7,0.4,0.4,0
+Z03,hub,Chiba Port,140.0572,35.5785,2.0,0.5,0.3,0.1,0.2,1
+Z04,mixed,Soga Station,140.13,35.582,1.2,0.5,0.6,0.3,0.5,1
+Z05,business,Makuhari Messe/Kaihin,140.0326,35.6484,1.5,0.7,0.7,0.4,0.3,1
+Z06,commercial,Makuhari Shintoshin,140.035,35.655,1.2,0.6,0.8,0.5,0.3,0
+Z07,hub,Narita Airport,140.3864,35.7648,3.0,0.5,0.3,0.2,0.1,1
+Z08,mixed,Narita City,140.3134,35.7773,1.5,0.4,0.5,0.3,0.6,0
+Z09,mixed,Funabashi Station,139.9852,35.7016,1.5,0.5,0.7,0.5,0.4,1
+Z10,commercial,LaLaPort Funabashi,139.983,35.685,1.2,0.4,0.9,0.4,0.3,0
+Z11,mixed,Ichikawa Station,139.9079,35.7277,1.2,0.5,0.6,0.4,0.5,1
+Z12,mixed,Motoyawata Station,139.924,35.723,1.0,0.4,0.6,0.4,0.5,0
+Z13,mixed,Nishi-Funabashi,139.967,35.716,1.0,0.4,0.5,0.3,0.6,0
+Z14,mixed,Matsudo Station,139.9016,35.7849,1.5,0.5,0.6,0.4,0.5,1
+Z15,mixed,Kashiwa Station,139.9718,35.8618,1.5,0.5,0.7,0.5,0.4,1
+Z16,commercial,Kashiwa-no-ha,139.949,35.875,1.2,0.5,0.6,0.3,0.5,0
+Z17,residential,Nagareyama,139.902,35.846,1.5,0.3,0.4,0.2,0.9,0
+Z18,mixed,Urayasu/Shin-Urayasu,139.8914,35.66,1.5,0.4,0.6,0.5,0.5,0
+Z19,commercial,Tokyo Disney Resort Area,139.88,35.634,1.5,0.3,0.7,0.6,0.1,0
+Z20,mixed,Tsudanuma/Narashino,140.023,35.682,1.2,0.4,0.6,0.3,0.6,0
+Z21,residential,Yotsukaido,140.1671,35.6581,1.5,0.3,0.4,0.2,0.8,0
+Z22,residential,Yachiyo,140.117,35.713,1.5,0.3,0.4,0.2,0.8,0
+Z23,residential,Ichihara,140.0869,35.5108,2.0,0.3,0.4,0.2,0.8,0
+Z24,residential,Sakura,140.2305,35.7121,1.5,0.3,0.4,0.2,0.9,0
+Z25,residential,Shisui,140.2632,35.7181,1.5,0.2,0.3,0.1,0.9,0
+Z26,residential,Kamagaya,140.0108,35.7551,1.5,0.3,0.4,0.2,0.8,0
+Z27,residential,Shiroi,140.0584,35.7955,1.5,0.2,0.3,0.1,0.9,0
+Z28,residential,Sodegaura,139.9536,35.4211,2.0,0.3,0.3,0.1,0.9,0
+Z29,residential,Kimitsu,139.905,35.33,2.0,0.3,0.3,0.1,0.9,0
+Z30,residential,Futtsu,139.856,35.306,2.0,0.2,0.3,0.1,0.9,0
+Z31,residential,Kisarazu,139.917,35.376,1.5,0.3,0.4,0.2,0.8,0
+Z32,residential,Mobara,140.2912,35.4261,2.0,0.3,0.3,0.1,0.9,0
+Z33,residential,Togane,140.364,35.559,2.0,0.2,0.3,0.1,0.9,0
+Z34,residential,Oamishirasato,140.3155,35.522,2.0,0.2,0.3,0.1,0.9,0
+Z35,residential,Yachimata,140.316,35.6525,1.5,0.2,0.3,0.1,0.9,0
+Z36,residential,Sanmu,140.413,35.605,2.0,0.2,0.3,0.1,0.9,0
+Z37,residential,Noda,139.875,35.957,1.5,0.3,0.4,0.2,0.9,0
+Z38,residential,Abiko,140.026,35.864,1.5,0.3,0.4,0.2,0.9,0
+Z39,mixed,Toride/Moriya area,139.999,35.906,1.5,0.3,0.4,0.2,0.8,0
+Z40,mixed,Misato,139.8724,35.8199,1.5,0.4,0.5,0.3,0.7,0
+Z41,mixed,Yashio,139.8386,35.8182,1.5,0.3,0.5,0.3,0.7,0
+Z42,hub,Tokyo Port,139.8338,35.5818,2.0,0.4,0.3,0.1,0.2,1
+Z43,hub,Kisarazu Port,139.8313,35.3957,2.0,0.4,0.3,0.1,0.3,1
+Z44,mixed,Kemigawa/Inage,140.066,35.636,1.2,0.4,0.5,0.3,0.6,0
+Z45,residential,Midori-ku/Oyumino,140.15,35.57,1.5,0.3,0.4,0.2,0.9,0
+Z46,mixed,Inzai,140.148,35.825,1.5,0.3,0.4,0.2,0.8,0
+Z47,residential,Tomisato,140.341,35.725,1.5,0.2,0.3,0.1,0.9,0
+Z49,residential,Katsuura,140.32,35.152,2.0,0.2,0.3,0.1,0.9,0
+Z50,residential,Asahi,140.647,35.72,2.0,0.2,0.2,0.1,0.9,0
+Z51,residential,Nagara,140.2337,35.4282,2.0,0.2,0.3,0.1,0.9,0
+Z52,residential,Chosei,140.345,35.41,2.0,0.2,0.2,0.1,0.9,0
+Z53,residential,Isumi,140.383,35.253,2.0,0.2,0.2,0.1,0.9,0
+Z54,residential,Otaki,140.244,35.287,2.0,0.2,0.2,0.1,0.9,0
+Z55,residential,Shirako,140.371,35.445,1.5,0.2,0.3,0.1,0.9,0
+Z57,mixed,Keisei Chiba/Chiba-Chuo,140.118,35.608,1.0,0.5,0.6,0.4,0.4,0
+Z58,commercial,Perrier/Sogo Chiba,140.115,35.611,0.8,0.4,0.8,0.4,0.2,0
+Z59,mixed,Tsuga Station,140.101,35.629,1.0,0.3,0.5,0.3,0.6,0
+Z60,residential,Hanamigawa-ku,140.076,35.669,1.5,0.3,0.4,0.2,0.8,0
+ZS01,hub,Shin-Kamagaya Station,140.004,35.769,1.2,0.5,0.5,0.3,0.4,1
+ZP01,residential,Chonan,140.235,35.375,2.0,0.2,0.2,0.1,0.9,0
+ZP02,residential,Mutsuzawa,140.37,35.36,2.0,0.2,0.2,0.1,0.9,0
+ZP03,residential,Ichinomiya,140.369,35.373,2.0,0.2,0.2,0.1,0.9,0
+Z48,mixed,Tsudanuma Station,140.0240,35.6810,1.2,0.4,0.6,0.4,0.5,1
+Z56,residential,Shibayama,140.4120,35.6970,2.0,0.2,0.3,0.1,0.9,0

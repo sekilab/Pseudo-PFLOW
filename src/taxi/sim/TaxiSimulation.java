@@ -709,16 +709,12 @@ public class TaxiSimulation {
 
                     // NEARBY TRIP LOGIC: Start near previous dropoff
                     if (useNearbyStart) {
-                        // Generate pickup within configurable radius of last dropoff
-                        double angle = random.nextDouble() * 2 * Math.PI;
-                        double distance = random.nextDouble() * config.getNearbyTripRadiusKm();
-
-                        // Convert to lat/lon offset (approximate)
-                        double lonOffset = distance / 111.32 * Math.cos(Math.toRadians(lastDropoffLat));
-                        double latOffset = distance / 111.32;
-
-                        pickupLon = lastDropoffLon + lonOffset * Math.cos(angle);
-                        pickupLat = lastDropoffLat + latOffset * Math.sin(angle);
+                        // V5.2: Generate pickup within configurable radius of last dropoff
+                        // Uses Gaussian/uniform distribution instead of old radial-uniform
+                        double[] nearbyPt = generatePointNearCenter(
+                            lastDropoffLon, lastDropoffLat, config.getNearbyTripRadiusKm());
+                        pickupLon = nearbyPt[0];
+                        pickupLat = nearbyPt[1];
 
                         // Spatial validation for nearby pickup (city boundary + land check)
                         if (!isValidLocation(pickupLon, pickupLat)) {
@@ -736,8 +732,9 @@ public class TaxiSimulation {
                         }
                     }
 
-                    // Generate dropoff using smart destination selection
-                    double[] dropoffLocation = selectSmartDestination(taxi, currentTime);
+                    // V5.2: Generate dropoff using distance-guided destination selection
+                    double[] dropoffLocation = selectDistanceGuidedDestination(
+                        taxi, pickupLon, pickupLat, currentTime);
                     double dropoffLon = dropoffLocation[0];
                     double dropoffLat = dropoffLocation[1];
 
@@ -970,12 +967,175 @@ public class TaxiSimulation {
     }
 
     /**
+     * V5.2: Generate a random point near a center using configurable spatial distribution.
+     * Replaces the old radial-uniform polar sampling (random() * radius) that produced
+     * visible starburst/circular artifacts due to density proportional to 1/r.
+     *
+     * Supports two modes:
+     * - "gaussian": Bivariate Gaussian in Cartesian coordinates with configurable aspect ratio.
+     *   Produces natural bell-curve density decay from center — denser core, soft edges.
+     * - "uniform": Sqrt-corrected polar sampling (same as truck DeliveryZone.java:458).
+     *   Produces flat density across the circle — no center-clustering.
+     *
+     * Both modes support per-city aspect ratio to break circular symmetry (e.g., Kobe E-W).
+     *
+     * @param centerLon center longitude of zone/station/previous dropoff
+     * @param centerLat center latitude
+     * @param radiusKm  effective radius in km
+     * @return double[]{lon, lat}
+     */
+    private double[] generatePointNearCenter(double centerLon, double centerLat, double radiusKm) {
+        String mode = config.getSpatialDistributionMode();
+        double aspectX = config.getSpatialAspectX();
+        double aspectY = config.getSpatialAspectY();
+        double jitterM = config.getSpatialJitterMeters();
+
+        double dx, dy; // offsets in km (Cartesian: dx = east-west, dy = north-south)
+
+        if ("gaussian".equals(mode)) {
+            double sigma = radiusKm / config.getSpatialGaussianSigmaFactor();
+            dx = random.nextGaussian() * sigma * aspectX;
+            dy = random.nextGaussian() * sigma * aspectY;
+
+            // Soft clip to prevent extreme outliers beyond zone edge
+            double dist = Math.sqrt(dx * dx + dy * dy);
+            double maxDist = radiusKm * config.getSpatialGaussianClipFactor();
+            if (dist > maxDist) {
+                double scale = maxDist / dist;
+                dx *= scale;
+                dy *= scale;
+            }
+        } else {
+            // "uniform" — sqrt-corrected for proper area density
+            // Math.sqrt(random) ensures uniform point density across the circle area
+            double angle = random.nextDouble() * 2 * Math.PI;
+            double distance = Math.sqrt(random.nextDouble()) * radiusKm;
+            dx = distance * Math.cos(angle) * aspectX;
+            dy = distance * Math.sin(angle) * aspectY;
+        }
+
+        // Add micro-jitter to break any residual geometric patterns
+        if (jitterM > 0) {
+            dx += (random.nextDouble() - 0.5) * 2 * (jitterM / 1000.0);
+            dy += (random.nextDouble() - 0.5) * 2 * (jitterM / 1000.0);
+        }
+
+        // Convert km offsets to lon/lat (latitude correction for longitude)
+        double lon = centerLon + dx / (111.32 * Math.cos(Math.toRadians(centerLat)));
+        double lat = centerLat + dy / 111.32;
+
+        return new double[]{lon, lat};
+    }
+
+    /**
      * Select destination using time-dependent attractiveness scoring
      *
      * @param taxi The taxi agent generating the trip
      * @param currentTime Current time in seconds since midnight
      * @return array [lon, lat] of selected destination
      */
+    /**
+     * V5.2: Distance-guided destination selection.
+     * Samples a target distance from Gaussian(avg, stddev), then scores zones
+     * by attractiveness × distance match, producing output distribution that
+     * closely matches the configured target.
+     *
+     * @param taxi        The taxi agent
+     * @param pickupLon   Pickup longitude
+     * @param pickupLat   Pickup latitude
+     * @param currentTime Current simulation time
+     * @return [lon, lat] of selected dropoff point
+     */
+    private double[] selectDistanceGuidedDestination(TaxiAgent taxi,
+                                                      double pickupLon, double pickupLat,
+                                                      long currentTime) {
+        // Sample target distance from Gaussian(avg, stddev), clamped to [min, max]
+        double targetDist = config.getTripDistanceAverage()
+            + random.nextGaussian() * config.getTripDistanceStddev();
+        targetDist = Math.max(config.getTripDistanceMin(),
+            Math.min(config.getTripDistanceMax(), targetDist));
+
+        TaxiType taxiType = taxi.getTaxiType();
+        int timePeriod = config.getTimePeriod(currentTime);
+
+        // Score each zone by attractiveness × distance match
+        double totalScore = 0.0;
+        double[] scores = new double[destinationZones.size()];
+
+        for (int i = 0; i < destinationZones.size(); i++) {
+            DestinationZone zone = destinationZones.get(i);
+
+            // Base attractiveness
+            double attr = zone.calculateAttractiveness(timePeriod,
+                config.getAttractivenessBeta1(),
+                config.getAttractivenessBeta2(),
+                config.getAttractivenessBeta3(),
+                config.getAttractivenessBeta4());
+
+            // LOCAL taxi familiar zone boost (same logic as selectSmartDestination)
+            if (taxiType == TaxiType.LOCAL) {
+                List<String> familiarZones = taxi.getFamiliarZoneIds();
+                if (!familiarZones.isEmpty() && familiarZones.contains(zone.getZoneId())) {
+                    attr *= 5.0;
+                } else if (familiarZones.isEmpty()) {
+                    double distance = zone.getDistanceFromCenter(
+                        taxi.getHomeLongitude(), taxi.getHomeLatitude());
+                    if (distance <= taxi.getFamiliarAreaRadiusKm()) {
+                        attr *= 3.0;
+                    } else {
+                        attr *= 0.1;
+                    }
+                } else {
+                    attr *= 0.05;
+                }
+            }
+
+            // Distance match: penalize zones whose center distance deviates from target
+            double zoneDist = zone.getDistanceFromCenter(pickupLon, pickupLat);
+            double distPenalty = Math.exp(-Math.abs(zoneDist - targetDist) / 2.0);
+
+            scores[i] = attr * distPenalty;
+            totalScore += scores[i];
+        }
+
+        // Weighted roulette selection
+        if (totalScore <= 0) {
+            // Fallback to smart destination if scoring fails
+            return selectSmartDestination(taxi, currentTime);
+        }
+
+        double rand = random.nextDouble() * totalScore;
+        double cumulative = 0.0;
+        DestinationZone selectedZone = destinationZones.get(0);
+
+        for (int i = 0; i < destinationZones.size(); i++) {
+            cumulative += scores[i];
+            if (rand <= cumulative) {
+                selectedZone = destinationZones.get(i);
+                break;
+            }
+        }
+
+        // Generate point within selected zone
+        double[] zonePt = generatePointNearCenter(
+            selectedZone.getCenterLon(), selectedZone.getCenterLat(), selectedZone.getRadiusKm());
+        double lon = zonePt[0];
+        double lat = zonePt[1];
+
+        // Validation with retry
+        if (geoValidator != null && !geoValidator.isValidLocation(lon, lat)) {
+            for (int retry = 0; retry < 10; retry++) {
+                zonePt = generatePointNearCenter(
+                    selectedZone.getCenterLon(), selectedZone.getCenterLat(), selectedZone.getRadiusKm());
+                lon = zonePt[0];
+                lat = zonePt[1];
+                if (geoValidator.isValidLocation(lon, lat)) break;
+            }
+        }
+
+        return new double[]{lon, lat};
+    }
+
     private double[] selectSmartDestination(TaxiAgent taxi, long currentTime) {
         TaxiType taxiType = taxi.getTaxiType();
 
@@ -983,16 +1143,12 @@ public class TaxiSimulation {
         if (taxiType == TaxiType.HUB) {
             DestinationZone hubZone = selectTransportHubZone(currentTime);
 
-            // Generate random point within selected hub zone, with spatial validation retry
+            // V5.2: Generate point within hub zone using natural distribution
             for (int retry = 0; retry <= 5; retry++) {
-                double angle = random.nextDouble() * 2 * Math.PI;
-                double distance = random.nextDouble() * hubZone.getRadiusKm();
-
-                double lonOffset = distance / 111.32 * Math.cos(Math.toRadians(hubZone.getCenterLat()));
-                double latOffset = distance / 111.32;
-
-                double lon = hubZone.getCenterLon() + lonOffset * Math.cos(angle);
-                double lat = hubZone.getCenterLat() + latOffset * Math.sin(angle);
+                double[] hubPt = generatePointNearCenter(
+                    hubZone.getCenterLon(), hubZone.getCenterLat(), hubZone.getRadiusKm());
+                double lon = hubPt[0];
+                double lat = hubPt[1];
 
                 if (retry == 5 || isValidLocation(lon, lat)) {
                     return new double[]{lon, lat};
@@ -1059,13 +1215,10 @@ public class TaxiSimulation {
             TaxiTransportIndex.NearestResult station = transportIndex.findNearestStation(
                 selectedZone.getCenterLon(), selectedZone.getCenterLat(), 2.0);
             if (station != null) {
-                // Generate within 500m of station
-                double stationAngle = random.nextDouble() * 2 * Math.PI;
-                double stationDist = random.nextDouble() * 0.5;  // 0-500m
-                double lonOff = stationDist / 111.32 * Math.cos(Math.toRadians(station.lat));
-                double latOff = stationDist / 111.32;
-                double sLon = station.lon + lonOff * Math.cos(stationAngle);
-                double sLat = station.lat + latOff * Math.sin(stationAngle);
+                // V5.2: Generate within 500m of station using natural distribution
+                double[] staPt = generatePointNearCenter(station.lon, station.lat, 0.5);
+                double sLon = staPt[0];
+                double sLat = staPt[1];
 
                 // Validate (city boundary + land check)
                 if (isValidLocation(sLon, sLat)) {
@@ -1075,25 +1228,19 @@ public class TaxiSimulation {
             }
         }
 
-        // Generate random point within selected zone, with spatial validation retry
-        double angle = random.nextDouble() * 2 * Math.PI;
-        double distance = random.nextDouble() * selectedZone.getRadiusKm();
-
-        double lonOffset = distance / 111.32 * Math.cos(Math.toRadians(selectedZone.getCenterLat()));
-        double latOffset = distance / 111.32;
-
-        double lon = selectedZone.getCenterLon() + lonOffset * Math.cos(angle);
-        double lat = selectedZone.getCenterLat() + latOffset * Math.sin(angle);
+        // V5.2: Generate point within zone using natural distribution (Gaussian/uniform)
+        double[] zonePt = generatePointNearCenter(
+            selectedZone.getCenterLon(), selectedZone.getCenterLat(), selectedZone.getRadiusKm());
+        double lon = zonePt[0];
+        double lat = zonePt[1];
 
         // Spatial validation — if invalid, retry up to 10 times with new random point in same zone
         if (geoValidator != null && !geoValidator.isValidLocation(lon, lat)) {
             for (int retry = 0; retry < 10; retry++) {
-                angle = random.nextDouble() * 2 * Math.PI;
-                distance = random.nextDouble() * selectedZone.getRadiusKm();
-                lonOffset = distance / 111.32 * Math.cos(Math.toRadians(selectedZone.getCenterLat()));
-                latOffset = distance / 111.32;
-                lon = selectedZone.getCenterLon() + lonOffset * Math.cos(angle);
-                lat = selectedZone.getCenterLat() + latOffset * Math.sin(angle);
+                zonePt = generatePointNearCenter(
+                    selectedZone.getCenterLon(), selectedZone.getCenterLat(), selectedZone.getRadiusKm());
+                lon = zonePt[0];
+                lat = zonePt[1];
                 if (geoValidator.isValidLocation(lon, lat)) break;
             }
         }

@@ -54,6 +54,14 @@ public class TruckConfig {
     private int truckTripsDelivery;
     private int truckTripsMixed;
     private int truckTripsLongHaul;
+
+    // V5.2: Delivery tour parameters — multi-stop tour model
+    private double deliveryFirstStopMaxKm = 15.0;      // Depot → first POI max distance
+    private double deliveryStopToStopMaxKm = 5.0;       // Between consecutive POIs
+    private int deliveryTourMinStops = 8;                // Min stops per tour
+    private int deliveryTourMaxStops = 15;               // Max stops per tour
+    private double deliveryDecayFirst = 3.0;             // Distance decay for first trip
+    private double deliveryDecaySubsequent = 1.0;        // Distance decay for stop-to-stop
     
     // Vehicle size distribution
     private double vehicleSizeLargeProb;
@@ -197,7 +205,15 @@ public class TruckConfig {
         truckTripsDelivery = getIntProperty("truck.trips.DELIVERY", 6);
         truckTripsMixed = getIntProperty("truck.trips.MIXED_OPERATION", 4);
         truckTripsLongHaul = getIntProperty("truck.trips.LONG_HAUL", 2);
-        
+
+        // V5.2: Delivery tour parameters
+        deliveryFirstStopMaxKm = getDoubleProperty("delivery.first.stop.max.km", 15.0);
+        deliveryStopToStopMaxKm = getDoubleProperty("delivery.stop.to.stop.max.km", 5.0);
+        deliveryTourMinStops = getIntProperty("delivery.tour.min.stops", 8);
+        deliveryTourMaxStops = getIntProperty("delivery.tour.max.stops", 15);
+        deliveryDecayFirst = getDoubleProperty("delivery.distance.decay.first", 3.0);
+        deliveryDecaySubsequent = getDoubleProperty("delivery.distance.decay.subsequent", 1.0);
+
         // Vehicle sizes
         vehicleSizeLargeProb = getDoubleProperty("vehicle.size.large.prob", 0.30);
         vehicleSizeMediumProb = getDoubleProperty("vehicle.size.medium.prob", 0.50);
@@ -402,6 +418,14 @@ public class TruckConfig {
     public int getTruckTripsDelivery() { return truckTripsDelivery; }
     public int getTruckTripsMixed() { return truckTripsMixed; }
     public int getTruckTripsLongHaul() { return truckTripsLongHaul; }
+
+    // V5.2: Delivery tour getters
+    public double getDeliveryFirstStopMaxKm() { return deliveryFirstStopMaxKm; }
+    public double getDeliveryStopToStopMaxKm() { return deliveryStopToStopMaxKm; }
+    public int getDeliveryTourMinStops() { return deliveryTourMinStops; }
+    public int getDeliveryTourMaxStops() { return deliveryTourMaxStops; }
+    public double getDeliveryDecayFirst() { return deliveryDecayFirst; }
+    public double getDeliveryDecaySubsequent() { return deliveryDecaySubsequent; }
 
     /**
      * Get trips per day for a specific truck type.

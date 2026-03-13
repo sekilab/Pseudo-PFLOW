@@ -304,7 +304,7 @@ public class TruckSimulation {
             // Generate delivery trip — pass current zone ID to avoid re-computation
             DeliveryTripResult result = generateDeliveryTrip(truck, lastDropoffLon, lastDropoffLat,
                                                   hasLastDropoff, currentTime,
-                                                  lastDropoffPOIId, currentZoneId);
+                                                  lastDropoffPOIId, currentZoneId, tripNum);
             TruckTrip trip = result.trip;
             if (trip == null) {
                 break;
@@ -481,7 +481,7 @@ public class TruckSimulation {
      */
     private DeliveryTripResult generateDeliveryTrip(TruckAgent truck, double lastDropoffLon, double lastDropoffLat,
                                          boolean hasLastDropoff, long currentTime,
-                                         String originPOIId, String currentZoneId) {
+                                         String originPOIId, String currentZoneId, int tourStopNumber) {
         boolean isInterMetro = metroConfig.shouldMakeInterMetroTrip(ThreadLocalRandom.current(), truck.getTruckType(), config);
 
         double[] origin = hasLastDropoff ?
@@ -501,8 +501,28 @@ public class TruckSimulation {
             distance = destinationSelector.calculateInterMetroDistance();
         } else {
             isInterMetro = false;
-            destResult = destinationSelector.selectIntraMetroDestination(
-                truck, origin, currentTime, commodityType, originZoneId);
+
+            // V5.2: DELIVERY trucks use tour-based destination selection
+            if (truck.getTruckType() == TruckType.DELIVERY) {
+                double maxDistKm;
+                double decayFactor;
+                if (tourStopNumber == 0) {
+                    // First stop: depot → first POI (longer trip allowed)
+                    maxDistKm = config.getDeliveryFirstStopMaxKm();
+                    decayFactor = config.getDeliveryDecayFirst();
+                } else {
+                    // Subsequent stops: POI → POI (short legs)
+                    maxDistKm = config.getDeliveryStopToStopMaxKm();
+                    decayFactor = config.getDeliveryDecaySubsequent();
+                }
+
+                destResult = destinationSelector.selectDeliveryTourStop(
+                    truck, origin, maxDistKm, decayFactor,
+                    originZoneId, currentTime, commodityType);
+            } else {
+                destResult = destinationSelector.selectIntraMetroDestination(
+                    truck, origin, currentTime, commodityType, originZoneId);
+            }
 
             if (destResult == null) {
                 return DeliveryTripResult.atCapacity(currentTime);
@@ -512,12 +532,6 @@ public class TruckSimulation {
 
             if (truck.getTruckType() == TruckType.LONG_HAUL) {
                 destResult = destinationSelector.applyLongHaulConstraints(truck, origin, commodityType);
-                distance = zoneManager.calculateDistanceFast(origin[0], origin[1], destResult.coords[0], destResult.coords[1]);
-            }
-
-            // DELIVERY trucks: enforce maximum distance constraint
-            if (truck.getTruckType() == TruckType.DELIVERY && distance > 35.0) {
-                destResult = destinationSelector.selectNearbyDestination(truck, origin, 35.0, originZoneId);
                 distance = zoneManager.calculateDistanceFast(origin[0], origin[1], destResult.coords[0], destResult.coords[1]);
             }
 

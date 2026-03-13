@@ -1,0 +1,49 @@
+zone_id,zone_type,name,center_lon,center_lat,radius_km,jobs_weight,shops_weight,nightlife_weight,residential_weight,transport_hub
+Z01,hub,Omiya Station,139.6247,35.9063,1.5,0.8,0.9,0.6,0.3,1
+Z02,hub,Saitama-Shintoshin Station,139.631,35.8936,1.2,0.7,0.7,0.4,0.3,1
+Z03,commercial,Omiya Takashimaya/East,139.629,35.905,1.0,0.6,0.8,0.5,0.2,0
+Z04,commercial,Nishi-Omiya/Saitama Super Arena,139.623,35.89,1.0,0.5,0.6,0.5,0.3,0
+Z05,hub,Urawa Station,139.6567,35.8581,1.2,0.6,0.7,0.5,0.4,1
+Z06,mixed,Kita-Urawa Station,139.642,35.877,1.0,0.4,0.5,0.3,0.7,0
+Z07,mixed,Minami-Urawa Station,139.654,35.838,1.0,0.4,0.5,0.3,0.7,0
+Z08,mixed,Musashi-Urawa Station,139.646,35.85,1.0,0.4,0.5,0.3,0.6,0
+Z09,mixed,Kawaguchi Station,139.7209,35.807,1.5,0.6,0.7,0.5,0.5,1
+Z10,residential,Warabi Station,139.6817,35.8256,1.0,0.3,0.5,0.3,0.8,0
+Z11,mixed,Toda-Koen/Toda,139.6738,35.8104,1.5,0.3,0.4,0.2,0.8,0
+Z12,hub,Kawagoe Station,139.485,35.907,1.5,0.6,0.8,0.5,0.4,1
+Z13,commercial,Hon-Kawagoe/Kurazukuri,139.4863,35.9255,1.2,0.4,0.8,0.5,0.4,0
+Z14,mixed,Tokorozawa Station,139.4694,35.7868,1.5,0.5,0.7,0.4,0.5,1
+Z15,residential,Shin-Tokorozawa,139.461,35.799,1.2,0.3,0.5,0.3,0.8,0
+Z16,mixed,Ageo Station,139.5931,35.9768,1.5,0.4,0.5,0.3,0.7,0
+Z17,residential,Okegawa,139.558,36.002,1.5,0.3,0.4,0.2,0.9,0
+Z18,residential,Kitamoto,139.533,36.028,1.5,0.2,0.3,0.1,0.9,0
+Z19,mixed,Konosu,139.5225,36.0655,1.5,0.3,0.4,0.2,0.8,0
+Z20,mixed,Kumagaya Station,139.3881,36.1471,1.5,0.5,0.5,0.3,0.6,1
+Z21,mixed,Koshigaya Station,139.7905,35.8878,1.5,0.5,0.6,0.4,0.5,1
+Z22,commercial,Koshigaya Laketown,139.826,35.877,1.5,0.3,0.8,0.3,0.5,0
+Z23,mixed,Kasukabe Station,139.752,35.975,1.5,0.4,0.5,0.3,0.7,1
+Z24,residential,Soka Station,139.806,35.829,1.2,0.3,0.5,0.3,0.8,0
+Z25,residential,Yashio,139.8386,35.8182,1.5,0.3,0.4,0.2,0.8,0
+Z26,residential,Misato,139.8724,35.8199,1.5,0.3,0.5,0.3,0.7,0
+Z27,mixed,Asaka Station,139.5937,35.802,1.2,0.4,0.5,0.3,0.7,0
+Z28,residential,Niiza Station,139.5656,35.7992,1.2,0.3,0.4,0.2,0.8,0
+Z29,mixed,Shiki Station,139.578,35.832,1.0,0.3,0.5,0.3,0.7,0
+Z30,mixed,Fujimi/Tsuruse,139.55,35.845,1.2,0.3,0.5,0.3,0.8,0
+Z31,residential,Sayama,139.4117,35.853,1.5,0.3,0.4,0.2,0.8,0
+Z32,residential,Iruma,139.3917,35.8358,1.5,0.3,0.4,0.2,0.8,0
+Z33,residential,Hanno,139.3287,35.8539,1.5,0.2,0.3,0.1,0.9,0
+Z34,mixed,Iwatsuki-ku,139.6987,35.9477,1.5,0.3,0.4,0.2,0.8,0
+Z35,residential,Nishi-ku Saitama,139.58,35.905,1.5,0.3,0.4,0.2,0.8,0
+Z36,mixed,Higashi-Omiya/Minuma,139.647,35.93,1.2,0.3,0.5,0.3,0.7,0
+Z37,residential,Gyoda,139.4557,36.1384,1.5,0.3,0.3,0.2,0.9,0
+Z38,residential,Fukaya,139.2817,36.1974,2.0,0.3,0.4,0.2,0.8,0
+Z39,mixed,Honjo,139.191,36.244,1.5,0.3,0.3,0.2,0.8,0
+Z40,mixed,Hasuda,139.6628,36.0004,1.2,0.3,0.4,0.2,0.8,0
+Z41,residential,Shiraoka,139.6773,36.0173,1.2,0.2,0.3,0.1,0.9,0
+Z42,mixed,Kuki,139.669,36.062,1.5,0.3,0.4,0.2,0.8,0
+Z43,residential,Kazo,139.6025,36.1318,1.5,0.2,0.3,0.1,0.9,0
+Z44,mixed,Higashimatsuyama,139.3992,36.042,1.5,0.3,0.4,0.2,0.8,0
+Z45,residential,Tsurugashima,139.3947,35.9375,1.5,0.3,0.4,0.2,0.8,0
+ZS01,hub,Omiya Shinkansen Hub,139.6260,35.9070,1.0,0.7,0.5,0.3,0.2,1
+ZP01,residential,Ogawa,139.2618,36.0558,2.0,0.2,0.3,0.1,0.9,0
+ZP02,residential,Ranzan,139.3153,36.0577,2.0,0.2,0.3,0.1,0.9,0

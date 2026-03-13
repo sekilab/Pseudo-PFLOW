@@ -72,13 +72,10 @@ __pycache__/
 *.pdf
 *.xlsx
 
-# ----- Local run scripts (contain hardcoded machine paths) -----
-run_truck.bat
-run_taxi.bat
-run_traj.bat
-run_with_java21.bat
-test_traj.bat
-compile_traj.bat
+# ----- Local run/compile scripts (contain hardcoded machine paths) -----
+*.bat
+*.sh
+*.ps1
 
 # ----- Config test variants (local experiments) -----
 *.properties.test_*
