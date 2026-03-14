@@ -62,6 +62,7 @@ public class TruckConfig {
     private int deliveryTourMaxStops = 15;               // Max stops per tour
     private double deliveryDecayFirst = 3.0;             // Distance decay for first trip
     private double deliveryDecaySubsequent = 1.0;        // Distance decay for stop-to-stop
+    private double deliveryTourIntrazoneBonus = 3.0;     // Intra-zone bonus for tour stops (replaces damping)
     
     // Vehicle size distribution
     private double vehicleSizeLargeProb;
@@ -213,6 +214,7 @@ public class TruckConfig {
         deliveryTourMaxStops = getIntProperty("delivery.tour.max.stops", 15);
         deliveryDecayFirst = getDoubleProperty("delivery.distance.decay.first", 3.0);
         deliveryDecaySubsequent = getDoubleProperty("delivery.distance.decay.subsequent", 1.0);
+        deliveryTourIntrazoneBonus = getDoubleProperty("delivery.tour.intrazone.bonus", 3.0);
 
         // Vehicle sizes
         vehicleSizeLargeProb = getDoubleProperty("vehicle.size.large.prob", 0.30);
@@ -426,6 +428,7 @@ public class TruckConfig {
     public int getDeliveryTourMaxStops() { return deliveryTourMaxStops; }
     public double getDeliveryDecayFirst() { return deliveryDecayFirst; }
     public double getDeliveryDecaySubsequent() { return deliveryDecaySubsequent; }
+    public double getDeliveryTourIntrazoneBonus() { return deliveryTourIntrazoneBonus; }
 
     /**
      * Get trips per day for a specific truck type.

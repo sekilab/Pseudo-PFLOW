@@ -591,47 +591,6 @@ public class TruckSimulation {
         return new DeliveryTripResult(trip, currentTime, isInterMetro, destResult.poiId);
     }
 
-    /**
-     * Generate cargo weight using gamma distribution.
-     */
-    private double generateCargoWeight(double capacityTons) {
-        double shape = config.getCargoWeightGammaShape();
-        double scale = config.getCargoWeightGammaScale();
-        double cargoWeight = generateGamma(shape, scale);
-        return Math.min(cargoWeight, capacityTons);
-    }
-
-    /**
-     * Generate gamma-distributed random variable using Marsaglia and Tsang method.
-     */
-    private double generateGamma(double shape, double scale) {
-        if (shape < 1.0) {
-            return generateGamma(shape + 1.0, scale) * Math.pow(ThreadLocalRandom.current().nextDouble(), 1.0 / shape);
-        }
-
-        double d = shape - 1.0 / 3.0;
-        double c = 1.0 / Math.sqrt(9.0 * d);
-
-        while (true) {
-            double x, v;
-            do {
-                x = ThreadLocalRandom.current().nextGaussian();
-                v = 1.0 + c * x;
-            } while (v <= 0);
-
-            v = v * v * v;
-            double u = ThreadLocalRandom.current().nextDouble();
-
-            if (u < 1.0 - 0.0331 * x * x * x * x) {
-                return d * v * scale;
-            }
-
-            if (Math.log(u) < 0.5 * x * x + d * (1.0 - v + Math.log(v))) {
-                return d * v * scale;
-            }
-        }
-    }
-
     // ========================================================================
     // STATISTICS & REPORTING
     // ========================================================================
@@ -788,6 +747,7 @@ public class TruckSimulation {
             System.out.println("  Total trucks: " + truckFleet.size() + " (target: 327,108)");
             System.out.println("  Total zones: " + deliveryZones.size() + " (intra + inter combined)");
         }
+        destinationSelector.printDeliveryTourDiagnostics();
     }
 
     /**

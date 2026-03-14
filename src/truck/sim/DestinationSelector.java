@@ -34,6 +34,13 @@ public class DestinationSelector {
     private final CommodityRouter commodityRouter;
     private final MetropolitanConfig metroConfig;
 
+    // Diagnostic counters for delivery tour tier usage
+    private final java.util.concurrent.atomic.AtomicInteger deliveryTier1Hits = new java.util.concurrent.atomic.AtomicInteger();
+    private final java.util.concurrent.atomic.AtomicInteger deliveryTier2Hits = new java.util.concurrent.atomic.AtomicInteger();
+    private final java.util.concurrent.atomic.AtomicInteger deliveryTier3Hits = new java.util.concurrent.atomic.AtomicInteger();
+    private final java.util.concurrent.atomic.AtomicInteger deliveryFallbackHits = new java.util.concurrent.atomic.AtomicInteger();
+    private final java.util.concurrent.atomic.AtomicInteger deliveryTotalCalls = new java.util.concurrent.atomic.AtomicInteger();
+
     public DestinationSelector(TruckConfig config,
                                ZoneManager zoneManager, GeoValidator geoValidator,
                                PointGenerator pointGenerator, POIManager poiManager,
@@ -412,28 +419,56 @@ public class DestinationSelector {
                                                      double maxDistKm, double decayFactor,
                                                      String originZoneId, long currentTime,
                                                      String commodityType) {
+        deliveryTotalCalls.incrementAndGet();
+
+        // ── Tier 1: Direct POI proximity search (bypasses zone-center spacing problem) ──
+        if (poiManager != null && poiManager.hasPOIs()) {
+            List<PointOfInterest> nearbyPOIs = poiManager.findPOIsNearPoint(
+                origin[0], origin[1], maxDistKm);
+
+            if (!nearbyPOIs.isEmpty()) {
+                List<Double> scores = new ArrayList<>();
+                for (PointOfInterest poi : nearbyPOIs) {
+                    double dist = poi.distanceTo(origin[0], origin[1]);
+                    if (dist < 0.1) dist = 0.1;  // avoid zero-distance same-point
+                    scores.add(Math.exp(-dist / decayFactor));
+                }
+                int idx = utils.Roulette.choice(scores, ThreadLocalRandom.current().nextDouble());
+                PointOfInterest selected = nearbyPOIs.get(idx);
+
+                if (geoValidator.isOnLand(selected.getLongitude(), selected.getLatitude())) {
+                    String zoneId = zoneManager.findZoneForLocation(
+                        selected.getLongitude(), selected.getLatitude());
+                    double[] coords = pointGenerator.jitterPoint(
+                        selected.getLongitude(), selected.getLatitude(), 0.3);
+                    deliveryTier1Hits.incrementAndGet();
+                    return new DestinationResult(coords, zoneId, selected.getPoiId());
+                }
+            }
+        }
+
+        // ── Tier 2: Widened zone filter with intra-zone BONUS (not damping) ──
         List<DeliveryZone> zones = zoneManager.getZones();
         List<DeliveryZone> candidateZones = new ArrayList<>();
         List<Double> candidateScores = new ArrayList<>();
+        double zoneMaxDist = Math.max(maxDistKm, 25.0);  // widen to 25km minimum
 
         for (DeliveryZone zone : zones) {
             if (zone.getZoneId().equals("MFS62")) continue;
 
-            double dist = zoneManager.calculateDistanceFast(origin[0], origin[1],
+            // Use Haversine (no Manhattan factor) for spatial filter
+            double dist = zoneManager.calculateHaversineDistanceFast(origin[0], origin[1],
                 zone.getCenterLongitude(), zone.getCenterLatitude());
+            if (dist > zoneMaxDist) continue;
 
-            if (dist > maxDistKm) continue;
-
-            // Score = attractiveness × distance decay
             double score = zone.calculateAttractiveness(0,
                 config.getAttractivenessBeta1(), config.getAttractivenessBeta2(),
                 config.getAttractivenessBeta3(), config.getAttractivenessBeta4());
-
             score *= Math.exp(-dist / decayFactor);
 
-            // Slight intra-zone damping to avoid trivial same-point trips
+            // BONUS for intra-zone — delivery trucks prefer staying local
             if (zone.getZoneId().equals(originZoneId)) {
-                score *= INTRAZONE_DAMPING_FACTOR;
+                score *= config.getDeliveryTourIntrazoneBonus();
             }
 
             if (score > 1e-10) {
@@ -458,15 +493,31 @@ public class DestinationSelector {
                         && geoValidator.isValidPOILandUse(targetPOI.getLongitude(), targetPOI.getLatitude())) {
                     double[] coords = pointGenerator.jitterPoint(
                         targetPOI.getLongitude(), targetPOI.getLatitude(), selectedZone.getRadiusKm());
+                    deliveryTier2Hits.incrementAndGet();
                     return new DestinationResult(coords, selectedZoneId, targetPOI.getPoiId());
                 }
             }
 
             double[] coords = pointGenerator.generatePointInZone(selectedZone);
+            deliveryTier2Hits.incrementAndGet();
             return DestinationResult.withZone(coords, selectedZoneId);
         }
 
-        // Fallback: nearest zone
+        // ── Tier 3: Nearest POI fallback (NOT nearest zone center) ──
+        if (poiManager != null && poiManager.hasPOIs()) {
+            PointOfInterest nearest = poiManager.findNearestPOI(origin[0], origin[1]);
+            if (nearest != null) {
+                String zoneId = zoneManager.findZoneForLocation(
+                    nearest.getLongitude(), nearest.getLatitude());
+                double[] coords = pointGenerator.jitterPoint(
+                    nearest.getLongitude(), nearest.getLatitude(), 0.3);
+                deliveryTier3Hits.incrementAndGet();
+                return new DestinationResult(coords, zoneId, nearest.getPoiId());
+            }
+        }
+
+        // Ultimate fallback: nearest zone center
+        deliveryFallbackHits.incrementAndGet();
         int nearestIdx = zoneManager.findNearestZoneIndex(origin[0], origin[1]);
         DeliveryZone nearestZone = zones.get(Math.max(0, nearestIdx));
         double[] coords = pointGenerator.generatePointInZone(nearestZone);
@@ -633,5 +684,20 @@ public class DestinationSelector {
             metroConfig.getSecondaryMetro()
         );
         return route != null ? route.distanceKm : 350.0;
+    }
+
+    /** Print delivery tour tier usage diagnostics. */
+    public void printDeliveryTourDiagnostics() {
+        int total = deliveryTotalCalls.get();
+        if (total == 0) return;
+        System.out.printf("[DELIVERY-DIAG] Total calls: %d%n", total);
+        System.out.printf("[DELIVERY-DIAG]   Tier 1 (POI proximity): %d (%.1f%%)%n",
+            deliveryTier1Hits.get(), 100.0 * deliveryTier1Hits.get() / total);
+        System.out.printf("[DELIVERY-DIAG]   Tier 2 (zone filter):   %d (%.1f%%)%n",
+            deliveryTier2Hits.get(), 100.0 * deliveryTier2Hits.get() / total);
+        System.out.printf("[DELIVERY-DIAG]   Tier 3 (nearest POI):   %d (%.1f%%)%n",
+            deliveryTier3Hits.get(), 100.0 * deliveryTier3Hits.get() / total);
+        System.out.printf("[DELIVERY-DIAG]   Fallback (zone center): %d (%.1f%%)%n",
+            deliveryFallbackHits.get(), 100.0 * deliveryFallbackHits.get() / total);
     }
 }

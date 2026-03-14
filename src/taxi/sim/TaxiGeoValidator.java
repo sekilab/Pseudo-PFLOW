@@ -462,24 +462,4 @@ public class TaxiGeoValidator {
         return true;
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // STATISTICS
-    // ════════════════════════════════════════════════════════════════════════
-
-    /**
-     * Prints spatial validation statistics to stdout.
-     * Useful for understanding rejection rates and cache effectiveness.
-     */
-    public void printStatistics() {
-        System.out.println("[SPATIAL] Validation statistics:");
-        System.out.println("  Total checks: " + totalChecks);
-        System.out.println("  Cache hits: " + cacheHits +
-            " (" + (totalChecks > 0 ? String.format("%.1f%%", 100.0 * cacheHits / totalChecks) : "0%") + ")");
-        if (cityBoundaryEnabled) {
-            System.out.println("  Rejected (out of city): " + rejectedOutOfCity);
-        }
-        System.out.println("  Rejected (water/ocean): " + rejectedWater);
-        System.out.println("  Rejected (river buffer): " + rejectedRiver);
-        System.out.println("  Cache size: " + (landValidationCache.size() + cityValidationCache.size()) + " entries");
-    }
 }

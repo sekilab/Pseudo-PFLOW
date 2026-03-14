@@ -388,26 +388,6 @@ public class CommodityRouter {
         }
     }
     
-    /**
-     * Select vehicle size for commodity (legacy/fallback).
-     */
-    public String selectVehicleForCommodity(String commodityType, double cargoWeightTons) {
-         // Simplified logic using weight constraints
-         boolean isWeightLimited = isWeightLimited(commodityType);
-
-         if (isWeightLimited) {
-            if (cargoWeightTons > 10.0) return "heavy";
-            else if (cargoWeightTons > 4.0) return "medium";
-            else if (cargoWeightTons > 2.0) return "small";
-            else return "light";
-         } else {
-             // Volume limited - prefer slightly larger
-             if (cargoWeightTons > 8.0) return "heavy";
-             else if (cargoWeightTons > 3.0) return "medium";
-             else return "small";
-         }
-    }
-
     // ============================================================================
     // TIME WINDOW METHODS (MFS File 05)
     // ============================================================================

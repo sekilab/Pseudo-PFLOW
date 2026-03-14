@@ -108,45 +108,6 @@ public class TripGenerator {
     }
 
     /**
-     * Calculate total trips to generate for a zone based on establishments.
-     */
-    public int generateTripsForZone(DeliveryZone zone, double scaleFactor) {
-        String sub = zone.getSubRegion();
-        if (sub == null) sub = "metropolitan_area_total";
-        
-        double totalLambda = 0.0;
-        String[] facilities = {"factory", "logistics", "office", "store", "other"};
-        
-        for (String fac : facilities) {
-            Map<String, Integer> industries = zone.getIndustryCounts(fac);
-            for (Map.Entry<String, Integer> entry : industries.entrySet()) {
-                String ind = entry.getKey();
-                int count = entry.getValue();
-                
-                double rate = getRate(sub, ind, fac);
-                totalLambda += count * rate;
-            }
-        }
-        
-        // Scale factor for simulation speed/fleet size
-        totalLambda *= scaleFactor;
-        
-        int trips = samplePoisson(totalLambda);
-        return Math.max(config.getTruckTripsMin(), Math.min(config.getTruckTripsMax(), trips));
-    }
-    
-    private double getRate(String sub, String ind, String fac) {
-        Map<String, Map<String, Double>> indMap = subRegionRates.get(sub);
-        if (indMap == null) indMap = subRegionRates.get("metropolitan_area_total");
-        if (indMap == null) return 5.0; // fallback
-        
-        Map<String, Double> facMap = indMap.get(ind);
-        if (facMap == null) return 5.0;
-        
-        return facMap.getOrDefault(fac, 5.0);
-    }
-
-    /**
      * Generate cargo weight based on MFS File 18 utilization rates.
      * Calibrated for trip counts: DELIVERY=3, MIXED=2, LONG_HAUL=1.
      *

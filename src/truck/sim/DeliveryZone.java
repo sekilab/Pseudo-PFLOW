@@ -125,13 +125,6 @@ public class DeliveryZone {
     }
     
     /**
-     * Get establishment count for a facility type.
-     */
-    public int getEstablishmentCount(String facility) {
-        return establishments.getOrDefault(facility, 0);
-    }
-    
-    /**
      * Set industry-specific establishment counts.
      */
     public void setIndustryCounts(String facility, Map<String, Integer> counts) {
@@ -205,31 +198,6 @@ public class DeliveryZone {
         }
 
         return totalCount > 0 ? (double) industryCount / totalCount : 0.0;
-    }
-
-    /**
-     * Get all industries present in this zone with their weights.
-     *
-     * @return Map of industry code to presence weight
-     */
-    public Map<String, Double> getIndustryPresenceMap() {
-        Map<String, Integer> aggregated = new HashMap<>();
-        int totalCount = 0;
-
-        for (Map<String, Integer> facilityCounts : industryEstablishments.values()) {
-            for (Map.Entry<String, Integer> entry : facilityCounts.entrySet()) {
-                aggregated.merge(entry.getKey(), entry.getValue(), Integer::sum);
-                totalCount += entry.getValue();
-            }
-        }
-
-        Map<String, Double> weights = new HashMap<>();
-        if (totalCount > 0) {
-            for (Map.Entry<String, Integer> entry : aggregated.entrySet()) {
-                weights.put(entry.getKey(), (double) entry.getValue() / totalCount);
-            }
-        }
-        return weights;
     }
 
     // ============================================================================
@@ -322,13 +290,6 @@ public class DeliveryZone {
      */
     public List<Geometry> getBoundaryPolygons() {
         return boundaryPolygons;
-    }
-
-    /**
-     * Get union polygon for this zone.
-     */
-    public Geometry getUnionPolygon() {
-        return unionPolygon;
     }
 
     /**

@@ -30,6 +30,10 @@ public class POIManager {
 
     private Map<String, List<PointOfInterest>> poisByZone;  // zone_id -> POIs in zone
 
+    // Spatial grid for fast proximity search (~0.1° cells ≈ 11km)
+    private static final double GRID_CELL_SIZE = 0.1;  // degrees
+    private Map<Long, List<PointOfInterest>> spatialGrid;
+
     // Water body validation checker (passed from TruckSimulation)
     // INVERTED LOGIC: Changed from waterChecker to landChecker
     // OLD: waterChecker returned TRUE if point was IN water (to reject)
@@ -149,6 +153,23 @@ public class POIManager {
         System.out.println("[POI] Loaded " + industrialSites.size() + " industrial sites");
         System.out.println("[POI] Loaded " + portsTerminals.size() + " ports/terminals");
         System.out.println("[POI] Total POIs: " + allPOIs.size());
+        buildSpatialGrid();
+    }
+
+    /** Build spatial grid index for fast proximity lookups. */
+    private void buildSpatialGrid() {
+        spatialGrid = new HashMap<>();
+        for (PointOfInterest poi : allPOIs) {
+            long key = gridKey(poi.getLongitude(), poi.getLatitude());
+            spatialGrid.computeIfAbsent(key, k -> new ArrayList<>()).add(poi);
+        }
+        System.out.println("[POI] Spatial grid: " + spatialGrid.size() + " cells");
+    }
+
+    private long gridKey(double lon, double lat) {
+        int ix = (int) Math.floor(lon / GRID_CELL_SIZE);
+        int iy = (int) Math.floor(lat / GRID_CELL_SIZE);
+        return ((long) ix << 32) | (iy & 0xFFFFFFFFL);
     }
 
     /**
@@ -616,6 +637,52 @@ public class POIManager {
             this.retailEstablishments = retail;
             this.totalEstablishments = total;
         }
+    }
+
+    // ── Spatial proximity search (V5.2 delivery tour) ──────────────────
+
+    /**
+     * Find all POIs within a given radius of a point using spatial grid + Haversine.
+     * Grid reduces search from O(N) to O(cells×POIs_per_cell).
+     */
+    public List<PointOfInterest> findPOIsNearPoint(double lon, double lat, double maxDistKm) {
+        List<PointOfInterest> nearby = new ArrayList<>();
+        // Convert km to approximate degrees for grid cell search radius
+        int cellRadius = (int) Math.ceil(maxDistKm / (GRID_CELL_SIZE * 111.0)) + 1;
+        int cx = (int) Math.floor(lon / GRID_CELL_SIZE);
+        int cy = (int) Math.floor(lat / GRID_CELL_SIZE);
+
+        for (int dx = -cellRadius; dx <= cellRadius; dx++) {
+            for (int dy = -cellRadius; dy <= cellRadius; dy++) {
+                long key = ((long) (cx + dx) << 32) | ((cy + dy) & 0xFFFFFFFFL);
+                List<PointOfInterest> cell = spatialGrid.get(key);
+                if (cell != null) {
+                    for (PointOfInterest poi : cell) {
+                        if (poi.distanceTo(lon, lat) <= maxDistKm) {
+                            nearby.add(poi);
+                        }
+                    }
+                }
+            }
+        }
+        return nearby;
+    }
+
+    /**
+     * Find the single nearest POI to a point. Used as last-resort fallback
+     * so delivery tour stops land on a real facility instead of a zone center.
+     */
+    public PointOfInterest findNearestPOI(double lon, double lat) {
+        PointOfInterest nearest = null;
+        double minDist = Double.MAX_VALUE;
+        for (PointOfInterest poi : allPOIs) {
+            double dist = poi.distanceTo(lon, lat);
+            if (dist < minDist) {
+                minDist = dist;
+                nearest = poi;
+            }
+        }
+        return nearest;
     }
 
     // Getters

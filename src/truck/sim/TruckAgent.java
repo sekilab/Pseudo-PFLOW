@@ -1,7 +1,5 @@
 package truck.sim;
 
-import truck.sim.util.DistanceCalculator;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -92,23 +90,6 @@ public class TruckAgent {
     }
     
     /**
-     * Check if a location is within the familiar area (for DELIVERY type).
-     * 
-     * @param longitude Location longitude
-     * @param latitude Location latitude
-     * @return true if within familiar area or if not DELIVERY type
-     */
-    public boolean isInFamiliarArea(double longitude, double latitude) {
-        if (truckType != TruckType.DELIVERY) {
-            return true;  // No restriction for LONG_HAUL and MIXED_OPERATION
-        }
-
-        double distance = DistanceCalculator.calculateDistance(homeLatitude, homeLongitude,
-                                          latitude, longitude);
-        return distance <= familiarAreaRadiusKm;
-    }
-    
-    /**
      * Add a trip to this truck's history.
      */
     public void addTrip(TruckTrip trip) {
@@ -131,21 +112,6 @@ public class TruckAgent {
     }
     
     /**
-     * Get remaining shift time in seconds.
-     */
-    public long getRemainingShiftTime() {
-        return Math.max(0, shiftEndTime - currentTime);
-    }
-
-    /**
-     * Get distance from current location to a point.
-     */
-    public double getDistanceFromCurrent(double longitude, double latitude) {
-        return DistanceCalculator.calculateDistance(currentLatitude, currentLongitude,
-                               latitude, longitude);
-    }
-    
-    /**
      * Calculate empty running ratio.
      */
     public double getEmptyRunningRatio() {
@@ -165,13 +131,6 @@ public class TruckAgent {
      */
     public double getAvgCargoWeight() {
         return deliveryCount > 0 ? totalCargoWeightTons / deliveryCount : 0.0;
-    }
-    
-    /**
-     * Get vehicle utilization rate.
-     */
-    public double getVehicleUtilization() {
-        return totalCargoWeightTons / (deliveryCount * capacityTons);
     }
     
     // Setters

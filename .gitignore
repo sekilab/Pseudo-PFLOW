@@ -26,6 +26,7 @@ build/
 
 # ----- Claude Code local settings -----
 .claude/
+CLAUDE.md
 
 # ----- Maven wrapper (optional, regenerable) -----
 .mvn/

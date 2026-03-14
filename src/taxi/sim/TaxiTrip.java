@@ -231,18 +231,6 @@ public class TaxiTrip {
     }
 
     /**
-     * Set pickup and dropoff times and assign taxi
-     * @param taxiId ID of assigned taxi
-     * @param pickup Pickup time (seconds since midnight)
-     * @param dropoff Dropoff time (seconds since midnight)
-     */
-    public void assignToTaxi(int taxiId, long pickup, long dropoff) {
-        this.assignedTaxiId = taxiId;
-        this.pickupTime = pickup;
-        this.dropoffTime = dropoff;
-    }
-
-    /**
      * Set pickup and dropoff times based on taxi assignment
      * @param pickup Pickup time (seconds since midnight)
      * @param dropoff Dropoff time (seconds since midnight)
