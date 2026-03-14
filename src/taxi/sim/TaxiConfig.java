@@ -4,6 +4,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
 
+import util.PathResolver;
+
 /**
  * Central configuration class for Tokyo Taxi ABM Simulation
  *
@@ -234,8 +236,8 @@ public class TaxiConfig {
     }
 
     private void loadDirectories(Properties props) {
-        inputDirectory = props.getProperty("input.directory", inputDirectory);
-        outputDirectory = props.getProperty("output.directory", outputDirectory);
+        inputDirectory = PathResolver.resolve(props.getProperty("input.directory", inputDirectory));
+        outputDirectory = PathResolver.resolve(props.getProperty("output.directory", outputDirectory));
         System.out.println("  Input: " + inputDirectory);
         System.out.println("  Output: " + outputDirectory);
     }

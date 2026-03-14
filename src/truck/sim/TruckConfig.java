@@ -4,6 +4,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
 
+import util.PathResolver;
+
 /**
  * Configuration management singleton for Truck ABM.
  * 
@@ -314,11 +316,11 @@ public class TruckConfig {
     
     // Property utility methods
     public String getProperty(String key) {
-        return properties.getProperty(key);
+        return PathResolver.resolve(properties.getProperty(key));
     }
 
     public String getProperty(String key, String defaultValue) {
-        return properties.getProperty(key, defaultValue);
+        return PathResolver.resolve(properties.getProperty(key, defaultValue));
     }
 
     public void setProperty(String key, String value) {

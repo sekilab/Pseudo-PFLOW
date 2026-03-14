@@ -6,6 +6,7 @@ import java.util.Map;
 
 import jp.ac.ut.csis.pflow.routing4.res.Network;
 import pseudo.res.Person;
+import util.PathResolver;
 
 /**
  * Unified CLI entry point for trajectory generation across all vehicle types.
@@ -18,9 +19,9 @@ import pseudo.res.Person;
  *   taxi   - Taxi ABM trajectories (transport_mode=8)
  * <p>
  * Examples:
- *   java traj.TrajectoryMain truck H:/Dropbox/PFLOW/output/trips/truck/run_YYYYMMDD_HHMMSS/trips_pseudo_pflow.csv
- *   java traj.TrajectoryMain taxi  H:/Dropbox/PFLOW/output/trips/taxi/tokyo/run_YYYYMMDD_HHMMSS/trips_pseudo_pflow.csv
- *   java traj.TrajectoryMain truck trips.csv H:/Dropbox/PFLOW/data/processing/network H:/Dropbox/PFLOW/output/trajectory/truck 8,9,10,11,12,13,14 8
+ *   java traj.TrajectoryMain truck $PFLOW_HOME/output/trips/truck/run_YYYYMMDD_HHMMSS/trips_pseudo_pflow.csv
+ *   java traj.TrajectoryMain taxi  $PFLOW_HOME/output/trips/taxi/tokyo/run_YYYYMMDD_HHMMSS/trips_pseudo_pflow.csv
+ *   java traj.TrajectoryMain truck trips.csv $PFLOW_HOME/data/processing/network $PFLOW_HOME/output/trajectory/truck 8,9,10,11,12,13,14 8
  */
 public class TrajectoryMain {
 
@@ -37,7 +38,7 @@ public class TrajectoryMain {
 
         String vehicleType = args[0].toLowerCase();
         String tripsCsv = args[1];
-        String networkDir = args.length > 2 ? args[2] : "H:/Dropbox/PFLOW/data/processing/network";
+        String networkDir = args.length > 2 ? args[2] : PathResolver.getPflowHome() + "/data/processing/network";
         String outputDir = args.length > 3 ? args[3] : null;  // default set per vehicle type
         int[] prefCodes = DEFAULT_PREFS;
         if (args.length > 4) {
@@ -52,9 +53,9 @@ public class TrajectoryMain {
         // Set default output dir based on vehicle type if not specified
         if (outputDir == null) {
             switch (vehicleType) {
-                case "truck": outputDir = "H:/Dropbox/PFLOW/output/trajectory/truck"; break;
-                case "taxi":  outputDir = "H:/Dropbox/PFLOW/output/trajectory/taxi"; break;
-                default:      outputDir = "H:/Dropbox/PFLOW/output/trajectory/" + vehicleType; break;
+                case "truck": outputDir = PathResolver.getPflowHome() + "/output/trajectory/truck"; break;
+                case "taxi":  outputDir = PathResolver.getPflowHome() + "/output/trajectory/taxi"; break;
+                default:      outputDir = PathResolver.getPflowHome() + "/output/trajectory/" + vehicleType; break;
             }
         }
 
@@ -167,13 +168,13 @@ public class TrajectoryMain {
         System.out.println();
         System.out.println("  vehicle_type : truck | taxi");
         System.out.println("  trips_csv    : path to trips_pseudo_pflow.csv");
-        System.out.println("  network_dir  : directory with drm_XX.tsv files (default: H:/Dropbox/PFLOW/data/processing/network)");
-        System.out.println("  output_dir   : trajectory output directory (default: H:/Dropbox/PFLOW/output/trajectory/<type>)");
+        System.out.println("  network_dir  : directory with drm_XX.tsv files (default: $PFLOW_HOME/data/processing/network)");
+        System.out.println("  output_dir   : trajectory output directory (default: $PFLOW_HOME/output/trajectory/<type>)");
         System.out.println("  pref_codes   : comma-separated prefecture codes (default: 8,9,10,11,12,13,14)");
         System.out.println("  maxRoadClass : max road class to keep, 0=all (default: 8, skips minor roads)");
         System.out.println();
         System.out.println("Examples:");
-        System.out.println("  TrajectoryMain truck H:/Dropbox/PFLOW/output/trips/truck/run_LATEST/trips_pseudo_pflow.csv");
-        System.out.println("  TrajectoryMain taxi  H:/Dropbox/PFLOW/output/trips/taxi/tokyo/run_LATEST/trips_pseudo_pflow.csv");
+        System.out.println("  TrajectoryMain truck $PFLOW_HOME/output/trips/truck/run_LATEST/trips_pseudo_pflow.csv");
+        System.out.println("  TrajectoryMain taxi  $PFLOW_HOME/output/trips/taxi/tokyo/run_LATEST/trips_pseudo_pflow.csv");
     }
 }
