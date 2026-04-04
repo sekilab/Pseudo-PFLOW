@@ -35,6 +35,7 @@ import pseudo.res.ETransport;
 import pseudo.res.Person;
 import pseudo.res.SPoint;
 import pseudo.res.Trip;
+import util.PathResolver;
 
 public class TrajectoryGenerator {
 	private Network road;
@@ -251,20 +252,21 @@ public class TrajectoryGenerator {
 		Properties prop = new Properties();
 		prop.load(inputStream);
 
-		dir = prop.getProperty("root");
+		dir = PathResolver.resolve(prop.getProperty("root"));
+		String pflowHome = PathResolver.getPflowHome();
 		System.out.println("Root Directory: " + dir);
-		String roaddir = String.format("%sprocessing/network/", dir);
-		
+		String roaddir = String.format("%s/data/network/", pflowHome);
+
 		String railFile = String.format("%srailnetwork.tsv", roaddir);
 
 		Network railway = RailLoader.load(railFile);
 
-		String inputDir = String.format("%sTrip/", dir);
+		String inputDir = String.format("%strip/", dir);
 		String outputDir = String.format("%strajectory/", dir);
 
 		// create trajectories
-        int start = 22;
-        int end = 22;
+        int start = 13;
+        int end = 13;
 		for (int i = start; i <= end; i++) {
 			// create directory
 			File prefDir = new File(outputDir, String.valueOf(i));

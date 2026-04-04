@@ -142,7 +142,7 @@ public class TaxiConfig {
 
     // ===== SPATIAL VALIDATION =====
     private boolean spatialValidationEnabled = true;
-    private String shapefileDir = "src/taxi/gm-jp/";
+    private String shapefileDir = "src/shared/gm-jp/";
     private double riverBufferKm = 0.15;
     private String prefectureCodes = "";  // e.g. "13,14" — filter polbnda_jpn.shp by adm_code prefix
 

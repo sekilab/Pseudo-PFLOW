@@ -169,6 +169,14 @@ public class DestinationSelector {
                 } else if (truckType == TruckType.MIXED_OPERATION) {
                     if (dist > 100.0 && !isIntraZone) continue;
                     odProb *= Math.exp(-dist / MIXED_DISTANCE_DECAY_FACTOR);
+                } else if (truckType == TruckType.LONG_HAUL) {
+                    // LONG_HAUL: prefer distant zones, but allow all O-D flows.
+                    // Boost probability for zones >50km, dampen zones <50km.
+                    if (dist < 50.0 && !isIntraZone) {
+                        odProb *= 0.1;  // heavily dampen short destinations
+                    } else if (dist >= 50.0) {
+                        odProb *= Math.sqrt(dist / 50.0);  // mild boost for distance
+                    }
                 }
 
                 if (isIntraZone) {
@@ -524,126 +532,10 @@ public class DestinationSelector {
         return DestinationResult.withZone(coords, nearestZone.getZoneId());
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // INTER-ZONE DESTINATION (LONG_HAUL)
-    // ════════════════════════════════════════════════════════════════════════
-
-    /**
-     * Selects INTER-metro destination for LONG_HAUL trucks.
-     * Uses pre-computed distance matrix for zone distance calculations.
-     */
-    public DestinationResult selectInterZoneDestination(TruckAgent truck, double[] origin) {
-        final double MIN_DISTANCE_KM = 100.0;
-
-        List<DeliveryZone> zones = zoneManager.getZones();
-
-        // Find origin zone index for distance matrix lookup
-        int originIdx = zoneManager.findNearestZoneIndex(origin[0], origin[1]);
-
-        // Find the 10 farthest zones from Tokyo center using pre-computed distances
-        // Tokyo center is roughly zone MFS01 area — use pre-computed matrix
-        int tokyoCenterIdx = zoneManager.getZoneListIndex("MFS01");
-        if (tokyoCenterIdx < 0) tokyoCenterIdx = 0;
-
-        // Build sorted list of zones by distance from Tokyo center
-        int[] sortedByDist = new int[zones.size()];
-        double[] distFromTokyo = new double[zones.size()];
-        for (int i = 0; i < zones.size(); i++) {
-            sortedByDist[i] = i;
-            distFromTokyo[i] = zoneManager.getZoneDistance(tokyoCenterIdx, i);
-        }
-        // Simple selection of top-10 farthest (no need to sort all)
-        int numFarZones = Math.min(10, zones.size());
-        for (int k = 0; k < numFarZones; k++) {
-            int maxIdx = k;
-            for (int i = k + 1; i < zones.size(); i++) {
-                if (distFromTokyo[sortedByDist[i]] > distFromTokyo[sortedByDist[maxIdx]]) {
-                    maxIdx = i;
-                }
-            }
-            int tmp = sortedByDist[k];
-            sortedByDist[k] = sortedByDist[maxIdx];
-            sortedByDist[maxIdx] = tmp;
-        }
-
-        // Filter to zones beyond minimum distance from origin
-        List<DeliveryZone> validFarZones = new ArrayList<>();
-        List<Double> zoneWeights = new ArrayList<>();
-        for (int k = 0; k < numFarZones; k++) {
-            int zIdx = sortedByDist[k];
-            double distFromOrigin = (originIdx >= 0) ?
-                zoneManager.getZoneDistance(originIdx, zIdx) :
-                zoneManager.calculateDistanceFast(origin[0], origin[1],
-                    zones.get(zIdx).getCenterLongitude(), zones.get(zIdx).getCenterLatitude());
-
-            if (distFromOrigin >= MIN_DISTANCE_KM) {
-                validFarZones.add(zones.get(zIdx));
-                zoneWeights.add(Math.exp(-distFromOrigin / LONGHAUL_DISTANCE_DECAY_FACTOR));
-            }
-        }
-
-        // Fallback: force MFS67-71
-        if (validFarZones.isEmpty()) {
-            for (int k = 0; k < numFarZones; k++) {
-                int zIdx = sortedByDist[k];
-                String zoneId = zones.get(zIdx).getZoneId();
-                if (zoneId.startsWith("MFS67") || zoneId.startsWith("MFS68") ||
-                    zoneId.startsWith("MFS69") || zoneId.startsWith("MFS70") ||
-                    zoneId.startsWith("MFS71")) {
-                    validFarZones.add(zones.get(zIdx));
-                    zoneWeights.add(1.0);
-                }
-            }
-        }
-
-        if (validFarZones.isEmpty()) {
-            for (int k = 0; k < numFarZones; k++) {
-                validFarZones.add(zones.get(sortedByDist[k]));
-                zoneWeights.add(1.0);
-            }
-        }
-
-        int selectedIndex = utils.Roulette.choice(zoneWeights, ThreadLocalRandom.current().nextDouble());
-        DeliveryZone selectedZone = validFarZones.get(selectedIndex);
-
-        double[] coords = pointGenerator.generatePointInZoneFarSide(selectedZone, origin);
-        return DestinationResult.withZone(coords, selectedZone.getZoneId());
-    }
-
-    /**
-     * Applies LONG_HAUL distance constraints with POI snapping.
-     */
-    public DestinationResult applyLongHaulConstraints(TruckAgent truck, double[] origin,
-                                                      String commodityType) {
-        DestinationResult interResult = selectInterZoneDestination(truck, origin);
-        String destZoneId = interResult.zoneId;
-
-        DeliveryZone destZoneLH = (destZoneId != null) ? zoneManager.findZoneByZoneId(destZoneId) : null;
-        boolean bypass = ThreadLocalRandom.current().nextDouble() < getZoneAwareBypass(destZoneLH, config.getLongHaulRandomDestRatio());
-
-        if (!bypass && poiManager != null && poiManager.hasPOIs() && destZoneId != null) {
-            PointOfInterest poi = poiManager.selectPOIForTrip(truck, destZoneId, commodityType, 0);
-            if (poi != null) {
-                double lon = poi.getLongitude();
-                double lat = poi.getLatitude();
-                if (geoValidator.isOnLand(lon, lat) && geoValidator.isValidPOILandUse(lon, lat)) {
-                    double lhRadius = (destZoneLH != null) ? destZoneLH.getRadiusKm() : 5.0;
-                    double[] coords = pointGenerator.jitterPoint(lon, lat, lhRadius);
-                    return new DestinationResult(coords, destZoneId, poi.getPoiId());
-                }
-            }
-        }
-
-        if (destZoneId != null) {
-            DeliveryZone destZone = zoneManager.findZoneByZoneId(destZoneId);
-            if (destZone != null) {
-                double[] coords = pointGenerator.generatePointInZone(destZone);
-                return DestinationResult.withZone(coords, destZoneId);
-            }
-        }
-
-        return interResult;
-    }
+    // NOTE: selectInterZoneDestination() and applyLongHaulConstraints() removed (W12-2026).
+    // LONG_HAUL trucks now use selectBalancedDestination() via the O-D matrix,
+    // with distance-boost weighting (>50km) in the LONG_HAUL branch.
+    // See selectBalancedDestination() lines 172-179 for the replacement logic.
 
     // ════════════════════════════════════════════════════════════════════════
     // EMPTY TRIP DESTINATION
@@ -659,7 +551,14 @@ public class DestinationSelector {
         if (truck.getTruckType() == TruckType.DELIVERY) {
             return selectNearbyDestination(truck, lastDropoff, 8.0);
         } else if (truck.getTruckType() == TruckType.LONG_HAUL) {
-            return selectInterZoneDestination(truck, lastDropoff);
+            // Use O-D balanced destination for empty repositioning (bidirectional)
+            String originZoneId = zoneManager.findZoneForLocation(lastDropoffLon, lastDropoffLat);
+            DestinationResult balanced = selectBalancedDestination(
+                truck, lastDropoff, originZoneId, currentTime, "EMPTY");
+            if (balanced != null) return balanced;
+            // Fallback: facility-based if G-A exhausted
+            double[] coords = selectFacilityBasedCoords(truck, originZoneId, currentTime);
+            return DestinationResult.coordsOnly(coords);
         } else {
             String originZoneId = zoneManager.findZoneForLocation(lastDropoffLon, lastDropoffLat);
             double[] coords = selectFacilityBasedCoords(truck, originZoneId, currentTime);

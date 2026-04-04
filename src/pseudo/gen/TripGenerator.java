@@ -33,6 +33,7 @@ import pseudo.res.Country;
 import pseudo.res.Person;
 import pseudo.res.Speed;
 import pseudo.res.Trip;
+import util.PathResolver;
 import utils.Roulette;
 
 public class TripGenerator {
@@ -258,22 +259,24 @@ public class TripGenerator {
 		Properties prop = new Properties();
 		prop.load(inputStream);
 
-		dir = prop.getProperty("root");
+		dir = PathResolver.resolve(prop.getProperty("root"));
+		String facilityDir = PathResolver.resolve(prop.getProperty("inputDir"));
 		System.out.println("Root Directory: " + dir);
-		
+		System.out.println("Facility Directory: " + facilityDir);
+
 		int mfactor = 1;
-		
+
 		// load data
-		String cityFile = String.format("%s/processing/city_boundary.csv", dir);
+		String cityFile = String.format("%scity_boundary.csv", facilityDir);
 		DataAccessor.loadCityData(cityFile, japan);
-		
-		String stationFile = String.format("%s/processing/base_station.csv", dir);
+
+		String stationFile = String.format("%sbase_station.csv", facilityDir);
 		Network station = DataAccessor.loadLocationData(stationFile);
 		japan.setStation(station);
-	
-		String modeFile = String.format("%s/processing/act_transport.csv", dir);
+
+		String modeFile = String.format("%sact_transport.csv", facilityDir);
 		ModeAccessor modeAcs = new ModeAccessor(modeFile);
-	
+
 		// create worker
 		TripGenerator worker = new TripGenerator(japan, modeAcs);
 		String inputDir = String.format("%s/activity_merged/", dir);
@@ -281,9 +284,7 @@ public class TripGenerator {
 
 		long starttime = System.currentTimeMillis();
         ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
-            22, 23
-//            13, 14, 23, 19
-            // , 12, 11, 27, 26, 24, 21, 28
+            13  // Tokyo
         ));
 
         for (int i: prefectureCodes){
@@ -296,7 +297,7 @@ public class TripGenerator {
 					List<Person> agents = PersonAccessor.loadActivity(file.getAbsolutePath(), mfactor, 0.4, 0.4);
 					System.out.println(String.format("%s", file.getName()));
 					worker.generate(agents);
-					PersonAccessor.writeTrips(new File(outputDir+ i + "/trip_"+ file.getName().substring(9,14) + ".csv").getAbsolutePath(), agents);
+					PersonAccessor.writeTrips(new File(outputDir+ i + "/trip_"+ file.getName().substring(7,12) + ".csv").getAbsolutePath(), agents);
 				}
 			}
 		}

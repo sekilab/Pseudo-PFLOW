@@ -7,6 +7,7 @@ import java.util.Properties;
 
 import pseudo.gen.Commuter;
 import pseudo.res.ETransport;
+import util.PathResolver;
 
 public class LinkVolumeCalculator {
 
@@ -60,7 +61,7 @@ public class LinkVolumeCalculator {
         Properties prop = new Properties();
         prop.load(inputStream);
 
-        dir = prop.getProperty("root");
+        dir = PathResolver.resolve(prop.getProperty("root"));
         String inputDir = String.format("%s/trajectory/", dir);
         String outputDir = String.format("%s/link_volume/", dir);
         int start = 22;

@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import util.PathResolver;
 import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -63,8 +64,8 @@ public class FileJoinner {
 		prop.load(inputStream);
 
 		//process(args[0],args[1]);
-		String a = prop.getProperty("legacy.person.trip.dir");
-		String b = prop.getProperty("legacy.input.dir");
+		String a = PathResolver.resolve(prop.getProperty("legacy.person.trip.dir"));
+		String b = PathResolver.resolve(prop.getProperty("legacy.input.dir"));
 		process(a, b);
 		System.out.println("end");
 	}	

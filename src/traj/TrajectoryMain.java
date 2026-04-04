@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import jp.ac.ut.csis.pflow.routing4.res.Network;
+import jp.ac.ut.csis.pflow.routing4.res.Node;
 import pseudo.res.Person;
 import util.PathResolver;
 
@@ -25,8 +26,15 @@ import util.PathResolver;
  */
 public class TrajectoryMain {
 
-    // Default Kanto prefectures (covers MFS01-66 and Tokyo taxi zones)
-    private static final int[] DEFAULT_PREFS = {8, 9, 10, 11, 12, 13, 14};
+    // Default: Tohoku + Kanto + Chubu + Kansai + Chugoku (prefectures 02-35)
+    // Covers all expanded zones. Hokkaido (01), Shikoku/Kyushu (36-47) → DIRECT fallback.
+    private static final int[] DEFAULT_PREFS = {
+         2,  3,  4,  5,  6,  7,        // Tohoku
+         8,  9, 10, 11, 12, 13, 14,    // Kanto
+        15, 16, 17, 18, 19, 20, 21, 22, 23,  // Chubu
+        24, 25, 26, 27, 28, 29, 30,    // Kansai
+        31, 32, 33, 34, 35             // Chugoku
+    };
 
     public static void main(String[] args) {
         if (args.length < 2) {
@@ -48,7 +56,7 @@ public class TrajectoryMain {
                 prefCodes[i] = Integer.parseInt(parts[i].trim());
             }
         }
-        int maxRoadClass = args.length > 5 ? Integer.parseInt(args[5].trim()) : 8;
+        int maxRoadClass = args.length > 5 ? Integer.parseInt(args[5].trim()) : 9;
 
         // Set default output dir based on vehicle type if not specified
         if (outputDir == null) {
@@ -107,14 +115,17 @@ public class TrajectoryMain {
         Network road = loadNetwork(networkDir, prefCodes, maxRoadClass);
         if (road == null) return;
 
-        // Step 3: Generate trajectories (fallback speed: 30 km/h for trucks)
-        System.out.println("\n[STEP 3] Generating truck trajectories...");
+        // Step 3: Build KD-tree for accelerated nearest-node snapping
+        NodeKDTree.BuildResult kdBuild = buildKDTree(road);
+
+        // Step 4: Generate trajectories (fallback speed: 30 km/h for trucks)
+        System.out.println("\n[STEP 4] Generating truck trajectories...");
         long t3 = System.currentTimeMillis();
-        RoutingCache cache = new RoutingCache(0.3);
+        RoutingCache cache = new RoutingCache(0.3, kdBuild.tree, kdBuild.nodes);
         VehicleTrajectoryGenerator<TruckTripRecord> gen =
                 new VehicleTrajectoryGenerator<>(road, records, new TruckTrajectoryWriter(), 30.0, cache);
         gen.generate(persons, outputDir);
-        System.out.printf("[STEP 3] Done in %.1fs%n", (System.currentTimeMillis() - t3) / 1000.0);
+        System.out.printf("[STEP 4] Done in %.1fs%n", (System.currentTimeMillis() - t3) / 1000.0);
     }
 
     private static void runTaxi(String tripsCsv, String networkDir, String outputDir,
@@ -136,14 +147,47 @@ public class TrajectoryMain {
         Network road = loadNetwork(networkDir, prefCodes, maxRoadClass);
         if (road == null) return;
 
-        // Step 3: Generate trajectories (fallback speed: 25 km/h for taxis)
-        System.out.println("\n[STEP 3] Generating taxi trajectories...");
+        // Step 3: Build KD-tree for accelerated nearest-node snapping
+        NodeKDTree.BuildResult kdBuild = buildKDTree(road);
+
+        // Step 4: Generate trajectories (fallback speed: 25 km/h for taxis)
+        System.out.println("\n[STEP 4] Generating taxi trajectories...");
         long t3 = System.currentTimeMillis();
-        RoutingCache cache = new RoutingCache(0.3);
+        RoutingCache cache = new RoutingCache(0.3, kdBuild.tree, kdBuild.nodes);
         VehicleTrajectoryGenerator<TaxiTripRecord> gen =
                 new VehicleTrajectoryGenerator<>(road, records, new TaxiTrajectoryWriter(), 25.0, cache);
         gen.generate(persons, outputDir);
-        System.out.printf("[STEP 3] Done in %.1fs%n", (System.currentTimeMillis() - t3) / 1000.0);
+        System.out.printf("[STEP 4] Done in %.1fs%n", (System.currentTimeMillis() - t3) / 1000.0);
+    }
+
+    /**
+     * Build a KD-tree from all network nodes for O(log N) nearest-neighbor snapping.
+     * Replaces pflowlib's STRtree which has higher per-call allocation overhead.
+     */
+    private static NodeKDTree.BuildResult buildKDTree(Network road) {
+        System.out.println("\n[STEP 3] Building KD-tree index...");
+        long t = System.currentTimeMillis();
+        List<Node> nodeList = road.listNodes();
+        Node[] nodeArray = nodeList.toArray(new Node[0]);
+
+        // Build Java KD-tree (always available as fallback)
+        NodeKDTree.BuildResult result = NodeKDTree.fromNodes(nodeArray);
+
+        // Also build native C KD-tree if library is loaded
+        if (NativeNearestNode.isAvailable()) {
+            double[] lons = new double[nodeArray.length];
+            double[] lats = new double[nodeArray.length];
+            for (int i = 0; i < nodeArray.length; i++) {
+                lons[i] = nodeArray[i].getLon();
+                lats[i] = nodeArray[i].getLat();
+            }
+            NativeNearestNode.buildIndex(lons, lats, nodeArray.length);
+            System.out.printf("[STEP 3] C KD-tree built: %,d nodes%n", nodeArray.length);
+        }
+
+        System.out.printf("[STEP 3] Done in %.1fs — %,d nodes indexed%n",
+                (System.currentTimeMillis() - t) / 1000.0, nodeArray.length);
+        return result;
     }
 
     private static Network loadNetwork(String networkDir, int[] prefCodes, int maxRoadClass) {
@@ -171,7 +215,7 @@ public class TrajectoryMain {
         System.out.println("  network_dir  : directory with drm_XX.tsv files (default: $PFLOW_HOME/data/processing/network)");
         System.out.println("  output_dir   : trajectory output directory (default: $PFLOW_HOME/output/trajectory/<type>)");
         System.out.println("  pref_codes   : comma-separated prefecture codes (default: 8,9,10,11,12,13,14)");
-        System.out.println("  maxRoadClass : max road class to keep, 0=all (default: 8, skips minor roads)");
+        System.out.println("  maxRoadClass : max road class to keep, 0=all (default: 9, includes minor roads)");
         System.out.println();
         System.out.println("Examples:");
         System.out.println("  TrajectoryMain truck $PFLOW_HOME/output/trips/truck/run_LATEST/trips_pseudo_pflow.csv");

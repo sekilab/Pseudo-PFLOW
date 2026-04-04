@@ -38,6 +38,7 @@ import org.jboss.netty.util.internal.ThreadLocalRandom;
 import pseudo.acs.DataAccessor;
 import pseudo.acs.PersonAccessor;
 import pseudo.res.*;
+import util.PathResolver;
 
 import javax.net.ssl.SSLContext;
 import java.io.*;
@@ -713,8 +714,8 @@ public class TripGenerator_WebAPI_refactor {
 		Properties prop = new Properties();
 		prop.load(inputStream);
 
-		root = prop.getProperty("root");
-		inputDir = prop.getProperty("inputDir");
+		root = PathResolver.resolve(prop.getProperty("root"));
+		inputDir = PathResolver.resolve(prop.getProperty("inputDir"));
 		System.out.println("Root Directory: " + root);
 		System.out.println("Input Directory: " + inputDir);
 		

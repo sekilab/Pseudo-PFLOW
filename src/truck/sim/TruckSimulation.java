@@ -126,10 +126,17 @@ public class TruckSimulation {
      * Delegates to {@link ZoneLoader} and unpacks the result.
      */
     private void initializeZones(boolean isDualMode, String intraZonesFile, String interZonesFile) {
+        initializeZones(isDualMode, false, intraZonesFile, interZonesFile);
+    }
+
+    private void initializeZones(boolean isDualMode, boolean isExpandedMode,
+                                  String intraZonesFile, String interZonesFile) {
         ZoneLoader loader = new ZoneLoader(config, random, geoValidator, zoneManager, metroConfig);
 
         ZoneLoadResult result;
-        if (isDualMode) {
+        if (isExpandedMode) {
+            result = loader.loadExpanded();
+        } else if (isDualMode) {
             result = loader.loadDual(intraZonesFile, interZonesFile);
         } else {
             result = loader.loadSingle();
@@ -530,9 +537,23 @@ public class TruckSimulation {
 
             distance = zoneManager.calculateDistanceFast(origin[0], origin[1], destResult.coords[0], destResult.coords[1]);
 
-            if (truck.getTruckType() == TruckType.LONG_HAUL) {
-                destResult = destinationSelector.applyLongHaulConstraints(truck, origin, commodityType);
-                distance = zoneManager.calculateDistanceFast(origin[0], origin[1], destResult.coords[0], destResult.coords[1]);
+            // LONG_HAUL: enforce minimum distance floor (50 km) — if O-D balanced
+            // result is too short, retry with inter-zone selection as fallback
+            if (truck.getTruckType() == TruckType.LONG_HAUL && distance < 50.0) {
+                // O-D matrix gave a nearby zone — acceptable for some trips, but
+                // retry once for a longer destination to match long-haul character
+                DestinationResult retry = destinationSelector.selectBalancedDestination(
+                    truck, origin, originZoneId, currentTime, commodityType);
+                if (retry != null) {
+                    double retryDist = zoneManager.calculateDistanceFast(
+                        origin[0], origin[1], retry.coords[0], retry.coords[1]);
+                    if (retryDist >= 50.0) {
+                        destResult = retry;
+                        distance = retryDist;
+                    }
+                }
+                // If still short, keep the O-D result — some long-haul trips are
+                // legitimately intra-zone (loading at depot, delivering nearby)
             }
 
             // MIXED trucks: enforce maximum distance constraint
@@ -661,6 +682,42 @@ public class TruckSimulation {
      * @param intraZonesFile Intra-metro zones file for DUAL mode (null for SINGLE mode)
      * @param interZonesFile Inter-metro zones file for DUAL mode (null for SINGLE mode)
      */
+    /**
+     * Run in EXPANDED mode (nationwide 106 zones).
+     */
+    public void runExpanded(String[] args) {
+        long simStart = System.currentTimeMillis();
+
+        System.out.println("=================================================================");
+        System.out.println("  TRUCK ABM V3.0 - EXPANDED NATIONWIDE (106 ZONES)");
+        System.out.println("  MFS 2013 + prefecture-level disaggregation");
+        System.out.println("=================================================================");
+
+        // Initialize delivery zones in expanded mode
+        long t0 = System.currentTimeMillis();
+        initializeZones(false, true, null, null);
+        long t1 = System.currentTimeMillis();
+        System.out.println("[TIMING] Zone init: " + String.format("%.1f", (t1 - t0) / 1000.0) + "s");
+
+        // Run same simulation phases as DUAL
+        initializeTrucks();
+        long t2 = System.currentTimeMillis();
+        System.out.println("[TIMING] Fleet init: " + String.format("%.1f", (t2 - t1) / 1000.0) + "s");
+
+        generateTrips();
+        long t3 = System.currentTimeMillis();
+        System.out.println("[TIMING] Trip gen: " + String.format("%.1f", (t3 - t2) / 1000.0) + "s");
+
+        // Export
+        System.out.println("\n[CHECKPOINT] Exporting results...");
+        TruckDataExporter exporter = new TruckDataExporter(config.getOutputDirectory());
+        exporter.setDeliveryZones(deliveryZones);
+        exporter.exportAll(truckFleet, allTrips);
+
+        long simEnd = System.currentTimeMillis();
+        System.out.printf("\n[COMPLETE] Total simulation time: %.1fs%n", (simEnd - simStart) / 1000.0);
+    }
+
     public void run(String[] args, boolean loadConfig,
                     String intraZonesFile, String interZonesFile) {
         boolean isDualMode = (intraZonesFile != null && interZonesFile != null);
@@ -825,6 +882,11 @@ public class TruckSimulation {
                 System.out.println("[Config] Simulation mode: INTER_METROPOLITAN only");
                 sim.config.setZonesFile(config.getProperty("zones.file.inter", "zones_inter_metro.csv"));
                 sim.run(args, false, null, null);
+                break;
+
+            case EXPANDED:
+                System.out.println("[Config] Simulation mode: EXPANDED (nationwide 106 zones)");
+                sim.runExpanded(args);
                 break;
 
             default:

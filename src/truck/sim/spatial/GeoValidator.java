@@ -79,7 +79,7 @@ public class GeoValidator {
      * @throws RuntimeException if shapefile cannot be loaded
      */
     public void loadJapanBoundaries() {
-        String shapefilePath = "src/truck/gm-jp/polbnda_jpn_new.shp";
+        String shapefilePath = "src/shared/gm-jp/polbnda_jpn_new.shp";
         System.out.println("[BOUNDARY] Loading Japan land boundaries from: " + shapefilePath);
 
         try {
@@ -101,7 +101,7 @@ public class GeoValidator {
      * Non-fatal: if file missing, mainland filtering is disabled.
      */
     public void loadMainlandBoundaries() {
-        String shapefilePath = "src/truck/gm-jp/mainland_jpn.shp";
+        String shapefilePath = "src/shared/gm-jp/mainland_jpn.shp";
         try {
             java.io.File shapefile = new java.io.File(shapefilePath);
             if (!shapefile.exists()) {
@@ -131,7 +131,7 @@ public class GeoValidator {
      * Non-fatal: if file missing, isOnLand() falls back to admin-boundary-only validation.
      */
     public void loadWaterBodies() {
-        String shapefilePath = "src/truck/gm-jp/inwatera_jpn.shp";
+        String shapefilePath = "src/shared/gm-jp/inwatera_jpn.shp";
         try {
             java.io.File shapefile = new java.io.File(shapefilePath);
             if (!shapefile.exists()) {
@@ -155,7 +155,7 @@ public class GeoValidator {
      * Non-fatal: if file missing, settlement proximity check is skipped.
      */
     public void loadSettlements() {
-        String shapefilePath = "src/truck/gm-jp/builtupp_jpn.shp";
+        String shapefilePath = "src/shared/gm-jp/builtupp_jpn.shp";
         try {
             java.io.File shapefile = new java.io.File(shapefilePath);
             if (!shapefile.exists()) {
@@ -179,7 +179,7 @@ public class GeoValidator {
      * Non-fatal: if file missing, built-up area proximity check is skipped.
      */
     public void loadBuiltUpAreas() {
-        String shapefilePath = "src/truck/gm-jp/builtupa_jpn.shp";
+        String shapefilePath = "src/shared/gm-jp/builtupa_jpn.shp";
         try {
             java.io.File shapefile = new java.io.File(shapefilePath);
             if (!shapefile.exists()) {
@@ -203,7 +203,7 @@ public class GeoValidator {
      * Non-fatal: if file missing, river buffer exclusion is disabled.
      */
     public void loadRiverLines() {
-        String shapefilePath = "src/truck/gm-jp/riverl_jpn.shp";
+        String shapefilePath = "src/shared/gm-jp/riverl_jpn.shp";
         try {
             java.io.File shapefile = new java.io.File(shapefilePath);
             if (!shapefile.exists()) {

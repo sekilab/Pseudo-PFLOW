@@ -9,7 +9,7 @@ import java.util.concurrent.Callable;
 
 import jp.ac.ut.csis.pflow.routing4.res.Network;
 import jp.ac.ut.csis.pflow.routing4.res.Node;
-import org.opengis.referencing.FactoryException;
+// import org.opengis.referencing.FactoryException;
 import pseudo.acs.CensusODAccessor;
 import pseudo.acs.DataAccessor;
 import pseudo.acs.MNLParamAccessor;
@@ -30,6 +30,7 @@ import pseudo.res.HouseHold;
 import pseudo.res.Country;
 import pseudo.res.GLonLat;
 import pseudo.res.Person;
+import util.PathResolver;
 import utils.Roulette;
 
 public class Student extends ActGenerator {
@@ -269,7 +270,7 @@ public class Student extends ActGenerator {
 		return new ActivityTask(id, households, mapMotif);
 	}
 	
-	public static void main(String[] args) throws IOException, FactoryException {
+	public static void main(String[] args) throws IOException {
 		
 		Country japan = new Country();
 		
@@ -285,8 +286,8 @@ public class Student extends ActGenerator {
 		Properties prop = new Properties();
 		prop.load(inputStream);
 
-		root = prop.getProperty("root");
-		inputDir = prop.getProperty("inputDir");
+		root = PathResolver.resolve(prop.getProperty("root"));
+		inputDir = PathResolver.resolve(prop.getProperty("inputDir"));
 		System.out.println("Root Directory: " + root);
 		System.out.println("Input Directory: " + inputDir);
 		
@@ -340,17 +341,15 @@ public class Student extends ActGenerator {
 		// prepare an accessor for school
 		SchoolRefAccessor schAcs = new SchoolRefAccessor();
 		
-		int mfactor = 1;
+		int mfactor = 50;
 		String prePref = "";
-		
+
 		// create activities
 
 		String outputDir = String.format("%s/activity/", root);
 
         ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
-            22, 23
-            // 13, 14, 23, 19
-            //, 12, 11, 27, 26, 24, 21, 28
+            13  // Tokyo
         ));
 
         for (int i: prefectureCodes){

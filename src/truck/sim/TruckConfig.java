@@ -26,7 +26,9 @@ public class TruckConfig {
         /** Long-haul between regions (MFS regions 61-71) */
         INTER_METROPOLITAN,
         /** Run BOTH for complete validation */
-        DUAL
+        DUAL,
+        /** Nationwide: 106 zones (66 Kanto + 40 prefecture sub-zones from MFS67-71 disaggregation) */
+        EXPANDED
     }
 
     private static TruckConfig instance;

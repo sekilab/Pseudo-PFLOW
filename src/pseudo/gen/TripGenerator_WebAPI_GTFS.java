@@ -37,6 +37,7 @@ import pseudo.acs.DataAccessor;
 import pseudo.acs.PersonAccessor;
 import pseudo.res.*;
 import pseudo.res.Trip;
+import util.PathResolver;
 
 import javax.net.ssl.SSLContext;
 import java.io.*;
@@ -986,8 +987,8 @@ public class TripGenerator_WebAPI_GTFS {
 	public static void main(String[] args) throws Exception {
 
 		loadProperties();  // loads 'config.properties' into 'prop'
-		String root = prop.getProperty("root");
-		String inputDir = prop.getProperty("inputDir");
+		String root = PathResolver.resolve(prop.getProperty("root"));
+		String inputDir = PathResolver.resolve(prop.getProperty("inputDir"));
 		System.out.println("Root Directory: " + root);
 		System.out.println("Input Directory: " + inputDir);
 

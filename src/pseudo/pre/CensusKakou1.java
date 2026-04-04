@@ -12,6 +12,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import util.PathResolver;
 
 public class CensusKakou1{
 
@@ -93,7 +94,7 @@ public class CensusKakou1{
 		Properties prop = new Properties();
 		prop.load(inputStream);
 
-		String root = prop.getProperty("legacy.stat.root");
+		String root = PathResolver.resolve(prop.getProperty("legacy.stat.root"));
 		String dir =  String.format("%sstatdata/国勢調査27ー通勤/", root);
 		String outfile =  String.format("%scity_census_od.csv", root); 
 		

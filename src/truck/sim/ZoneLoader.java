@@ -123,6 +123,28 @@ public class ZoneLoader {
         return buildResult();
     }
 
+    /**
+     * Load nationwide expanded zones from a single CSV file (EXPANDED mode).
+     * Contains 106 zones: 66 existing Kanto (MFS01-66) + 40 prefecture sub-zones (PRF01-PRF47).
+     * Uses expanded O-D matrix (od_volume_expanded.csv) and expanded zone mapping.
+     *
+     * @return ZoneLoadResult with all initialized subsystems
+     */
+    public ZoneLoadResult loadExpanded() {
+        System.out.println("[EXPANDED] Loading nationwide zones (106 zones)...");
+
+        String configDir = "config/truck/";
+        String expandedZonesFile = config.getProperty("zones.file.expanded", "zones/expanded.csv");
+        int loaded = loadZonesFromFile(configDir + expandedZonesFile, "EXPANDED");
+
+        System.out.println("[EXPANDED] Total zones loaded: " + loaded + " (Kanto + nationwide prefectures)");
+
+        wireSubsystems();
+        computeGeographyBounds();
+
+        return buildResult();
+    }
+
     // ========================================================================
     // ZONE CSV PARSING
     // ========================================================================
@@ -249,11 +271,13 @@ public class ZoneLoader {
 
         if (config.getUseMFSODMatrix()) {
             try {
-                Map<String, Integer> zoneMapping = loadZoneMapping("config/truck/zones/mapping.csv");
-                odMatrix.loadFromMFSCSV("config/truck/flows/od_volume.csv", zoneMapping);
-                System.out.println("[CHECKPOINT] Loaded MFS O-D probability matrix from CSV");
+                String mappingFile = config.getProperty("datasets.zone.mapping.file", "zones/mapping.csv");
+                String odFile = config.getProperty("datasets.od.matrix.file", "flows/od_volume.csv");
+                Map<String, Integer> zoneMapping = loadZoneMapping("config/truck/" + mappingFile);
+                odMatrix.loadFromMFSCSV("config/truck/" + odFile, zoneMapping);
+                System.out.println("[CHECKPOINT] Loaded O-D probability matrix from " + odFile);
             } catch (IOException e) {
-                System.err.println("[O-D] Warning: Could not load MFS O-D matrix: " + e.getMessage());
+                System.err.println("[O-D] Warning: Could not load O-D matrix: " + e.getMessage());
             }
         }
 
@@ -470,8 +494,8 @@ public class ZoneLoader {
      * Gracefully degrades to pure polygon sampling if loading fails.
      */
     private void loadTransportNetworks() {
-        String roadPath = "src/truck/gm-jp/roadl_jpn.shp";
-        String railPath = "src/truck/gm-jp/raill_jpn.shp";
+        String roadPath = "src/shared/gm-jp/roadl_jpn.shp";
+        String railPath = "src/shared/gm-jp/raill_jpn.shp";
 
         System.out.println("[NETWORK] Loading transport networks...");
 
@@ -515,7 +539,7 @@ public class ZoneLoader {
      */
     private void loadPolygonZones() {
         String mappingPath = "config/truck/zones/zone_boundary_mapping.csv";
-        String shapefilePath = "src/truck/gm-jp/polbnda_jpn_new.shp";
+        String shapefilePath = "src/shared/gm-jp/polbnda_jpn_new.shp";
         System.out.println("[ZONE] Loading polygon-based zone boundaries...");
 
         try {

@@ -669,17 +669,50 @@ public class POIManager {
     }
 
     /**
-     * Find the single nearest POI to a point. Used as last-resort fallback
-     * so delivery tour stops land on a real facility instead of a zone center.
+     * Find the single nearest POI to a point using spatial grid.
+     * Searches expanding rings of grid cells until a candidate is found,
+     * then verifies one extra ring to handle cell-boundary edge cases.
+     * Falls back to full scan only if the grid returns nothing.
      */
     public PointOfInterest findNearestPOI(double lon, double lat) {
+        int cx = (int) Math.floor(lon / GRID_CELL_SIZE);
+        int cy = (int) Math.floor(lat / GRID_CELL_SIZE);
+
         PointOfInterest nearest = null;
         double minDist = Double.MAX_VALUE;
-        for (PointOfInterest poi : allPOIs) {
-            double dist = poi.distanceTo(lon, lat);
-            if (dist < minDist) {
-                minDist = dist;
-                nearest = poi;
+
+        // Expanding ring search: start with 3x3, expand if needed
+        for (int ring = 1; ring <= 20; ring++) {
+            for (int dx = -ring; dx <= ring; dx++) {
+                for (int dy = -ring; dy <= ring; dy++) {
+                    // Only check the outer ring (skip interior already searched)
+                    if (ring > 1 && Math.abs(dx) < ring && Math.abs(dy) < ring) continue;
+                    long key = ((long) (cx + dx) << 32) | ((cy + dy) & 0xFFFFFFFFL);
+                    List<PointOfInterest> cell = spatialGrid.get(key);
+                    if (cell != null) {
+                        for (PointOfInterest poi : cell) {
+                            double dist = poi.distanceTo(lon, lat);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                nearest = poi;
+                            }
+                        }
+                    }
+                }
+            }
+            // Once we found a candidate, check one more ring to handle boundary cases
+            if (nearest != null && ring > 1) break;
+            if (nearest != null) continue;  // found in ring 1, check ring 2 then break
+        }
+
+        // Fallback: full scan (should rarely trigger)
+        if (nearest == null) {
+            for (PointOfInterest poi : allPOIs) {
+                double dist = poi.distanceTo(lon, lat);
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearest = poi;
+                }
             }
         }
         return nearest;
