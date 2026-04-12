@@ -48,6 +48,8 @@ desktop.ini
 *.orig
 *.rej
 *.backup
+compile_*_args.txt
+*edit-log.txt
 
 # ----- Large binary data files -----
 *.bin
