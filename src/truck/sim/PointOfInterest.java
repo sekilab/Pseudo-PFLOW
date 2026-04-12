@@ -21,7 +21,8 @@ public class PointOfInterest {
         RETAIL_SHOP,        // Commercial districts, retail stores
         SHOPPING_MALL,      // Large retail destinations
         INDUSTRIAL_SITE,    // Factories, manufacturing plants
-        PORT_TERMINAL       // Ports, freight terminals
+        PORT_TERMINAL,      // Ports, freight terminals
+        WHOLESALE_FACILITY  // Wholesale offices, trading companies (MFS File 10 "office" category)
     }
 
     private final String poiId;

@@ -1,0 +1,49 @@
+industry,facility_type,shipping_count,receiving_count,total,shipping_frac
+manufacturing,office,5615,15743,21358,0.2629
+manufacturing,factory,38111,14480,52591,0.7247
+manufacturing,store_restaurant,777,702,1479,0.5254
+manufacturing,logistics_facility,999,109,1108,0.9016
+manufacturing,other,348,633,981,0.3547
+manufacturing,unknown,148,646,794,0.1864
+transport_business,office,2565,14628,17193,0.1492
+transport_business,factory,0,0,0,0.5
+transport_business,store_restaurant,80,230,310,0.2581
+transport_business,logistics_facility,5906,1568,7474,0.7902
+transport_business,other,675,1383,2058,0.328
+transport_business,unknown,99,237,336,0.2946
+warehousing,office,182,655,837,0.2174
+warehousing,factory,0,0,0,0.5
+warehousing,store_restaurant,3,8,11,0.2727
+warehousing,logistics_facility,2526,498,3024,0.8353
+warehousing,other,99,77,176,0.5625
+warehousing,unknown,12,35,47,0.2553
+wholesale,office,14298,30800,45098,0.317
+wholesale,factory,3297,718,4015,0.8212
+wholesale,store_restaurant,4313,2564,6877,0.6272
+wholesale,logistics_facility,6177,411,6588,0.9376
+wholesale,other,775,644,1419,0.5462
+wholesale,unknown,51,277,328,0.1555
+service_industry,office,1391,11173,12564,0.1107
+service_industry,factory,2331,3867,6198,0.3761
+service_industry,store_restaurant,820,1933,2753,0.2979
+service_industry,logistics_facility,616,360,976,0.6311
+service_industry,other,386,1030,1416,0.2726
+service_industry,unknown,19,244,263,0.0722
+other,office,231,593,824,0.2803
+other,factory,366,133,499,0.7335
+other,store_restaurant,87,152,239,0.364
+other,logistics_facility,437,43,480,0.9104
+other,other,56,104,160,0.35
+other,unknown,7,8,15,0.4667
+all_industries,office,24282,73591,97873,0.2481
+all_industries,factory,44105,19198,63303,0.6967
+all_industries,store_restaurant,6081,5590,11671,0.521
+all_industries,logistics_facility,16662,2988,19650,0.8479
+all_industries,other,2339,3871,6210,0.3767
+all_industries,unknown,335,1446,1781,0.1881
+":Note: Due to rounding, the sum by industry may not equal the total for all industries",office,0,0,0,0.5
+":Note: Due to rounding, the sum by industry may not equal the total for all industries",factory,0,0,0,0.5
+":Note: Due to rounding, the sum by industry may not equal the total for all industries",store_restaurant,0,0,0,0.5
+":Note: Due to rounding, the sum by industry may not equal the total for all industries",logistics_facility,0,0,0,0.5
+":Note: Due to rounding, the sum by industry may not equal the total for all industries",other,0,0,0,0.5
+":Note: Due to rounding, the sum by industry may not equal the total for all industries",unknown,0,0,0,0.5

@@ -416,6 +416,14 @@ public class TruckConfig {
         return getProperty("zones.file.unified", "zones/unified.csv");
     }
 
+    /**
+     * Get the GA targets file path (relative to config/truck/).
+     * Defaults to flows/ga_targets.csv; overridden in unified/expanded configs.
+     */
+    public String getGaTargetsFile() {
+        return getProperty("datasets.ga.targets.file", "flows/ga_targets.csv");
+    }
+
     public int getTruckFleetSize() { return truckFleetSize; }
     public double getTruckOperatingRate() { return truckOperatingRate; }
 

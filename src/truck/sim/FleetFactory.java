@@ -120,6 +120,9 @@ public class FleetFactory {
                         truck.setHomePOIId(home.poiId);
                     }
 
+                    // Set origin facility type for truck-type-aware destination routing
+                    truck.setHomeFacilityType(homeZone.getFacilityType());
+
                     if (truckType == TruckType.DELIVERY) {
                         String zoneId = zoneManager.findNearestZone(home.lon, home.lat);
                         truck.setFamiliarAreaZoneId(zoneId);

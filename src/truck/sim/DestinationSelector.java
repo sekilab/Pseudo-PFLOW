@@ -215,11 +215,34 @@ public class DestinationSelector {
             return DestinationResult.withZone(coords, selectedZoneId);
         }
 
-        // POI-based destination selection (commodity-aware routing)
+        // POI-based destination selection — truck-type-aware routing
         if (poiManager != null && poiManager.hasPOIs()) {
-            int timePeriod = zoneManager.getTimePeriod(currentTime);
-            PointOfInterest targetPOI = poiManager.selectPOIForTrip(
-                truck, selectedZoneId, commodityType, timePeriod);
+            // Resolve origin facility type and destination facility type from MFS File 07
+            FacilityType originFT = truck.getHomeFacilityType();
+            String destTypeKey = (originFT != null)
+                ? commodityRouter.selectDestinationFacilityType(originFT)
+                : null;
+
+            // Truck-type-aware POI selection:
+            // LONG_HAUL -> logistics/industrial/port POIs (B2B)
+            // DELIVERY -> retail/wholesale POIs (last-mile), null for residential
+            // MIXED -> all types, weighted by destTypeKey
+            PointOfInterest targetPOI = poiManager.selectPOIByTruckType(
+                truckType, selectedZoneId, destTypeKey, commodityType);
+
+            // DELIVERY to residential: use BuiltUpIndex density sampling
+            if (targetPOI == null && truckType == TruckType.DELIVERY
+                    && "residential".equals(destTypeKey)) {
+                double[] coords = pointGenerator.generatePointInZone(selectedZone);
+                return DestinationResult.withZone(coords, selectedZoneId);
+            }
+
+            // Fallback: commodity-only POI selection (legacy path)
+            if (targetPOI == null) {
+                int timePeriod = zoneManager.getTimePeriod(currentTime);
+                targetPOI = poiManager.selectPOIForTrip(
+                    truck, selectedZoneId, commodityType, timePeriod);
+            }
 
             if (targetPOI != null && geoValidator.isOnLand(targetPOI.getLongitude(), targetPOI.getLatitude())
                     && geoValidator.isValidPOILandUse(targetPOI.getLongitude(), targetPOI.getLatitude())) {

@@ -24,6 +24,7 @@ public class TruckAgent {
     private final double homeLongitude;
     private final double homeLatitude;
     private String homePOIId;  // POI anchoring first-trip origin (null if fallback)
+    private FacilityType homeFacilityType;  // Origin facility type for truck-type routing
     
     // Familiar area (for DELIVERY type)
     private final double familiarAreaRadiusKm;
@@ -140,13 +141,15 @@ public class TruckAgent {
     public void setCurrentTime(long time) { this.currentTime = time; }
     public void setFamiliarAreaZoneId(String zoneId) { this.familiarAreaZoneId = zoneId; }
     public void setHomePOIId(String poiId) { this.homePOIId = poiId; }
-    
+    public void setHomeFacilityType(FacilityType type) { this.homeFacilityType = type; }
+
     // Getters
     public int getTruckId() { return truckId; }
     public TruckType getTruckType() { return truckType; }
     public double getHomeLongitude() { return homeLongitude; }
     public double getHomeLatitude() { return homeLatitude; }
     public String getHomePOIId() { return homePOIId; }
+    public FacilityType getHomeFacilityType() { return homeFacilityType; }
     public double getFamiliarAreaRadiusKm() { return familiarAreaRadiusKm; }
     public String getFamiliarAreaZoneId() { return familiarAreaZoneId; }
     public String getVehicleSize() { return vehicleSize; }

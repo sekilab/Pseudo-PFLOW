@@ -5,6 +5,7 @@ import truck.sim.spatial.GeoValidator;
 import truck.sim.spatial.PointGenerator;
 import truck.sim.spatial.TransportNetworkIndex;
 import truck.sim.spatial.NetworkAwarePointGenerator;
+import util.PathResolver;
 import java.io.*;
 import java.util.*;
 
@@ -313,9 +314,11 @@ public class ZoneLoader {
         // F0084: load File 08 generation/attraction totals — used by
         // FleetFactory to weight zone fleet seeding by truck counts.
         try {
-            gaTargets = GATargetsLoader.loadDefault();
+            String gaFile = "config/truck/" + config.getGaTargetsFile();
+            gaTargets = GATargetsLoader.loadFromCsv(
+                PathResolver.resolve("${PFLOW_HOME}/Pseudo-PFLOW/" + gaFile));
             System.out.println("[CHECKPOINT] Loaded GA targets ("
-                + gaTargets.size() + " zones)");
+                + gaTargets.size() + " zones) from " + gaFile);
         } catch (IOException e) {
             throw new RuntimeException("Failed to load ga_targets.csv", e);
         }
@@ -432,7 +435,7 @@ public class ZoneLoader {
         if (config.getUseGABalance()) {
             try {
                 gaBalancer = new GenerationAttractionBalancer();
-                gaBalancer.loadTargets("config/truck/flows/ga_targets.csv");
+                gaBalancer.loadTargets("config/truck/" + config.getGaTargetsFile());
 
                 // Scale G-A targets to match expected trip volume for current fleet size.
                 double fleetSize = config.getTruckFleetSize();
