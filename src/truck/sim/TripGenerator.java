@@ -150,7 +150,7 @@ public class TripGenerator {
                                       CommodityRouter router,
                                       LoadingConstraint constraint,
                                       String originZoneId) {
-        double cargoWeight = zoneCargoModel.sampleWeight(originZoneId);
+        double cargoWeight = zoneCargoModel.sampleWeight(originZoneId, vehicleSize);
 
         // Always respect vehicle capacity (physical limit)
         cargoWeight = Math.min(cargoWeight, vehicleCapacity);

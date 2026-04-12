@@ -32,19 +32,6 @@ public class NodeKDTree {
     private int[] tmpIdx;
 
     /**
-     * Build a KD-tree from a Network's node list.
-     *
-     * @param network loaded DRM network
-     * @return KD-tree and parallel Node array for index-based lookup
-     */
-    public static BuildResult fromNetwork(Network network) {
-        // Extract nodes — pflowlib Network doesn't expose listNodes() publicly,
-        // so we iterate via the node IDs collected during DRM loading.
-        // Workaround: DrmNetworkLoader collects nodes; caller passes them.
-        throw new UnsupportedOperationException("Use fromNodes() with pre-extracted node list");
-    }
-
-    /**
      * Build a KD-tree from pre-extracted node arrays.
      *
      * @param nodes array of Node objects
@@ -168,25 +155,6 @@ public class NodeKDTree {
     }
 
     /**
-     * Find the nearest node to (queryLon, queryLat).
-     * Returns the index into the original Node array (passed to fromNodes).
-     * Zero allocation per query — uses stack-based recursion only.
-     *
-     * @return index into original node array, or -1 if tree is empty
-     */
-    public int findNearest(double queryLon, double queryLat) {
-        if (size == 0) return -1;
-        bestIdx = -1;
-        bestDistSq = Double.MAX_VALUE;
-        searchNearest(0, queryLon, queryLat, 0);
-        return bestIdx;
-    }
-
-    // Non-thread-safe fields for single-threaded findNearest()
-    private int bestIdx;
-    private double bestDistSq;
-
-    /**
      * Thread-safe nearest-neighbor search. Allocates one small array per call
      * (only called on cache misses, so allocation cost is negligible).
      * Uses full double precision for distance comparisons.
@@ -228,34 +196,9 @@ public class NodeKDTree {
         }
     }
 
-    private void searchNearest(int treeIdx, double qLon, double qLat, int depth) {
-        if (treeIdx >= size) return;
-
-        double nodeLon = lons[treeIdx];
-        double nodeLat = lats[treeIdx];
-        double dLon = qLon - nodeLon;
-        double dLat = qLat - nodeLat;
-        double distSq = dLon * dLon + dLat * dLat;
-
-        if (distSq < bestDistSq) {
-            bestDistSq = distSq;
-            bestIdx = origIndex[treeIdx];
-        }
-
-        boolean splitOnLon = (depth % 2 == 0);
-        double diff = splitOnLon ? dLon : dLat;
-
-        int nearChild = (diff < 0) ? 2 * treeIdx + 1 : 2 * treeIdx + 2;
-        int farChild  = (diff < 0) ? 2 * treeIdx + 2 : 2 * treeIdx + 1;
-
-        // Search near side first
-        searchNearest(nearChild, qLon, qLat, depth + 1);
-
-        // Prune far side if splitting plane is farther than current best
-        if (diff * diff < bestDistSq) {
-            searchNearest(farChild, qLon, qLat, depth + 1);
-        }
-    }
+    // NOTE: Non-thread-safe findNearest() was removed. Use findNearestThreadSafe() only.
+    // The tree arrays (lons, lats, origIndex) are immutable after construction,
+    // making concurrent queries safe via the thread-safe variant.
 
     public int size() { return size; }
 }

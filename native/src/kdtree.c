@@ -76,10 +76,19 @@ KDTree* kdtree_build(const double *lons, const double *lats, int32_t count) {
         return NULL;
     }
 
-    /* Allocate working copies */
+    /* Allocate working copies (used only during build, freed after).
+     * WARNING: These file-scope statics make kdtree_build() non-reentrant.
+     * Do not call concurrently from multiple threads. */
     w_lons = (double *)malloc(count * sizeof(double));
     w_lats = (double *)malloc(count * sizeof(double));
     w_idx = (int32_t *)malloc(count * sizeof(int32_t));
+
+    if (!w_lons || !w_lats || !w_idx) {
+        free(w_lons); free(w_lats); free(w_idx);
+        w_lons = NULL; w_lats = NULL; w_idx = NULL;
+        kdtree_free(t);
+        return NULL;
+    }
 
     memcpy(w_lons, lons, count * sizeof(double));
     memcpy(w_lats, lats, count * sizeof(double));

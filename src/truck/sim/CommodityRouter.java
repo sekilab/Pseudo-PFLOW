@@ -185,18 +185,15 @@ public class CommodityRouter {
     }
     
     private String mapFacilityTypeToKey(FacilityType type) {
-        // Map Sim enum to MFS CSV keys: office, factory, store, logistics, residential, construction, other
+        // Map Sim enum to MFS CSV keys matching facility_flows.csv headers:
+        // office, factory, store, logistics, residential, construction, other
+        // (Labels normalized in mfs/extract_phase2_3.py from File 07's raw long labels.)
         switch (type) {
             case INDUSTRIAL: return "factory";
-            case LOGISTICS_HUB: 
+            case LOGISTICS_HUB:
             case MEDIUM_WAREHOUSE:
-            case LARGE_DISTRIBUTION: return "logistics_facility"; // CSV key is "logistics" or "logistics_facility"? 
-                                                                  // The header in extraction script was "logistics"
-                                                                  // Wait, the CSV output col name was "logistics"
-                                                                  // But the row values were "logistics_facility"
-                                                                  // Let's check the CSV header in extraction script: 
-                                                                  // dest_cols = ["office", "factory", "store", "logistics", "residential", "construction", "other"]
-            case SMALL_RETAIL: return "store"; // CSV col "store"
+            case LARGE_DISTRIBUTION: return "logistics";
+            case SMALL_RETAIL: return "store";
             case RESIDENTIAL: return "residential";
             case CONSTRUCTION_SITE: return "construction";
             case MIXED: return "other";

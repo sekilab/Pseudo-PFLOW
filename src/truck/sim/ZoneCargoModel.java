@@ -98,10 +98,48 @@ public class ZoneCargoModel {
         return new ZoneCargoModel(params, fallback);
     }
 
+    /**
+     * Vehicle-size scaling factors for the hybrid zone×size model.
+     *
+     * <p>Each factor = old per-trip Gamma mean (MFS File 18, calibrated for
+     * A+ validation) divided by the fleet-wide per-trip mean from
+     * {@code ga_targets.csv} (5.282 t/movement). This multiplicative
+     * decomposition preserves both zone differentiation (from File 08)
+     * and size differentiation (from File 18).
+     *
+     * <p>Old per-trip means (from pre-zone-model TripGenerator):
+     * light 0.285, small 1.44, medium 7.00, heavy 11.50 t/trip.
+     */
+    private static final double FLEET_PER_TRIP_MEAN = 5.282;
+    private static final Map<String, Double> VEHICLE_SIZE_SCALE;
+    static {
+        Map<String, Double> m = new HashMap<>();
+        m.put("light",  0.285  / FLEET_PER_TRIP_MEAN);  // 0.054
+        m.put("small",  1.44   / FLEET_PER_TRIP_MEAN);  // 0.273
+        m.put("medium", 7.00   / FLEET_PER_TRIP_MEAN);  // 1.325
+        m.put("heavy",  11.50  / FLEET_PER_TRIP_MEAN);  // 2.177
+        VEHICLE_SIZE_SCALE = Collections.unmodifiableMap(m);
+    }
+
     /** @return raw Gamma sample for this zone (capped externally by vehicle capacity). */
     public double sampleWeight(String zoneId) {
         GammaParams p = paramsByZone.getOrDefault(zoneId, fallback);
         return generateGamma(p.shape, p.scale);
+    }
+
+    /**
+     * Hybrid zone×size sample: zone Gamma draw scaled by vehicle-size
+     * factor from MFS File 18 utilization rates.
+     *
+     * @param zoneId      MFS zone (e.g. "MFS01")
+     * @param vehicleSize "light", "small", "medium", or "heavy"
+     * @return scaled Gamma sample (capped externally by vehicle capacity)
+     */
+    public double sampleWeight(String zoneId, String vehicleSize) {
+        double raw = sampleWeight(zoneId);
+        double factor = VEHICLE_SIZE_SCALE.getOrDefault(
+            vehicleSize.toLowerCase(), 1.0);
+        return raw * factor;
     }
 
     /** Exposed for diagnostics. Returns null if zone is unknown. */
@@ -153,6 +191,8 @@ public class ZoneCargoModel {
         ZoneCargoModel model = loadDefault();
         String[] sampleZones = {"MFS01", "MFS29", "MFS71", "MFS62", "MFS999"};
         int N = 100_000;
+
+        System.out.println("=== Zone-only sampling ===");
         for (String zid : sampleZones) {
             double sum = 0.0;
             for (int i = 0; i < N; i++) {
@@ -165,6 +205,21 @@ public class ZoneCargoModel {
                 : String.format("%.3f", p.mean);
             System.out.printf("%s: empirical mean = %.3f (expected %s)%n",
                 zid, empirical, expected);
+        }
+
+        System.out.println("\n=== Hybrid zone×size sampling (MFS01) ===");
+        String testZone = "MFS01";
+        GammaParams zp = model.getParams(testZone);
+        double zoneMean = (zp != null) ? zp.mean : DEFAULT_FLEET_MEAN_TONS;
+        for (String size : new String[]{"light", "small", "medium", "heavy"}) {
+            double sum = 0.0;
+            for (int i = 0; i < N; i++) {
+                sum += model.sampleWeight(testZone, size);
+            }
+            double empirical = sum / N;
+            double factor = VEHICLE_SIZE_SCALE.getOrDefault(size, 1.0);
+            System.out.printf("  %s: empirical=%.3f (expected ~%.3f = %.3f × %.4f)%n",
+                size, empirical, zoneMean * factor, zoneMean, factor);
         }
     }
 }

@@ -96,6 +96,11 @@ public class TrajectoryMain {
                 elapsed / 1000.0, elapsed / 60000, (elapsed / 1000) % 60);
     }
 
+    /** Distance threshold: trips above this use the highway-only network for A* routing. */
+    private static final double HIGHWAY_THRESHOLD_KM = 500.0;
+    /** Road class for the highway network (1=expressway .. 7=municipal main roads). */
+    private static final int HIGHWAY_ROAD_CLASS = 7;
+
     private static void runTruck(String tripsCsv, String networkDir, String outputDir,
                                   int[] prefCodes, int maxRoadClass) {
         // Step 1: Parse trips (single read)
@@ -111,19 +116,33 @@ public class TrajectoryMain {
             return;
         }
 
-        // Step 2: Load DRM road network
+        // Step 2a: Load full DRM road network (rdclass ≤ 9, for short/medium trips)
         Network road = loadNetwork(networkDir, prefCodes, maxRoadClass);
         if (road == null) return;
 
-        // Step 3: Build KD-tree for accelerated nearest-node snapping
-        NodeKDTree.BuildResult kdBuild = buildKDTree(road);
+        // Step 2b: Load highway-only network (rdclass ≤ 5, for long-haul trips > 200km)
+        System.out.println("\n[STEP 2b] Loading highway-only network (rdclass <= " + HIGHWAY_ROAD_CLASS + ")...");
+        long t2b = System.currentTimeMillis();
+        Network highway = DrmNetworkLoader.loadPrefectures(networkDir, prefCodes, HIGHWAY_ROAD_CLASS);
+        System.out.printf("[STEP 2b] Done in %.1fs — %,d highway links%n",
+                (System.currentTimeMillis() - t2b) / 1000.0, highway.linkCount());
 
-        // Step 4: Generate trajectories (fallback speed: 30 km/h for trucks)
+        // Step 3: Build KD-trees for both networks
+        NodeKDTree.BuildResult kdFull = buildKDTree(road, "full");
+        NodeKDTree.BuildResult kdHighway = buildKDTree(highway, "highway");
+
+        // Step 4: Generate trajectories with dual-network routing
         System.out.println("\n[STEP 4] Generating truck trajectories...");
+        System.out.printf("[STEP 4] Routing: <=%.0fkm on full network, %.0f-1200km on highway, >1200km direct%n",
+                HIGHWAY_THRESHOLD_KM, HIGHWAY_THRESHOLD_KM);
         long t3 = System.currentTimeMillis();
-        RoutingCache cache = new RoutingCache(0.3, kdBuild.tree, kdBuild.nodes);
+        RoutingCache fullCache = new RoutingCache(0.3, kdFull.tree, kdFull.nodes,
+                NativeNearestNode.SLOT_FULL);
+        RoutingCache highwayCache = new RoutingCache(0.3, kdHighway.tree, kdHighway.nodes,
+                NativeNearestNode.SLOT_HIGHWAY);
         VehicleTrajectoryGenerator<TruckTripRecord> gen =
-                new VehicleTrajectoryGenerator<>(road, records, new TruckTrajectoryWriter(), 30.0, cache);
+                new VehicleTrajectoryGenerator<>(road, highway, records, new TruckTrajectoryWriter(),
+                        30.0, fullCache, highwayCache, HIGHWAY_THRESHOLD_KM);
         gen.generate(persons, outputDir);
         System.out.printf("[STEP 4] Done in %.1fs%n", (System.currentTimeMillis() - t3) / 1000.0);
     }
@@ -153,7 +172,8 @@ public class TrajectoryMain {
         // Step 4: Generate trajectories (fallback speed: 25 km/h for taxis)
         System.out.println("\n[STEP 4] Generating taxi trajectories...");
         long t3 = System.currentTimeMillis();
-        RoutingCache cache = new RoutingCache(0.3, kdBuild.tree, kdBuild.nodes);
+        RoutingCache cache = new RoutingCache(0.3, kdBuild.tree, kdBuild.nodes,
+                NativeNearestNode.SLOT_FULL);
         VehicleTrajectoryGenerator<TaxiTripRecord> gen =
                 new VehicleTrajectoryGenerator<>(road, records, new TaxiTrajectoryWriter(), 25.0, cache);
         gen.generate(persons, outputDir);
@@ -165,28 +185,32 @@ public class TrajectoryMain {
      * Replaces pflowlib's STRtree which has higher per-call allocation overhead.
      */
     private static NodeKDTree.BuildResult buildKDTree(Network road) {
-        System.out.println("\n[STEP 3] Building KD-tree index...");
+        return buildKDTree(road, "full");
+    }
+
+    private static NodeKDTree.BuildResult buildKDTree(Network road, String label) {
+        System.out.printf("\n[KD-TREE] Building %s KD-tree index...%n", label);
         long t = System.currentTimeMillis();
         List<Node> nodeList = road.listNodes();
         Node[] nodeArray = nodeList.toArray(new Node[0]);
 
-        // Build Java KD-tree (always available as fallback)
         NodeKDTree.BuildResult result = NodeKDTree.fromNodes(nodeArray);
 
-        // Also build native C KD-tree if library is loaded
+        // Build native C KD-tree for both networks
         if (NativeNearestNode.isAvailable()) {
+            int slot = "full".equals(label) ? NativeNearestNode.SLOT_FULL : NativeNearestNode.SLOT_HIGHWAY;
             double[] lons = new double[nodeArray.length];
             double[] lats = new double[nodeArray.length];
             for (int i = 0; i < nodeArray.length; i++) {
                 lons[i] = nodeArray[i].getLon();
                 lats[i] = nodeArray[i].getLat();
             }
-            NativeNearestNode.buildIndex(lons, lats, nodeArray.length);
-            System.out.printf("[STEP 3] C KD-tree built: %,d nodes%n", nodeArray.length);
+            NativeNearestNode.buildIndex(slot, lons, lats, nodeArray.length);
+            System.out.printf("[KD-TREE] C native slot %d built: %,d nodes%n", slot, nodeArray.length);
         }
 
-        System.out.printf("[STEP 3] Done in %.1fs — %,d nodes indexed%n",
-                (System.currentTimeMillis() - t) / 1000.0, nodeArray.length);
+        System.out.printf("[KD-TREE] %s done in %.1fs — %,d nodes%n",
+                label, (System.currentTimeMillis() - t) / 1000.0, nodeArray.length);
         return result;
     }
 

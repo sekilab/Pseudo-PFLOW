@@ -46,23 +46,22 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
     private static final long BASE_DATE_SEC = 1601478000L;
 
     private final Network road;
+    private final Network highwayRoad;         // nullable — highway-only network for long trips
     private final Map<Integer, List<R>> vehicleRecords;
     private final TrajectoryOutputWriter<R> writer;
     private final double fallbackSpeedKmh;
-    private final RoutingCache cache;  // nullable — null means no caching
+    private final RoutingCache cache;          // nullable — null means no caching
+    private final RoutingCache highwayCache;   // nullable — cache for highway network
+    private final double highwayThresholdKm;   // trips above this use highway network
 
     // Counters for summary
     private final AtomicInteger routedTrips = new AtomicInteger(0);
     private final AtomicInteger failedTrips = new AtomicInteger(0);
     private final AtomicInteger bypassedTrips = new AtomicInteger(0);
+    private final AtomicInteger highwayRoutedTrips = new AtomicInteger(0);
     private final AtomicLong totalWaypoints = new AtomicLong(0);
 
-    /**
-     * @param road             merged DRM road network
-     * @param vehicleRecords   trip records grouped by vehicle ID (for metadata lookup)
-     * @param writer           vehicle-specific output formatter
-     * @param fallbackSpeedKmh speed for 2-point direct fallback (truck=30, taxi=25)
-     */
+    /** Single-network constructor (taxis, backward compatible). */
     public VehicleTrajectoryGenerator(Network road,
                                        Map<Integer, List<R>> vehicleRecords,
                                        TrajectoryOutputWriter<R> writer,
@@ -70,23 +69,42 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
         this(road, vehicleRecords, writer, fallbackSpeedKmh, null);
     }
 
-    /**
-     * @param road             merged DRM road network
-     * @param vehicleRecords   trip records grouped by vehicle ID (for metadata lookup)
-     * @param writer           vehicle-specific output formatter
-     * @param fallbackSpeedKmh speed for 2-point direct fallback (truck=30, taxi=25)
-     * @param cache            routing cache (null to disable caching)
-     */
+    /** Single-network with cache (taxis). */
     public VehicleTrajectoryGenerator(Network road,
                                        Map<Integer, List<R>> vehicleRecords,
                                        TrajectoryOutputWriter<R> writer,
                                        double fallbackSpeedKmh,
                                        RoutingCache cache) {
+        this(road, null, vehicleRecords, writer, fallbackSpeedKmh, cache, null, Double.MAX_VALUE);
+    }
+
+    /**
+     * Dual-network constructor for trucks: full network for short trips,
+     * highway-only network for long-haul trips.
+     *
+     * @param road               full DRM road network (rdclass <= 9)
+     * @param highwayRoad        highway-only network (rdclass <= 5), or null
+     * @param vehicleRecords     trip records grouped by vehicle ID
+     * @param writer             vehicle-specific output formatter
+     * @param fallbackSpeedKmh   speed for direct fallback (truck=30)
+     * @param cache              routing cache for full network
+     * @param highwayCache       routing cache for highway network, or null
+     * @param highwayThresholdKm trips above this use highway network (e.g. 200km)
+     */
+    public VehicleTrajectoryGenerator(Network road, Network highwayRoad,
+                                       Map<Integer, List<R>> vehicleRecords,
+                                       TrajectoryOutputWriter<R> writer,
+                                       double fallbackSpeedKmh,
+                                       RoutingCache cache, RoutingCache highwayCache,
+                                       double highwayThresholdKm) {
         this.road = road;
+        this.highwayRoad = highwayRoad;
         this.vehicleRecords = vehicleRecords;
         this.writer = writer;
         this.fallbackSpeedKmh = fallbackSpeedKmh;
         this.cache = cache;
+        this.highwayCache = highwayCache;
+        this.highwayThresholdKm = highwayThresholdKm;
     }
 
     /**
@@ -121,10 +139,14 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
         }
 
         // Print summary
-        System.out.printf("[TRAJECTORY] Complete: %,d routed, %,d failed, %,d bypassed, %,d total waypoints%n",
-                routedTrips.get(), failedTrips.get(), bypassedTrips.get(), totalWaypoints.get());
+        int hwRouted = highwayRoutedTrips.get();
+        System.out.printf("[TRAJECTORY] Complete: %,d routed (%,d highway), %,d failed, %,d bypassed, %,d total waypoints%n",
+                routedTrips.get(), hwRouted, failedTrips.get(), bypassedTrips.get(), totalWaypoints.get());
         if (cache != null) {
-            System.out.println(cache.getStats());
+            System.out.println("[CACHE-FULL] " + cache.getStats());
+        }
+        if (highwayCache != null) {
+            System.out.println("[CACHE-HWY]  " + highwayCache.getStats());
         }
         System.out.printf("[TRAJECTORY] Output: %s (%d files)%n", outputDir, futures.size());
     }
@@ -204,9 +226,12 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
         public Integer call() {
             AStarLinkCost linkCost = new AStarLinkCost(DrmTransport.VEHICLE);
             AStar routing = new AStar(linkCost);
+            // Separate A* instance for highway network (thread-local, stateful)
+            AStar hwRouting = (highwayRoad != null) ? new AStar(new AStarLinkCost(DrmTransport.VEHICLE)) : null;
             int localRouted = 0;
             int localFailed = 0;
             int localBypassed = 0;
+            int localHwRouted = 0;
             long localWaypoints = 0;
 
             try (BufferedWriter bw = new BufferedWriter(new FileWriter(outputFile), 65536)) {
@@ -218,7 +243,6 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
                     List<R> records = vehicleRecords.get(vehicleId);
                     List<Trip> trips = person.listTrips();
 
-                    // records and trips are in same order (both sorted by depTime)
                     for (int t = 0; t < trips.size(); t++) {
                         Trip trip = trips.get(t);
                         R rec = (records != null && t < records.size()) ? records.get(t) : null;
@@ -227,33 +251,40 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
 
                         ILonLat origin = trip.getOrigin();
                         ILonLat dest = trip.getDestination();
+                        double distKm = rec.getDistanceKm();
 
-                        // Cached routing path: snap → bypass check → cached A*
-                        if (cache != null) {
-                            Node srcNode = cache.snapToNode(routing, road, origin.getLon(), origin.getLat());
-                            Node dstNode = cache.snapToNode(routing, road, dest.getLon(), dest.getLat());
+                        // Pick network based on trip distance
+                        boolean useHighway = (highwayRoad != null && highwayCache != null
+                                && distKm > highwayThresholdKm);
+                        RoutingCache activeCache = useHighway ? highwayCache : cache;
+                        AStar activeRouting = useHighway ? hwRouting : routing;
+                        Network activeRoad = useHighway ? highwayRoad : road;
+
+                        if (activeCache != null) {
+                            Node srcNode = activeCache.snapToNode(activeRouting, activeRoad,
+                                    origin.getLon(), origin.getLat());
+                            Node dstNode = activeCache.snapToNode(activeRouting, activeRoad,
+                                    dest.getLon(), dest.getLat());
 
                             if (srcNode == null || dstNode == null) {
-                                // Off-network point → direct fallback
                                 writeDirect(bw, rec, trip, origin, dest);
                                 localWaypoints += 2;
                                 localFailed++;
                                 continue;
                             }
 
-                            if (cache.shouldBypass(srcNode, dstNode, rec.getDistanceKm())) {
-                                // Short trip or same node → skip A* entirely
+                            if (activeCache.shouldBypass(srcNode, dstNode, distKm)) {
                                 writeDirect(bw, rec, trip, origin, dest);
                                 localWaypoints += 2;
                                 localBypassed++;
                                 continue;
                             }
 
-                            // Cached A* with pre-snapped nodes
-                            Route route = cache.getRoute(routing, road, srcNode, dstNode);
+                            Route route = activeCache.getRoute(activeRouting, activeRoad, srcNode, dstNode);
                             if (route != null && route.numNodes() > 0) {
                                 localWaypoints += writeRoute(bw, rec, trip, route, origin, dest);
                                 localRouted++;
+                                if (useHighway) localHwRouted++;
                             } else {
                                 writeDirect(bw, rec, trip, origin, dest);
                                 localWaypoints += 2;
@@ -284,9 +315,10 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
             routedTrips.addAndGet(localRouted);
             failedTrips.addAndGet(localFailed);
             bypassedTrips.addAndGet(localBypassed);
+            highwayRoutedTrips.addAndGet(localHwRouted);
             totalWaypoints.addAndGet(localWaypoints);
-            System.out.printf("[TRAJECTORY] Batch %d complete: %,d routed, %,d failed, %,d bypassed%n",
-                    batchId, localRouted, localFailed, localBypassed);
+            System.out.printf("[TRAJECTORY] Batch %d complete: %,d routed (%,d highway), %,d failed, %,d bypassed%n",
+                    batchId, localRouted, localHwRouted, localFailed, localBypassed);
             return 0;
         }
     }

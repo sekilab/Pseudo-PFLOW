@@ -900,15 +900,38 @@ public class TruckSimulation {
         int totalTrips = allTrips.size();
         int deliveryTrips = 0, emptyTrips = 0;
         double totalDist = 0, deliveryDist = 0, emptyDist = 0, totalCargo = 0;
+        // Per-truck-type accumulators
+        int deliveryTypeTrips = 0, longHaulTypeTrips = 0, mixedTypeTrips = 0;
+        double deliveryTypeDist = 0, longHaulTypeDist = 0, mixedTypeDist = 0;
+        double deliveryTypeCargo = 0, longHaulTypeCargo = 0, mixedTypeCargo = 0;
+
+        // Build truck lookup for type resolution
+        Map<Integer, TruckAgent> truckMap = new HashMap<>();
+        for (TruckAgent t : truckFleet) truckMap.put(t.getTruckId(), t);
+
         for (TruckTrip trip : allTrips) {
             totalDist += trip.getDistanceKm();
-            if (trip.getStatus() == TruckStatus.EMPTY_RUNNING) {
-                emptyTrips++;
-                emptyDist += trip.getDistanceKm();
-            } else {
+            TruckAgent truck = truckMap.get(trip.getTruckId());
+            TruckType tt = truck != null ? truck.getTruckType() : null;
+
+            if (trip.isCargoLoaded()) {
                 deliveryTrips++;
                 deliveryDist += trip.getDistanceKm();
                 totalCargo += trip.getCargoWeightTons();
+            } else {
+                emptyTrips++;
+                emptyDist += trip.getDistanceKm();
+            }
+            // Accumulate per-type
+            if (tt == TruckType.DELIVERY) {
+                deliveryTypeTrips++; deliveryTypeDist += trip.getDistanceKm();
+                if (trip.isCargoLoaded()) deliveryTypeCargo += trip.getCargoWeightTons();
+            } else if (tt == TruckType.LONG_HAUL) {
+                longHaulTypeTrips++; longHaulTypeDist += trip.getDistanceKm();
+                if (trip.isCargoLoaded()) longHaulTypeCargo += trip.getCargoWeightTons();
+            } else if (tt == TruckType.MIXED_OPERATION) {
+                mixedTypeTrips++; mixedTypeDist += trip.getDistanceKm();
+                if (trip.isCargoLoaded()) mixedTypeCargo += trip.getCargoWeightTons();
             }
         }
         double avgCargo = deliveryTrips > 0 ? totalCargo / deliveryTrips : 0;
@@ -921,6 +944,26 @@ public class TruckSimulation {
                 totalTrips, deliveryTrips, emptyTrips,
                 totalDist, deliveryDist, emptyDist,
                 totalCargo, avgCargo, avgTripsPerTruck, avgDist, null);
+
+        // Per-truck-type breakdown
+        metrics.put("TRUCK_TYPE.delivery_trips", (double) deliveryTypeTrips);
+        metrics.put("TRUCK_TYPE.delivery_distance_km", deliveryTypeDist);
+        metrics.put("TRUCK_TYPE.delivery_avg_dist_km", deliveryTypeTrips > 0 ? deliveryTypeDist / deliveryTypeTrips : 0);
+        metrics.put("TRUCK_TYPE.delivery_cargo_tons", deliveryTypeCargo);
+        metrics.put("TRUCK_TYPE.long_haul_trips", (double) longHaulTypeTrips);
+        metrics.put("TRUCK_TYPE.long_haul_distance_km", longHaulTypeDist);
+        metrics.put("TRUCK_TYPE.long_haul_avg_dist_km", longHaulTypeTrips > 0 ? longHaulTypeDist / longHaulTypeTrips : 0);
+        metrics.put("TRUCK_TYPE.long_haul_cargo_tons", longHaulTypeCargo);
+        metrics.put("TRUCK_TYPE.mixed_trips", (double) mixedTypeTrips);
+        metrics.put("TRUCK_TYPE.mixed_distance_km", mixedTypeDist);
+        metrics.put("TRUCK_TYPE.mixed_avg_dist_km", mixedTypeTrips > 0 ? mixedTypeDist / mixedTypeTrips : 0);
+        metrics.put("TRUCK_TYPE.mixed_cargo_tons", mixedTypeCargo);
+
+        // Validation reference targets
+        TruckConfig cfg = TruckConfig.getInstance();
+        metrics.put("REFERENCE.survey_trucks_per_day", (double) cfg.getBaselineSurveyTrucks());
+        metrics.put("REFERENCE.survey_tons_per_day", (double) cfg.getBaselineSurveyTons());
+        metrics.put("REFERENCE.avg_loaded_trips_per_truck", deliveryTrips > 0 ? (double) deliveryTrips / truckFleet.size() : 0);
 
         MetricsDashboard.writeDashboard(runDir, "truck", null, metrics);
     }

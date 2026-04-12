@@ -298,7 +298,12 @@ public class ValidationEngine {
                         metricName, category, surveyValue, unit,
                         tolerancePct, sourceFile, notes, priority));
                 } catch (NumberFormatException e) {
-                    System.err.println("[Validation] Skipping invalid row: " + line);
+                    // Row was split correctly but survey_value or tolerance_pct is
+                    // non-numeric (header leak, bad edit, etc.). Skipping is safe —
+                    // the metric is just absent from validation — but we want the cause
+                    // visible so future CSV corruption doesn't hide silently.
+                    System.err.println("[Validation][WARN] Skipping row with non-numeric "
+                        + "survey_value/tolerance_pct (" + e.getMessage() + "): " + line);
                 }
             }
         }

@@ -1,21 +1,24 @@
 #include <jni.h>
 #include "kdtree.h"
 
-/* Global tree instance — built once, queried from multiple threads */
-static KDTree *g_tree = NULL;
+/* Support up to 4 named tree slots (full, highway, etc.) */
+#define MAX_TREES 4
+static KDTree *g_trees[MAX_TREES] = {NULL, NULL, NULL, NULL};
 
 /*
  * Class:     traj_NativeNearestNode
  * Method:    buildIndex
- * Signature: ([D[DI)V
+ * Signature: (I[D[DI)V
  */
 JNIEXPORT void JNICALL Java_traj_NativeNearestNode_buildIndex
-  (JNIEnv *env, jclass cls, jdoubleArray jlons, jdoubleArray jlats, jint count) {
+  (JNIEnv *env, jclass cls, jint slot, jdoubleArray jlons, jdoubleArray jlats, jint count) {
 
-    /* Free previous tree if any */
-    if (g_tree) {
-        kdtree_free(g_tree);
-        g_tree = NULL;
+    if (slot < 0 || slot >= MAX_TREES) return;
+
+    /* Free previous tree in this slot */
+    if (g_trees[slot]) {
+        kdtree_free(g_trees[slot]);
+        g_trees[slot] = NULL;
     }
 
     jdouble *lons = (*env)->GetDoubleArrayElements(env, jlons, NULL);
@@ -27,7 +30,7 @@ JNIEXPORT void JNICALL Java_traj_NativeNearestNode_buildIndex
         return;
     }
 
-    g_tree = kdtree_build(lons, lats, (int32_t)count);
+    g_trees[slot] = kdtree_build(lons, lats, (int32_t)count);
 
     (*env)->ReleaseDoubleArrayElements(env, jlons, lons, JNI_ABORT);
     (*env)->ReleaseDoubleArrayElements(env, jlats, lats, JNI_ABORT);
@@ -36,25 +39,26 @@ JNIEXPORT void JNICALL Java_traj_NativeNearestNode_buildIndex
 /*
  * Class:     traj_NativeNearestNode
  * Method:    findNearest
- * Signature: (DD)I
+ * Signature: (IDD)I
  */
 JNIEXPORT jint JNICALL Java_traj_NativeNearestNode_findNearest
-  (JNIEnv *env, jclass cls, jdouble lon, jdouble lat) {
+  (JNIEnv *env, jclass cls, jint slot, jdouble lon, jdouble lat) {
 
-    if (!g_tree) return -1;
-    return (jint)kdtree_find_nearest(g_tree, lon, lat);
+    if (slot < 0 || slot >= MAX_TREES || !g_trees[slot]) return -1;
+    return (jint)kdtree_find_nearest(g_trees[slot], lon, lat);
 }
 
 /*
  * Class:     traj_NativeNearestNode
  * Method:    dispose
- * Signature: ()V
+ * Signature: (I)V
  */
 JNIEXPORT void JNICALL Java_traj_NativeNearestNode_dispose
-  (JNIEnv *env, jclass cls) {
+  (JNIEnv *env, jclass cls, jint slot) {
 
-    if (g_tree) {
-        kdtree_free(g_tree);
-        g_tree = NULL;
+    if (slot < 0 || slot >= MAX_TREES) return;
+    if (g_trees[slot]) {
+        kdtree_free(g_trees[slot]);
+        g_trees[slot] = NULL;
     }
 }

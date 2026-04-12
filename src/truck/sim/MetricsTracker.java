@@ -583,108 +583,17 @@ public class MetricsTracker {
      */
     public void exportToCSV(String outputDir) throws IOException {
         new File(outputDir).mkdirs();
-        
-        // Export summary metrics
-        try (PrintWriter pw = new PrintWriter(new File(outputDir, "metrics_summary.csv"))) {
-            pw.println("metric,value");
-            pw.println("total_trips," + totalTrips);
-            pw.println("delivery_trips," + deliveryTrips);
-            pw.println("empty_trips," + emptyTrips);
-            pw.println("intrametropolitan_trips," + intrametropolitanTrips);
-            pw.println("intermetropolitan_trips," + intermetropolitanTrips);
-            pw.println("total_distance_km," + String.format("%.2f", totalDistanceKm));
-            pw.println("loaded_distance_km," + String.format("%.2f", loadedDistanceKm));
-            pw.println("empty_distance_km," + String.format("%.2f", emptyDistanceKm));
-            pw.println("total_trucks," + totalTrucks);
-            pw.println("active_trucks," + activeTrucks);
-            pw.println("total_cargo_tons," + String.format("%.2f", totalCargoTons));
-            pw.println("avg_cargo_per_delivery," + String.format("%.2f", avgCargoPerDelivery));
-        }
-        
+
         // Export O-D flows
-        try (PrintWriter pw = new PrintWriter(new File(outputDir, "metrics_od_flows.csv"))) {
+        try (PrintWriter pw = new PrintWriter(new File(outputDir, "od_flows.csv"))) {
             pw.println("origin,destination,trip_count,avg_distance_km");
-            
+
             for (Map.Entry<String, Integer> entry : odFlows.entrySet()) {
                 String[] parts = entry.getKey().split("-");
                 if (parts.length == 2) {
                     double avgDist = odDistances.getOrDefault(entry.getKey(), 0.0);
-                    pw.println(parts[0] + "," + parts[1] + "," + 
+                    pw.println(parts[0] + "," + parts[1] + "," +
                         entry.getValue() + "," + String.format("%.2f", avgDist));
-                }
-            }
-        }
-        
-        // Export per-truck metrics
-        try (PrintWriter pw = new PrintWriter(new File(outputDir, "metrics_per_truck.csv"))) {
-            pw.println("truck_id,truck_type,vehicle_size,total_trips,delivery_trips,empty_trips," +
-                      "total_distance_km,total_cargo_tons,utilization_rate,unique_destinations");
-            
-            for (TruckMetrics tm : truckMetrics.values()) {
-                if (tm.totalTrips > 0) {
-                    pw.println(tm.truckId + "," + tm.truckType + "," + tm.vehicleSize + "," +
-                              tm.totalTrips + "," + tm.deliveryTrips + "," + tm.emptyTrips + "," +
-                              String.format("%.2f", tm.totalDistanceKm) + "," +
-                              String.format("%.2f", tm.totalCargoTons) + "," +
-                              String.format("%.3f", tm.utilizationRate) + "," +
-                              tm.destinationsVisited.size());
-                }
-            }
-        }
-
-        // NEW: Phase 5 - Export per-truck-type metrics
-        try (PrintWriter pw = new PrintWriter(new File(outputDir, "metrics_by_truck_type.csv"))) {
-            pw.println("truck_type,total_trips,total_distance_km,avg_distance_per_trip_km," +
-                      "total_cargo_tons,avg_cargo_per_trip_tons");
-
-            for (TruckType type : TruckType.values()) {
-                int trips = tripsByTruckType.getOrDefault(type, 0);
-                double distance = distanceByTruckType.getOrDefault(type, 0.0);
-                double avgDist = avgDistancePerTripByType.getOrDefault(type, 0.0);
-
-                // Calculate cargo for this truck type
-                double totalCargo = 0.0;
-                for (TruckMetrics tm : truckMetrics.values()) {
-                    if (tm.truckType == type) {
-                        totalCargo += tm.totalCargoTons;
-                    }
-                }
-                double avgCargo = trips > 0 ? totalCargo / trips : 0.0;
-
-                pw.println(type + "," + trips + "," +
-                          String.format("%.2f", distance) + "," +
-                          String.format("%.2f", avgDist) + "," +
-                          String.format("%.2f", totalCargo) + "," +
-                          String.format("%.2f", avgCargo));
-            }
-        }
-
-        // Export MFS validation results (same structure as baseline CSV + simulated_value)
-        if (validationEnabled && mfsBaseline != null && !mfsBaseline.isEmpty()) {
-            try (PrintWriter pw = new PrintWriter(
-                    new File(outputDir, "metrics_mfs_validation.csv"))) {
-                // Header: baseline columns + simulated_value + percent_diff + status
-                pw.println("metric_name,category,simulated_value,survey_value,percent_diff,status,unit,source_file,notes");
-
-                // Iterate through baseline metrics in same order
-                for (Map.Entry<String, MFSBaselineMetric> entry : mfsBaseline.entrySet()) {
-                    MFSBaselineMetric baseline = entry.getValue();
-
-                    // Get simulated value from validation results
-                    ValidationResult result = validationResults.get(baseline.metricName);
-                    double simValue = result != null ? result.simulatedValue : 0.0;
-                    double percentDiff = result != null ? result.percentDifference : 0.0;
-                    String status = result != null && result.withinTolerance ? "PASS" : "FAIL";
-
-                    pw.println(baseline.metricName + "," +
-                              baseline.category + "," +
-                              String.format("%.2f", simValue) + "," +
-                              String.format("%.2f", baseline.surveyValue) + "," +
-                              String.format("%.2f", percentDiff) + "," +
-                              status + "," +
-                              baseline.unit + "," +
-                              baseline.sourceFile + "," +
-                              baseline.notes);
                 }
             }
         }
@@ -717,7 +626,7 @@ public class MetricsTracker {
         allZones.addAll(originTrips.keySet());
         allZones.addAll(destTrips.keySet());
 
-        try (PrintWriter pw = new PrintWriter(new File(outputDir, "metrics_zone_trips.csv"))) {
+        try (PrintWriter pw = new PrintWriter(new File(outputDir, "zone_trips.csv"))) {
             pw.println("zone_id,origin_trips,dest_trips,total_trips");
             for (String zone : allZones) {
                 int orig = originTrips.getOrDefault(zone, 0);

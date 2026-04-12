@@ -6,36 +6,21 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
- * Exports taxi simulation data to CSV files in PFlow-compatible format
+ * Exports taxi simulation data to CSV files in PFlow-compatible format.
  *
- * V3.1 ENHANCEMENT - PSEUDO PFLOW COMPATIBILITY:
- * - Added exportTripsPseudoPFlow() method for Pseudo PFLOW format
- * - Follows standard column order: ["id", "starttime", "start lon", "start lat",
- *   "end lon", "end lat", "transport mode", "purpose", "occupation"]
- * - Added passenger_in flag to distinguish occupied vs empty trips
- * - Empty trips (repositioning/deadhead) included in output
- * - Taxi-specific columns appended after standard fields
+ * Output structure (per run):
+ *   taxis.csv                 - Taxi agent information
+ *   trips.csv                 - Comprehensive trip records (24 columns)
+ *   trips_pseudo_pflow.csv    - Pseudo PFLOW format (16 columns)
  *
- * Output structure:
- * output/
- *   run_YYYYMMDD_HHMMSS/
- *     taxis.csv                 - Taxi agent information
- *     trips.csv                 - Individual trip records (original format)
- *     trips_pseudo_pflow.csv    - Pseudo PFLOW format with empty trips
- *     trajectories.csv          - Spatiotemporal trajectories
- *     summary.csv               - Aggregate statistics
- *
- * Each run creates a timestamped folder to avoid overwriting previous results
- *
- * V3.0 ENHANCEMENT:
- * - All date/time formats now configurable through TaxiConfig
- * - No hardcoded format strings remain
+ * Date/time formats are configurable through TaxiConfig.
  */
 public class TaxiDataExporter {
 
     private String outputDirectory;
     private String runDirectory;
     private TaxiConfig config;
+    private SimpleDateFormat datetimeFormat;
 
     /**
      * Constructor
@@ -43,6 +28,7 @@ public class TaxiDataExporter {
      */
     public TaxiDataExporter(String outputDir) {
         this.config = TaxiConfig.getInstance();
+        this.datetimeFormat = new SimpleDateFormat(config.getExportDatetimeFormat());
         this.outputDirectory = outputDir;
 
         // Create timestamped run directory using configurable format
@@ -77,9 +63,7 @@ public class TaxiDataExporter {
         // Add the seconds
         cal.add(Calendar.SECOND, (int)seconds);
 
-        // Format using configurable format from TaxiConfig
-        SimpleDateFormat sdf = new SimpleDateFormat(config.getExportDatetimeFormat());
-        return sdf.format(cal.getTime());
+        return datetimeFormat.format(cal.getTime());
     }
 
     /**
@@ -141,9 +125,7 @@ public class TaxiDataExporter {
         // Add normalized seconds
         cal.add(Calendar.SECOND, (int)normalizedTime);
 
-        // Format using configurable format from TaxiConfig
-        SimpleDateFormat sdf = new SimpleDateFormat(config.getExportDatetimeFormat());
-        return sdf.format(cal.getTime());
+        return datetimeFormat.format(cal.getTime());
     }
 
     // Store zones for zone lookup during export
@@ -156,11 +138,8 @@ public class TaxiDataExporter {
      */
     public void exportAll(List<TaxiAgent> taxis, List<TaxiTrip> trips) {
         exportTaxis(taxis);
-        exportTrips(trips);
-        exportTripsPseudoPFlow(trips);  // V3.1: NEW - Pseudo PFLOW format
-        exportTripsWithZones(taxis, trips);  // V4.0: NEW - Trips with zone information
-        // exportTrajectories(taxis);  // Trajectory feature disabled
-        exportSummary(taxis, trips);
+        exportTripsComplete(taxis, trips);
+        exportTripsPseudoPFlow(trips);
     }
 
     /**
@@ -217,27 +196,53 @@ public class TaxiDataExporter {
     }
 
     /**
-     * Export trip information (original format)
+     * Export comprehensive trip records with all columns including
+     * taxi type, zone info, and day-offset timestamps.
      */
-    private void exportTrips(List<TaxiTrip> trips) {
+    private void exportTripsComplete(List<TaxiAgent> taxis, List<TaxiTrip> trips) {
         String filename = runDirectory + "/trips.csv";
         int tripCount = 0;
 
-        try (PrintWriter writer = new PrintWriter(new FileWriter(filename))) {
-            // Header - added day offset columns for multi-day trip tracking
-            writer.println("trip_id,taxi_id,pickup_lon,pickup_lat,dropoff_lon,dropoff_lat," +
-                "request_time,request_day,pickup_time,pickup_day,dropoff_time,dropoff_day," +
+        Map<Integer, TaxiAgent> taxiMap = new java.util.HashMap<>();
+        for (TaxiAgent taxi : taxis) {
+            taxiMap.put(taxi.getTaxiId(), taxi);
+        }
+
+        try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(filename), 65536))) {
+            writer.println("trip_id,taxi_id,taxi_type," +
+                "pickup_lon,pickup_lat,dropoff_lon,dropoff_lat," +
+                "origin_zone,origin_zone_type,origin_transport_hub," +
+                "destination_zone,dest_zone_type,dest_transport_hub," +
+                "request_time,request_day,pickup_time,pickup_day," +
+                "dropoff_time,dropoff_day," +
                 "distance_km,fare_yen,is_night_trip,passenger_in,status");
 
-            // Data rows
             for (TaxiTrip trip : trips) {
-                writer.printf("%d,%d,%.6f,%.6f,%.6f,%.6f,%s,%d,%s,%d,%s,%d,%.2f,%.2f,%s,%s,%s%n",
+                TaxiAgent taxi = taxiMap.get(trip.getAssignedTaxiId());
+                String taxiType = taxi != null ? taxi.getTaxiType().toString() : "UNKNOWN";
+
+                DestinationZone originZoneObj = findZoneObjectForLocation(
+                    trip.getPickupLongitude(), trip.getPickupLatitude());
+                DestinationZone destZoneObj = findZoneObjectForLocation(
+                    trip.getDropoffLongitude(), trip.getDropoffLatitude());
+
+                String originZone = originZoneObj != null ? originZoneObj.getZoneId() : "OUTSIDE";
+                String originZoneType = originZoneObj != null ? originZoneObj.getZoneType() : "N/A";
+                String originHub = originZoneObj != null ? (originZoneObj.isTransportHub() ? "TRUE" : "FALSE") : "FALSE";
+                String destZone = destZoneObj != null ? destZoneObj.getZoneId() : "OUTSIDE";
+                String destZoneType = destZoneObj != null ? destZoneObj.getZoneType() : "N/A";
+                String destHub = destZoneObj != null ? (destZoneObj.isTransportHub() ? "TRUE" : "FALSE") : "FALSE";
+
+                writer.printf("%d,%d,%s,%.6f,%.6f,%.6f,%.6f,%s,%s,%s,%s,%s,%s,%s,%d,%s,%d,%s,%d,%.2f,%.2f,%s,%s,%s%n",
                     trip.getTripId(),
                     trip.getAssignedTaxiId(),
+                    taxiType,
                     trip.getPickupLongitude(),
                     trip.getPickupLatitude(),
                     trip.getDropoffLongitude(),
                     trip.getDropoffLatitude(),
+                    originZone, originZoneType, originHub,
+                    destZone, destZoneType, destHub,
                     formatDateTimeWithDay(trip.getRequestTime()),
                     getDayOffset(trip.getRequestTime()),
                     formatDateTimeWithDay(trip.getPickupTime()),
@@ -353,98 +358,6 @@ public class TaxiDataExporter {
     }
 
     /**
-     * V4.0: Export trips with agent type and zone information
-     * This export includes taxi type, origin zone, and destination zone
-     * but NOT in P-Flow format yet (as user requested)
-     */
-    private void exportTripsWithZones(List<TaxiAgent> taxis, List<TaxiTrip> trips) {
-        String filename = runDirectory + "/trips_with_zones.csv";
-        int tripCount = 0;
-
-        // Build a map of taxi ID to taxi agent for quick lookup
-        Map<Integer, TaxiAgent> taxiMap = new java.util.HashMap<>();
-        for (TaxiAgent taxi : taxis) {
-            taxiMap.put(taxi.getTaxiId(), taxi);
-        }
-
-        try (PrintWriter writer = new PrintWriter(new FileWriter(filename))) {
-            // Header - V4.0: added origin/dest zone_type and transport_hub columns
-            writer.println("trip_id,taxi_id,taxi_type,pickup_lon,pickup_lat,dropoff_lon,dropoff_lat," +
-                "origin_zone,origin_zone_type,origin_transport_hub," +
-                "destination_zone,dest_zone_type,dest_transport_hub," +
-                "request_time,request_day,pickup_time,pickup_day," +
-                "dropoff_time,dropoff_day,distance_km,fare_yen,is_night_trip,passenger_in,status");
-
-            // Data rows
-            for (TaxiTrip trip : trips) {
-                TaxiAgent taxi = taxiMap.get(trip.getAssignedTaxiId());
-                String taxiType = taxi != null ? taxi.getTaxiType().toString() : "UNKNOWN";
-
-                // V4.0: Find origin and destination zones with full zone info
-                DestinationZone originZoneObj = findZoneObjectForLocation(trip.getPickupLongitude(), trip.getPickupLatitude());
-                DestinationZone destZoneObj = findZoneObjectForLocation(trip.getDropoffLongitude(), trip.getDropoffLatitude());
-
-                String originZone = originZoneObj != null ? originZoneObj.getZoneId() : "OUTSIDE";
-                String originZoneType = originZoneObj != null ? originZoneObj.getZoneType() : "N/A";
-                String originHub = originZoneObj != null ? (originZoneObj.isTransportHub() ? "TRUE" : "FALSE") : "FALSE";
-
-                String destZone = destZoneObj != null ? destZoneObj.getZoneId() : "OUTSIDE";
-                String destZoneType = destZoneObj != null ? destZoneObj.getZoneType() : "N/A";
-                String destHub = destZoneObj != null ? (destZoneObj.isTransportHub() ? "TRUE" : "FALSE") : "FALSE";
-
-                writer.printf("%d,%d,%s,%.6f,%.6f,%.6f,%.6f,%s,%s,%s,%s,%s,%s,%s,%d,%s,%d,%s,%d,%.2f,%.2f,%s,%s,%s%n",
-                    trip.getTripId(),
-                    trip.getAssignedTaxiId(),
-                    taxiType,
-                    trip.getPickupLongitude(),
-                    trip.getPickupLatitude(),
-                    trip.getDropoffLongitude(),
-                    trip.getDropoffLatitude(),
-                    originZone,
-                    originZoneType,
-                    originHub,
-                    destZone,
-                    destZoneType,
-                    destHub,
-                    formatDateTimeWithDay(trip.getRequestTime()),
-                    getDayOffset(trip.getRequestTime()),
-                    formatDateTimeWithDay(trip.getPickupTime()),
-                    getDayOffset(trip.getPickupTime()),
-                    formatDateTimeWithDay(trip.getDropoffTime()),
-                    getDayOffset(trip.getDropoffTime()),
-                    trip.getDistanceKm(),
-                    trip.getFareYen(),
-                    trip.isNightTrip() ? "true" : "false",
-                    trip.isPassengerIn() ? "true" : "false",
-                    trip.getStatus().toString()
-                );
-                tripCount++;
-            }
-
-            System.out.println("✓ Exported trips_with_zones.csv: " + tripCount + " trips");
-
-        } catch (IOException e) {
-            System.err.println("✗ Error exporting trips with zones: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Find which zone a location belongs to
-     */
-    private String findZoneForLocation(double lon, double lat) {
-        if (zones == null || zones.isEmpty()) {
-            return "UNKNOWN";
-        }
-
-        for (DestinationZone zone : zones) {
-            if (zone.containsPoint(lon, lat)) {
-                return zone.getZoneId();
-            }
-        }
-        return "OUTSIDE";
-    }
-
-    /**
      * V4.0: Find which zone object a location belongs to (returns full zone, not just ID)
      */
     private DestinationZone findZoneObjectForLocation(double lon, double lat) {
@@ -458,115 +371,6 @@ public class TaxiDataExporter {
             }
         }
         return null;  // Location is outside all zones
-    }
-
-    /**
-     * Export taxi trajectories (spatiotemporal paths)
-     * @deprecated Trajectory feature not implemented - always exports empty file
-     */
-    @Deprecated
-    private void exportTrajectories(List<TaxiAgent> taxis) {
-        String filename = runDirectory + "/trajectories.csv";
-        int pointCount = 0;
-
-        try (PrintWriter writer = new PrintWriter(new FileWriter(filename))) {
-            // Header - added timestamp_day for multi-day trajectory tracking
-            writer.println("taxi_id,timestamp,timestamp_day,longitude,latitude,sequence_num");
-
-            // Data rows
-            for (TaxiAgent taxi : taxis) {
-                int seqNum = 0;
-                for (TaxiAgent.TrajectoryPoint point : taxi.getTrajectory()) {
-                    writer.printf("%d,%s,%d,%.6f,%.6f,%d%n",
-                        taxi.getTaxiId(),
-                        formatDateTimeWithDay(point.getTimestamp()),
-                        getDayOffset(point.getTimestamp()),
-                        point.getLongitude(),
-                        point.getLatitude(),
-                        seqNum++
-                    );
-                    pointCount++;
-                }
-            }
-
-            System.out.println("✓ Exported trajectories.csv: " + pointCount + " points");
-
-        } catch (IOException e) {
-            System.err.println("✗ Error exporting trajectories: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Export summary statistics (updated to include empty trip stats)
-     */
-    private void exportSummary(List<TaxiAgent> taxis, List<TaxiTrip> trips) {
-        String filename = runDirectory + "/summary.csv";
-
-        try (PrintWriter writer = new PrintWriter(new FileWriter(filename))) {
-            // Calculate statistics
-            int totalTaxis = taxis.size();
-            int totalTrips = trips.size();
-
-            double totalDistance = 0;
-            double totalRevenue = 0;
-            int nightTrips = 0;
-            int passengerTrips = 0;
-            int emptyTrips = 0;
-            double passengerDistance = 0;
-            double emptyDistance = 0;
-
-            for (TaxiTrip trip : trips) {
-                totalDistance += trip.getDistanceKm();
-                totalRevenue += trip.getFareYen();
-                if (trip.isNightTrip()) {
-                    nightTrips++;
-                }
-                if (trip.isPassengerIn()) {
-                    passengerTrips++;
-                    passengerDistance += trip.getDistanceKm();
-                } else {
-                    emptyTrips++;
-                    emptyDistance += trip.getDistanceKm();
-                }
-            }
-
-            double avgTripsPerTaxi = (double) totalTrips / totalTaxis;
-            double avgDistancePerTaxi = totalDistance / totalTaxis;
-            double avgRevenuePerTaxi = totalRevenue / totalTaxis;
-            double avgTripDistance = totalDistance / totalTrips;
-            double avgFare = passengerTrips > 0 ? totalRevenue / passengerTrips : 0;
-            double nightTripPercentage = 100.0 * nightTrips / totalTrips;
-            double passengerTripPercentage = 100.0 * passengerTrips / totalTrips;
-            double emptyTripPercentage = 100.0 * emptyTrips / totalTrips;
-            double emptyDistancePercentage = 100.0 * emptyDistance / totalDistance;
-
-            // Write summary
-            writer.println("metric,value");
-            writer.println("total_taxis," + totalTaxis);
-            writer.println("total_trips," + totalTrips);
-            writer.println("passenger_trips," + passengerTrips);
-            writer.println("empty_trips," + emptyTrips);
-            writer.println("passenger_trip_percentage," + String.format("%.2f", passengerTripPercentage));
-            writer.println("empty_trip_percentage," + String.format("%.2f", emptyTripPercentage));
-            writer.println("total_distance_km," + String.format("%.2f", totalDistance));
-            writer.println("passenger_distance_km," + String.format("%.2f", passengerDistance));
-            writer.println("empty_distance_km," + String.format("%.2f", emptyDistance));
-            writer.println("empty_distance_percentage," + String.format("%.2f", emptyDistancePercentage));
-            writer.println("total_revenue_yen," + String.format("%.2f", totalRevenue));
-            writer.println("night_trips," + nightTrips);
-            writer.println("night_trip_percentage," + String.format("%.2f", nightTripPercentage));
-            writer.println("avg_trips_per_taxi," + String.format("%.2f", avgTripsPerTaxi));
-            writer.println("avg_distance_per_taxi_km," + String.format("%.2f", avgDistancePerTaxi));
-            writer.println("avg_revenue_per_taxi_yen," + String.format("%.2f", avgRevenuePerTaxi));
-            writer.println("avg_trip_distance_km," + String.format("%.2f", avgTripDistance));
-            writer.println("avg_fare_yen," + String.format("%.2f", avgFare));
-            writer.println("revenue_per_km_yen," + String.format("%.2f", totalRevenue / totalDistance));
-
-            System.out.println("✓ Exported summary.csv");
-
-        } catch (IOException e) {
-            System.err.println("✗ Error exporting summary: " + e.getMessage());
-        }
     }
 
     /**

@@ -38,6 +38,10 @@ public class TruckConfig {
     private int truckFleetSize;           // Daily active trucks (after operating rate)
     private double truckOperatingRate;    // MLIT 実働率 (reference only, not applied)
     private int registeredFleetSize;      // Total registered fleet (MLIT)
+
+    // MFS survey-day raw baseline (File 18 un-scaled values)
+    private int baselineSurveyTrucks;     // File 18 observed trucks on survey day
+    private long baselineSurveyTons;      // File 18 observed total tons on survey day
     
     // Truck type distribution
     private double truckTypeDeliveryProb;
@@ -184,6 +188,10 @@ public class TruckConfig {
         truckOperatingRate = getDoubleProperty("truck.operating.rate", 0.567);
         truckFleetSize = getIntProperty("truck.fleet.size",
             (int)(registeredFleetSize * truckOperatingRate));  // Default: calculate
+
+        // MFS survey-day raw baselines (File 18 un-scaled observed totals)
+        baselineSurveyTrucks = getIntProperty("truck.baseline.survey.trucks", 327108);
+        baselineSurveyTons = getLongProperty("truck.baseline.survey.tons", 1726420L);
         
         // Truck types
         truckTypeDeliveryProb = getDoubleProperty("truck.type.delivery.prob", 0.50);
@@ -407,6 +415,20 @@ public class TruckConfig {
      * @return total registered trucks
      */
     public int getRegisteredFleetSize() { return registeredFleetSize; }
+
+    /**
+     * MFS File 18 raw survey-day truck count (un-scaled). Used by
+     * TruckDataExporter as the "validation target" baseline.
+     * @return survey-day observed truck count
+     */
+    public int getBaselineSurveyTrucks() { return baselineSurveyTrucks; }
+
+    /**
+     * MFS File 18 raw survey-day total tons (un-scaled). Used by
+     * TruckDataExporter as the "validation target" baseline.
+     * @return survey-day observed total tons
+     */
+    public long getBaselineSurveyTons() { return baselineSurveyTons; }
     
     public double getTruckTypeDeliveryProb() { return truckTypeDeliveryProb; }
     public double getTruckTypeLongHaulProb() { return truckTypeLongHaulProb; }

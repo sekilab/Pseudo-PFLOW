@@ -268,11 +268,13 @@ public class OriginDestinationMatrix {
             while ((line = reader.readLine()) != null) {
                 if (line.trim().isEmpty()) continue;
 
-                // Stop at section boundary — Section 1 is total truck movements/day,
-                // Sections 2-22 are per-commodity tonnage (different unit, must not mix)
+                // Stop at section boundary — Section 1 is total tons/day from MFS File 08
+                // (od_volume.csv is extracted from the tons sheet; veh/day lives in
+                // od_volume_expanded.csv). Sections 2-22 are per-commodity tonnage breakdowns
+                // that we must not mix into the total, so we stop at the first section marker.
                 if (line.startsWith("\u25CB") || line.startsWith("○")) {
                     System.out.println("[O-D] Reached section boundary at row " + rowCount +
-                        ", stopping (Section 1 = truck movements/day only)");
+                        ", stopping (Section 1 = tons/day only)");
                     break;
                 }
 

@@ -27,7 +27,7 @@ Total Vehicle Movements,trip_volume,2665391,movements/day,15,File 08,"Scaled fro
 DELIVERY Movement Share,movement_distribution,37.01,percent,10,File 18,"Light + 30% Small = 121,061/327,108 = 37.01%",HIGH
 MIXED Movement Share,movement_distribution,28.49,percent,10,File 18,"70% Small + 50% Medium = 93,187/327,108 = 28.49%",HIGH
 LONG_HAUL Movement Share,movement_distribution,34.5,percent,10,File 18,"Heavy + 50% Medium = 112,860/327,108 = 34.50%",HIGH
-Avg Distance DELIVERY,distance,11.12,km,300,File 08 Calculated,Weighted avg distance for O-D pairs < 30km — NOTE: classification mismatch (File 08 uses trip distance, sim uses vehicle size),LOW
+Avg Distance DELIVERY,distance,11.12,km,300,File 08 Calculated,"Weighted avg distance for O-D pairs < 30km — NOTE: classification mismatch (File 08 uses trip distance, sim uses vehicle size)",LOW
 Avg Distance LONG_HAUL,distance,260.29,km,25,File 08 Calculated,Weighted avg distance for O-D pairs > 100km,MEDIUM
 Avg Distance MIXED_OPERATION,distance,55.04,km,25,File 08 Calculated,Weighted avg distance for O-D pairs 30-100km,MEDIUM
 Empty Trip Ratio,efficiency,7.5,percent,10,Professor Feedback,Target 5-10% empty ratio - trucks costly to operate without cargo,CRITICAL

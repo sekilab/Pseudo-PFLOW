@@ -64,6 +64,7 @@ public class RoutingCache {
     // Optional KD-tree accelerator (Phase 2A)
     private final NodeKDTree kdTree;
     private final Node[] nodeArray;
+    private final int nativeSlot;  // C KD-tree slot (-1 = use Java only)
 
     // Statistics
     private final AtomicLong snapHits = new AtomicLong(0);
@@ -75,33 +76,35 @@ public class RoutingCache {
     /**
      * @param bypassDistanceKm skip A* for trips shorter than this (default 0.3 km)
      */
-    /** Default max routing distance — trips longer than this skip A* (highway fallback). */
-    private static final double DEFAULT_MAX_ROUTING_KM = 500.0;
+    /** Default max routing distance — trips longer than this skip A* entirely (direct fallback). */
+    private static final double DEFAULT_MAX_ROUTING_KM = 1200.0;
 
     public RoutingCache(double bypassDistanceKm) {
-        this(bypassDistanceKm, DEFAULT_MAX_ROUTING_KM, null, null);
+        this(bypassDistanceKm, DEFAULT_MAX_ROUTING_KM, null, null, -1);
     }
 
-    public RoutingCache(double bypassDistanceKm, NodeKDTree kdTree, Node[] nodeArray) {
-        this(bypassDistanceKm, DEFAULT_MAX_ROUTING_KM, kdTree, nodeArray);
+    public RoutingCache(double bypassDistanceKm, NodeKDTree kdTree, Node[] nodeArray, int nativeSlot) {
+        this(bypassDistanceKm, DEFAULT_MAX_ROUTING_KM, kdTree, nodeArray, nativeSlot);
     }
 
     /**
      * Full constructor with all options.
      *
-     * @param bypassDistanceKm   skip A* for trips shorter than this (default 0.3 km)
-     * @param maxRoutingDistanceKm skip A* for trips longer than this (default 500 km)
-     * @param kdTree             pre-built KD-tree from network nodes (null to use pflowlib)
-     * @param nodeArray          parallel Node array indexed by KD-tree result
+     * @param bypassDistanceKm     skip A* for trips shorter than this (default 0.3 km)
+     * @param maxRoutingDistanceKm skip A* for trips longer than this (default 1200 km)
+     * @param kdTree               pre-built KD-tree from network nodes (null to use pflowlib)
+     * @param nodeArray            parallel Node array indexed by KD-tree result
+     * @param nativeSlot           C KD-tree slot index (-1 = Java only)
      */
     public RoutingCache(double bypassDistanceKm, double maxRoutingDistanceKm,
-                        NodeKDTree kdTree, Node[] nodeArray) {
+                        NodeKDTree kdTree, Node[] nodeArray, int nativeSlot) {
         this.bypassDistanceKm = bypassDistanceKm;
         this.maxRoutingDistanceKm = maxRoutingDistanceKm;
         this.snapCache = new ConcurrentHashMap<>(65536);
         this.routeCache = new ConcurrentHashMap<>(32768);
         this.kdTree = kdTree;
         this.nodeArray = nodeArray;
+        this.nativeSlot = nativeSlot;
     }
 
     /**
@@ -121,8 +124,8 @@ public class RoutingCache {
 
         // Cache miss — prefer: C KD-tree > Java KD-tree > pflowlib STRtree
         Node node;
-        if (NativeNearestNode.isAvailable()) {
-            int idx = NativeNearestNode.findNearest(lon, lat);
+        if (nativeSlot >= 0 && NativeNearestNode.isAvailable()) {
+            int idx = NativeNearestNode.findNearest(nativeSlot, lon, lat);
             node = (idx >= 0 && idx < nodeArray.length) ? nodeArray[idx] : null;
         } else if (kdTree != null) {
             int idx = kdTree.findNearestThreadSafe(lon, lat);

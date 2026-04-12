@@ -1,6 +1,9 @@
 package taxi.sim;
 
+import java.io.File;
 import java.util.*;
+
+import util.MetricsDashboard;
 
 /**
  * Main simulation controller for Tokyo Taxi Agent-Based Model
@@ -1370,6 +1373,74 @@ public class TaxiSimulation {
     }
 
     /**
+     * Write unified dashboard.csv to run directory via MetricsDashboard.
+     * Includes per-taxi-type breakdown (LOCAL/CITYWIDE/HUB) and reference targets.
+     */
+    private void writeDashboard(String runDir) {
+        long passengerTrips = allTrips.stream().filter(TaxiTrip::isPassengerIn).count();
+        long emptyTrips = allTrips.stream().filter(t -> !t.isPassengerIn()).count();
+        double passengerDist = allTrips.stream().filter(TaxiTrip::isPassengerIn)
+                .mapToDouble(TaxiTrip::getDistanceKm).sum();
+        double emptyDist = allTrips.stream().filter(t -> !t.isPassengerIn())
+                .mapToDouble(TaxiTrip::getDistanceKm).sum();
+        double totalRevenue = allTrips.stream().filter(TaxiTrip::isPassengerIn)
+                .mapToDouble(TaxiTrip::getFareYen).sum();
+        long nightTrips = allTrips.stream().filter(TaxiTrip::isPassengerIn)
+                .filter(TaxiTrip::isNightTrip).count();
+        double avgFare = passengerTrips > 0 ? totalRevenue / passengerTrips : 0;
+        double avgDist = passengerTrips > 0 ? passengerDist / passengerTrips : 0;
+
+        int localCount = (int) taxiFleet.stream().filter(t -> t.getTaxiType() == TaxiType.LOCAL).count();
+        int citywideCount = (int) taxiFleet.stream().filter(t -> t.getTaxiType() == TaxiType.CITYWIDE).count();
+        int hubCount = (int) taxiFleet.stream().filter(t -> t.getTaxiType() == TaxiType.HUB).count();
+
+        Map<String, Double> metrics = MetricsDashboard.buildTaxiMetrics(
+                config.getTaxiFleetSize(), localCount, citywideCount, hubCount,
+                passengerTrips, emptyTrips,
+                passengerDist, emptyDist,
+                totalRevenue, nightTrips, avgFare, avgDist);
+
+        // Per-taxi-type breakdown (LOCAL / CITYWIDE / HUB) — single pass
+        Map<Integer, TaxiType> taxiTypeMap = new HashMap<>();
+        for (TaxiAgent taxi : taxiFleet) {
+            taxiTypeMap.put(taxi.getTaxiId(), taxi.getTaxiType());
+        }
+
+        Map<TaxiType, long[]> typeTripCounts = new EnumMap<>(TaxiType.class);
+        Map<TaxiType, double[]> typeDistAndRevenue = new EnumMap<>(TaxiType.class);
+        for (TaxiType type : TaxiType.values()) {
+            typeTripCounts.put(type, new long[]{0});
+            typeDistAndRevenue.put(type, new double[]{0.0, 0.0});
+        }
+        for (TaxiTrip trip : allTrips) {
+            TaxiType type = taxiTypeMap.get(trip.getAssignedTaxiId());
+            if (type == null) continue;
+            typeTripCounts.get(type)[0]++;
+            typeDistAndRevenue.get(type)[0] += trip.getDistanceKm();
+            if (trip.isPassengerIn()) {
+                typeDistAndRevenue.get(type)[1] += trip.getFareYen();
+            }
+        }
+        for (TaxiType type : TaxiType.values()) {
+            String label = type.toString().toLowerCase();
+            long trips = typeTripCounts.get(type)[0];
+            double dist = typeDistAndRevenue.get(type)[0];
+            double revenue = typeDistAndRevenue.get(type)[1];
+            metrics.put("TAXI_TYPE." + label + "_trips", (double) trips);
+            metrics.put("TAXI_TYPE." + label + "_distance_km", dist);
+            metrics.put("TAXI_TYPE." + label + "_avg_dist_km", trips > 0 ? dist / trips : 0.0);
+            metrics.put("TAXI_TYPE." + label + "_revenue_yen", revenue);
+        }
+
+        // Reference targets
+        metrics.put("REFERENCE.configured_fleet_size", (double) config.getTaxiFleetSize());
+        metrics.put("REFERENCE.avg_passenger_trips_per_taxi",
+                passengerTrips > 0 ? (double) passengerTrips / config.getTaxiFleetSize() : 0.0);
+
+        MetricsDashboard.writeDashboard(runDir, "taxi", config.getCityName(), metrics);
+    }
+
+    /**
      * Main simulation execution
      */
     public void run(String[] args) {
@@ -1394,10 +1465,30 @@ public class TaxiSimulation {
         // Export results
         System.out.println("\n[CHECKPOINT] Exporting results...");
         TaxiDataExporter exporter = new TaxiDataExporter(config.getOutputDirectory());
-        exporter.setDestinationZones(destinationZones);  // Pass zones for zone lookup
+        exporter.setDestinationZones(destinationZones);
         exporter.exportAll(taxiFleet, allTrips);
 
-        System.out.println("\n[COMPLETE] Output: " + exporter.getRunDirectory());
+        // Write unified dashboard.csv to run directory
+        String runDir = exporter.getRunDirectory();
+        writeDashboard(runDir);
+
+        // Validation against baseline metrics
+        String baselinePath = "config/taxi/validation/taxi_baseline_" +
+                config.getCityName().toLowerCase() + ".csv";
+        File baselineFile = new File(baselinePath);
+        if (baselineFile.exists()) {
+            TaxiValidationEngine validator = new TaxiValidationEngine();
+            validator.loadBaseline(baselinePath);
+            TaxiValidationEngine.ValidationReport report = validator.validate(taxiFleet, allTrips, config);
+            report.printReport();
+            report.writeToFile(runDir);
+        } else {
+            System.out.println("\n[VALIDATION] No baseline CSV found at: " + baselinePath);
+            System.out.println("[VALIDATION] Skipping validation (create config/taxi/validation/taxi_baseline_"
+                    + config.getCityName().toLowerCase() + ".csv to enable).");
+        }
+
+        System.out.println("\n[COMPLETE] Output: " + runDir);
     }
 
     /**
