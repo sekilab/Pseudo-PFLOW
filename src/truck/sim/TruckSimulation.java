@@ -2,6 +2,7 @@ package truck.sim;
 
 import truck.sim.spatial.GeoValidator;
 import truck.sim.spatial.PointGenerator;
+import util.MetricsDashboard;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -47,6 +48,7 @@ public class TruckSimulation {
 
     // Simulation components
     private OriginDestinationMatrix odMatrix;
+    private GATargetsLoader gaTargets;
     private CommodityRouter commodityRouter;
     private TripGenerator tripGenerator;
     private POIManager poiManager;
@@ -145,6 +147,7 @@ public class TruckSimulation {
         // Unpack results into simulation fields
         this.deliveryZones = result.deliveryZones;
         this.odMatrix = result.odMatrix;
+        this.gaTargets = result.gaTargets;
         this.commodityRouter = result.commodityRouter;
         this.tripGenerator = result.tripGenerator;
         this.poiManager = result.poiManager;
@@ -164,7 +167,8 @@ public class TruckSimulation {
      */
     private void initializeTrucks() {
         FleetFactory factory = new FleetFactory(config, random,
-            deliveryZones, odMatrix, poiManager, pointGenerator, zoneManager);
+            deliveryZones, odMatrix, gaTargets,
+            poiManager, pointGenerator, zoneManager);
         this.truckFleet = factory.createFleet();
     }
 
@@ -576,7 +580,8 @@ public class TruckSimulation {
 
         double cargoWeight = tripGenerator.generateCargoWeight(
             originFacility, commodityType, truck.getVehicleSize(),
-            truck.getCapacityTons(), commodityRouter, constraint
+            truck.getCapacityTons(), commodityRouter, constraint,
+            originZoneId
         );
 
         double loadingTime = generateLoadingTime();
@@ -708,14 +713,37 @@ public class TruckSimulation {
         long t3 = System.currentTimeMillis();
         System.out.println("[TIMING] Trip gen: " + String.format("%.1f", (t3 - t2) / 1000.0) + "s");
 
+        // Validation
+        System.out.println("\n[CHECKPOINT] Running MFS validation...");
+        ValidationEngine.ValidationReport validationReport = runMFSValidation();
+
         // Export
         System.out.println("\n[CHECKPOINT] Exporting results...");
         TruckDataExporter exporter = new TruckDataExporter(config.getOutputDirectory());
         exporter.setDeliveryZones(deliveryZones);
         exporter.exportAll(truckFleet, allTrips);
 
+        try {
+            metricsTracker.exportToCSV(exporter.getRunDirectory());
+        } catch (IOException e) {
+            System.err.println("[ERROR] Failed to export metrics: " + e.getMessage());
+        }
+
+        // Unified dashboard + validation files
+        writeTruckDashboard(exporter.getRunDirectory());
+        if (validationReport != null) {
+            writeTruckValidation(exporter.getRunDirectory(), validationReport);
+        }
+
         long simEnd = System.currentTimeMillis();
-        System.out.printf("\n[COMPLETE] Total simulation time: %.1fs%n", (simEnd - simStart) / 1000.0);
+        System.out.printf("\n[COMPLETE] Output: %s%n", exporter.getRunDirectory());
+        System.out.printf("[TIMING] Total simulation: %.1fs%n", (simEnd - simStart) / 1000.0);
+        if (validationReport != null) {
+            System.out.printf("[VALIDATION] Grade: %s (%d/%d tests passed)%n",
+                    validationReport.grade, validationReport.passedTests, validationReport.totalTests);
+        }
+        System.out.println("  Total trucks: " + truckFleet.size());
+        System.out.println("  Total zones: " + deliveryZones.size() + " (expanded nationwide)");
     }
 
     public void run(String[] args, boolean loadConfig,
@@ -791,6 +819,13 @@ public class TruckSimulation {
         } catch (IOException e) {
             System.err.println("[ERROR] Failed to export metrics: " + e.getMessage());
         }
+
+        // Write unified dashboard.csv and validation.csv
+        writeTruckDashboard(exporter.getRunDirectory());
+        if (validationReport != null) {
+            writeTruckValidation(exporter.getRunDirectory(), validationReport);
+        }
+
         long t5 = System.currentTimeMillis();
         System.out.println("[TIMING] Export: " + String.format("%.1f", (t5 - t4) / 1000.0) + "s");
 
@@ -844,6 +879,66 @@ public class TruckSimulation {
             sb.append(str);
         }
         return sb.toString();
+    }
+
+    /** Write unified dashboard.csv for truck ABM. */
+    private void writeTruckDashboard(String runDir) {
+        int heavy = 0, medium = 0, small = 0, light = 0;
+        int delivery = 0, longHaul = 0, mixed = 0;
+        for (TruckAgent t : truckFleet) {
+            switch (t.getVehicleSize()) {
+                case "heavy": heavy++; break;
+                case "medium": medium++; break;
+                case "small": small++; break;
+                case "light": light++; break;
+            }
+            TruckType tt = t.getTruckType();
+            if (tt == TruckType.DELIVERY) delivery++;
+            else if (tt == TruckType.LONG_HAUL) longHaul++;
+            else if (tt == TruckType.MIXED_OPERATION) mixed++;
+        }
+        int totalTrips = allTrips.size();
+        int deliveryTrips = 0, emptyTrips = 0;
+        double totalDist = 0, deliveryDist = 0, emptyDist = 0, totalCargo = 0;
+        for (TruckTrip trip : allTrips) {
+            totalDist += trip.getDistanceKm();
+            if (trip.getStatus() == TruckStatus.EMPTY_RUNNING) {
+                emptyTrips++;
+                emptyDist += trip.getDistanceKm();
+            } else {
+                deliveryTrips++;
+                deliveryDist += trip.getDistanceKm();
+                totalCargo += trip.getCargoWeightTons();
+            }
+        }
+        double avgCargo = deliveryTrips > 0 ? totalCargo / deliveryTrips : 0;
+        double avgDist = totalTrips > 0 ? totalDist / totalTrips : 0;
+        double avgTripsPerTruck = truckFleet.size() > 0 ? (double) totalTrips / truckFleet.size() : 0;
+
+        Map<String, Double> metrics = MetricsDashboard.buildTruckMetrics(
+                truckFleet.size(), delivery, longHaul, mixed,
+                heavy, medium, small, light,
+                totalTrips, deliveryTrips, emptyTrips,
+                totalDist, deliveryDist, emptyDist,
+                totalCargo, avgCargo, avgTripsPerTruck, avgDist, null);
+
+        MetricsDashboard.writeDashboard(runDir, "truck", null, metrics);
+    }
+
+    /** Write unified validation.csv for truck ABM. */
+    private void writeTruckValidation(String runDir, ValidationEngine.ValidationReport report) {
+        List<String[]> rows = new ArrayList<>();
+        for (ValidationEngine.ValidationResult r : report.results) {
+            rows.add(new String[]{
+                    r.category, r.metric,
+                    String.format("%.2f", r.actual),
+                    String.format("%.2f", r.target),
+                    String.format("%.0f", r.tolerance * 100),
+                    String.format("%.1f", r.getErrorPercent()),
+                    r.passed ? "PASS" : "FAIL"
+            });
+        }
+        MetricsDashboard.writeValidation(runDir, rows, report.grade, report.passRate);
     }
 
     /**
