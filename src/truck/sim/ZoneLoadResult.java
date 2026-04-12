@@ -16,6 +16,7 @@ public class ZoneLoadResult {
 
     public final List<DeliveryZone> deliveryZones;
     public final OriginDestinationMatrix odMatrix;
+    public final GATargetsLoader gaTargets;
     public final CommodityRouter commodityRouter;
     public final TripGenerator tripGenerator;
     public final POIManager poiManager;
@@ -28,6 +29,7 @@ public class ZoneLoadResult {
     public ZoneLoadResult(
             List<DeliveryZone> deliveryZones,
             OriginDestinationMatrix odMatrix,
+            GATargetsLoader gaTargets,
             CommodityRouter commodityRouter,
             TripGenerator tripGenerator,
             POIManager poiManager,
@@ -38,6 +40,7 @@ public class ZoneLoadResult {
             TransportNetworkIndex networkIndex) {
         this.deliveryZones = deliveryZones;
         this.odMatrix = odMatrix;
+        this.gaTargets = gaTargets;
         this.commodityRouter = commodityRouter;
         this.tripGenerator = tripGenerator;
         this.poiManager = poiManager;

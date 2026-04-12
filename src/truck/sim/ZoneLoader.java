@@ -36,6 +36,7 @@ public class ZoneLoader {
     // Populated during loading
     private List<DeliveryZone> deliveryZones;
     private OriginDestinationMatrix odMatrix;
+    private GATargetsLoader gaTargets;
     private CommodityRouter commodityRouter;
     private TripGenerator tripGenerator;
     private POIManager poiManager;
@@ -284,6 +285,16 @@ public class ZoneLoader {
         // Commodity router
         commodityRouter = new CommodityRouter();
         System.out.println("[CHECKPOINT] Initialized CommodityRouter with 9 commodity types");
+
+        // F0084: load File 08 generation/attraction totals — used by
+        // FleetFactory to weight zone fleet seeding by truck counts.
+        try {
+            gaTargets = GATargetsLoader.loadDefault();
+            System.out.println("[CHECKPOINT] Loaded GA targets ("
+                + gaTargets.size() + " zones)");
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load ga_targets.csv", e);
+        }
 
         // Trip generator
         tripGenerator = new TripGenerator(config);
@@ -623,11 +634,25 @@ public class ZoneLoader {
         java.util.concurrent.atomic.AtomicInteger mergedCount = new java.util.concurrent.atomic.AtomicInteger();
 
         deliveryZones.parallelStream().forEach(zone -> {
+            // Skip BuiltUpIndex for zones with radius > 30km — raster envelope
+            // at this scale causes int overflow in SAT array allocation.
+            // These zones fall back to zone-center coordinate generation.
+            if (zone.getRadiusKm() > 30.0) {
+                skippedCount.incrementAndGet();
+                return;
+            }
+
             List<PointOfInterest> zonePOIs = poiManager.getPOIsInZone(zone.getZoneId());
 
-            // Build from primary raster
-            BuiltUpIndex primaryIndex = new BuiltUpIndex(zone, r1,
-                r1MinLon, r1MaxLon, r1MinLat, r1MaxLat, r1Width, r1Height, zonePOIs);
+            // Build from primary raster (try-catch for large-envelope overflow)
+            BuiltUpIndex primaryIndex;
+            try {
+                primaryIndex = new BuiltUpIndex(zone, r1,
+                    r1MinLon, r1MaxLon, r1MinLat, r1MaxLat, r1Width, r1Height, zonePOIs);
+            } catch (NegativeArraySizeException | OutOfMemoryError e) {
+                skippedCount.incrementAndGet();
+                return;
+            }
 
             // Build from extension raster if zone extends beyond primary bounds
             BuiltUpIndex extIndex = null;
@@ -643,9 +668,13 @@ public class ZoneLoader {
                     // Exclude primary raster bounds to avoid duplicate pixels
                     org.locationtech.jts.geom.Envelope primaryBounds =
                         new org.locationtech.jts.geom.Envelope(r1MinLon, r1MaxLon, r1MinLat, r1MaxLat);
-                    extIndex = new BuiltUpIndex(zone, r2,
-                        r2MinLon, r2MaxLon, r2MinLat, r2MaxLat, r2Width, r2Height, zonePOIs,
-                        primaryBounds);
+                    try {
+                        extIndex = new BuiltUpIndex(zone, r2,
+                            r2MinLon, r2MaxLon, r2MinLat, r2MaxLat, r2Width, r2Height, zonePOIs,
+                            primaryBounds);
+                    } catch (NegativeArraySizeException | OutOfMemoryError e2) {
+                        // Extension raster overflow — skip, primary index still usable
+                    }
                 }
             }
 
@@ -770,7 +799,7 @@ public class ZoneLoader {
 
     private ZoneLoadResult buildResult() {
         return new ZoneLoadResult(
-            deliveryZones, odMatrix, commodityRouter, tripGenerator,
+            deliveryZones, odMatrix, gaTargets, commodityRouter, tripGenerator,
             poiManager, gaBalancer, metricsTracker, destinationSelector,
             pointGenerator, networkIndex
         );

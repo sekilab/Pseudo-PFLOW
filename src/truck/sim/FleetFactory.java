@@ -19,6 +19,7 @@ public class FleetFactory {
     private final Random random;  // Used only for zone weight array construction (deterministic)
     private final List<DeliveryZone> deliveryZones;
     private final OriginDestinationMatrix odMatrix;
+    private final GATargetsLoader gaTargets;
     private final POIManager poiManager;
     private final PointGenerator pointGenerator;
     private final ZoneManager zoneManager;
@@ -26,12 +27,14 @@ public class FleetFactory {
     public FleetFactory(TruckConfig config, Random random,
                         List<DeliveryZone> deliveryZones,
                         OriginDestinationMatrix odMatrix,
+                        GATargetsLoader gaTargets,
                         POIManager poiManager, PointGenerator pointGenerator,
                         ZoneManager zoneManager) {
         this.config = config;
         this.random = random;
         this.deliveryZones = deliveryZones;
         this.odMatrix = odMatrix;
+        this.gaTargets = gaTargets;
         this.poiManager = poiManager;
         this.pointGenerator = pointGenerator;
         this.zoneManager = zoneManager;
@@ -175,18 +178,19 @@ public class FleetFactory {
         double totalLocal = 0.0;
         double totalNational = 0.0;
 
+        // F0084: weight by File 08 generated truck counts (was: tons from
+        // od_volume.csv via odMatrix.getRawOutflowTotal). Trucks are what
+        // we are seeding, so truck-count weighting is the correct unit.
         for (int z = 0; z < n; z++) {
-            double rawFlow = odMatrix.getRawOutflowTotal(z);
-            double localWeight = (rawFlow > 0.0) ? rawFlow : 1.0;
-            totalLocal += localWeight;
+            double truckWeight = zoneTruckWeight(deliveryZones.get(z).getZoneId());
+            totalLocal += truckWeight;
             totalNational += 1.0;
         }
 
         double cumSumLocal = 0.0, cumSumNational = 0.0;
         for (int z = 0; z < n; z++) {
-            double rawFlow = odMatrix.getRawOutflowTotal(z);
-            double localWeight = (rawFlow > 0.0) ? rawFlow : 1.0;
-            cumSumLocal += localWeight;
+            double truckWeight = zoneTruckWeight(deliveryZones.get(z).getZoneId());
+            cumSumLocal += truckWeight;
             cumSumNational += 1.0;
             cumLocal[z] = cumSumLocal;
             cumNational[z] = cumSumNational;
@@ -195,16 +199,24 @@ public class FleetFactory {
         double minW = Double.MAX_VALUE, maxW = 0;
         int minZ = 0, maxZ = 0;
         for (int z = 0; z < n; z++) {
-            double rawFlow = odMatrix.getRawOutflowTotal(z);
-            double w = (rawFlow > 0.0) ? rawFlow : 1.0;
+            double w = zoneTruckWeight(deliveryZones.get(z).getZoneId());
             if (w < minW) { minW = w; minZ = z; }
             if (w > maxW) { maxW = w; maxZ = z; }
         }
-        System.out.println("[Fleet] Zone weight range: min=" + String.format("%.0f", minW) +
-            " (zone" + minZ + ") max=" + String.format("%.0f", maxW) + " (zone" + maxZ + ")");
-        System.out.println("[Fleet] Weight ratio max/min: " + String.format("%.1f", maxW / Math.max(minW, 1)));
+        System.out.println("[Fleet] Zone weight range (truck counts): min="
+            + String.format("%.0f", minW) + " (zone" + minZ + ") max="
+            + String.format("%.0f", maxW) + " (zone" + maxZ + ")");
+        System.out.println("[Fleet] Weight ratio max/min: "
+            + String.format("%.1f", maxW / Math.max(minW, 1)));
 
         return new double[][]{cumLocal, cumNational, {totalLocal}, {totalNational}};
+    }
+
+    /** Lookup helper: returns generated trucks for a zone, or 1.0 if missing
+     *  (so a zone with no MFS data still gets a small chance of fleet seeding). */
+    private double zoneTruckWeight(String zoneId) {
+        int trucks = gaTargets.getGeneratedTrucks(zoneId);
+        return trucks > 0 ? trucks : 1.0;
     }
 
     // ========================================================================
