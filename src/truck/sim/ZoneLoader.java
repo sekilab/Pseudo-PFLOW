@@ -146,6 +146,30 @@ public class ZoneLoader {
         return buildResult();
     }
 
+    /**
+     * Load unified zones from a single CSV file (UNIFIED mode).
+     * Contains 134 zones: 66 Kanto (MFS01-66) + 5 long-haul (MFS67-71)
+     * + 33 non-Kinki prefectures (PRF01-24,PRF31-47)
+     * + 30 Keihanshin detail (OSK01-30).
+     *
+     * @return ZoneLoadResult with all initialized subsystems
+     */
+    public ZoneLoadResult loadUnified() {
+        System.out.println("[UNIFIED] Loading nationwide zones with Keihanshin detail...");
+
+        String configDir = "config/truck/";
+        String unifiedZonesFile = config.getUnifiedZonesFile();
+        int loaded = loadZonesFromFile(configDir + unifiedZonesFile, "UNIFIED");
+
+        System.out.println("[UNIFIED] Total zones loaded: " + loaded +
+            " (Kanto + Keihanshin detail + nationwide prefectures)");
+
+        wireSubsystems();
+        computeGeographyBounds();
+
+        return buildResult();
+    }
+
     // ========================================================================
     // ZONE CSV PARSING
     // ========================================================================
@@ -378,7 +402,14 @@ public class ZoneLoader {
                 System.out.println("[CHECKPOINT] Loaded POIs from CSV files");
             }
 
-            // Link POIs to zones
+            // Census-enhanced POIs: nationwide coverage from Economic Census mesh data
+            boolean censusPOIEnabled = Boolean.parseBoolean(
+                config.getProperty("datasets.census.poi.enabled", "false"));
+            if (censusPOIEnabled) {
+                poiManager.loadCensusPOIs("config/truck/facilities/");
+            }
+
+            // Link POIs to zones (includes both Telepoint + census POIs)
             for (DeliveryZone zone : deliveryZones) {
                 List<PointOfInterest> zonePOIs = poiManager.getPOIsInZone(zone.getZoneId());
                 zone.setPOIs(zonePOIs);
@@ -386,7 +417,8 @@ public class ZoneLoader {
             System.out.println("[POI] Total: " +
                 poiManager.getLogisticCenters().size() + " logistic centers, " +
                 poiManager.getRetailShops().size() + " retail shops, " +
-                poiManager.getShoppingMalls().size() + " shopping malls");
+                poiManager.getShoppingMalls().size() + " shopping malls, " +
+                poiManager.getWholesaleFacilities().size() + " wholesale facilities");
         } catch (IOException e) {
             System.err.println("[POI] Warning: Could not initialize POIs: " + e.getMessage());
             System.err.println("[POI] Will use zone-based destination selection");

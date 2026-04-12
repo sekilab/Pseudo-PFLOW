@@ -28,7 +28,9 @@ public class TruckConfig {
         /** Run BOTH for complete validation */
         DUAL,
         /** Nationwide: 106 zones (66 Kanto + 40 prefecture sub-zones from MFS67-71 disaggregation) */
-        EXPANDED
+        EXPANDED,
+        /** Unified: 134 zones (Kanto detail + Keihanshin detail + national coverage) */
+        UNIFIED
     }
 
     private static TruckConfig instance;
@@ -405,6 +407,13 @@ public class TruckConfig {
     public SimulationMode getSimulationMode() {
         String mode = getProperty("simulation.mode", "DUAL");
         return SimulationMode.valueOf(mode.toUpperCase());
+    }
+
+    /**
+     * Get the zones file for UNIFIED mode (134 zones: Kanto + Keihanshin detail).
+     */
+    public String getUnifiedZonesFile() {
+        return getProperty("zones.file.unified", "zones/unified.csv");
     }
 
     public int getTruckFleetSize() { return truckFleetSize; }

@@ -128,15 +128,18 @@ public class TruckSimulation {
      * Delegates to {@link ZoneLoader} and unpacks the result.
      */
     private void initializeZones(boolean isDualMode, String intraZonesFile, String interZonesFile) {
-        initializeZones(isDualMode, false, intraZonesFile, interZonesFile);
+        initializeZones(isDualMode, false, false, intraZonesFile, interZonesFile);
     }
 
     private void initializeZones(boolean isDualMode, boolean isExpandedMode,
+                                  boolean isUnifiedMode,
                                   String intraZonesFile, String interZonesFile) {
         ZoneLoader loader = new ZoneLoader(config, random, geoValidator, zoneManager, metroConfig);
 
         ZoneLoadResult result;
-        if (isExpandedMode) {
+        if (isUnifiedMode) {
+            result = loader.loadUnified();
+        } else if (isExpandedMode) {
             result = loader.loadExpanded();
         } else if (isDualMode) {
             result = loader.loadDual(intraZonesFile, interZonesFile);
@@ -700,7 +703,7 @@ public class TruckSimulation {
 
         // Initialize delivery zones in expanded mode
         long t0 = System.currentTimeMillis();
-        initializeZones(false, true, null, null);
+        initializeZones(false, true, false, null, null);
         long t1 = System.currentTimeMillis();
         System.out.println("[TIMING] Zone init: " + String.format("%.1f", (t1 - t0) / 1000.0) + "s");
 
@@ -744,6 +747,59 @@ public class TruckSimulation {
         }
         System.out.println("  Total trucks: " + truckFleet.size());
         System.out.println("  Total zones: " + deliveryZones.size() + " (expanded nationwide)");
+    }
+
+    /**
+     * Run in UNIFIED mode (134 zones: Kanto + Keihanshin detail + nationwide).
+     */
+    public void runUnified(String[] args) {
+        long simStart = System.currentTimeMillis();
+
+        System.out.println("=================================================================");
+        System.out.println("  TRUCK ABM V3.1 - UNIFIED KANTO + KEIHANSHIN (134 ZONES)");
+        System.out.println("  MFS 2013 Kanto + Osaka overlay");
+        System.out.println("=================================================================");
+
+        // Initialize delivery zones in unified mode
+        long t0 = System.currentTimeMillis();
+        initializeZones(false, false, true, null, null);
+        long t1 = System.currentTimeMillis();
+        System.out.println("[TIMING] Zone init: " + String.format("%.1f", (t1 - t0) / 1000.0) + "s");
+
+        // Run same simulation phases as DUAL/EXPANDED
+        initializeTrucks();
+        long t2 = System.currentTimeMillis();
+        System.out.println("[TIMING] Fleet init: " + String.format("%.1f", (t2 - t1) / 1000.0) + "s");
+
+        generateTrips();
+        long t3 = System.currentTimeMillis();
+        System.out.println("[TIMING] Trip gen: " + String.format("%.1f", (t3 - t2) / 1000.0) + "s");
+
+        // Validation
+        System.out.println("\n[CHECKPOINT] Running MFS validation...");
+        ValidationEngine.ValidationReport validationReport = runMFSValidation();
+
+        // Export
+        System.out.println("\n[CHECKPOINT] Exporting results...");
+        TruckDataExporter exporter = new TruckDataExporter(config.getOutputDirectory());
+        exporter.setDeliveryZones(deliveryZones);
+        exporter.exportAll(truckFleet, allTrips);
+
+        try {
+            metricsTracker.exportToCSV(exporter.getRunDirectory());
+        } catch (IOException e) {
+            System.err.println("[ERROR] Failed to export metrics: " + e.getMessage());
+        }
+
+        // Unified dashboard + validation files
+        writeTruckDashboard(exporter.getRunDirectory());
+        if (validationReport != null) {
+            writeTruckValidation(exporter.getRunDirectory(), validationReport);
+        }
+
+        long simEnd = System.currentTimeMillis();
+        System.out.printf("\n[COMPLETE] Output: %s%n", exporter.getRunDirectory());
+        System.out.printf("[COMPLETE] Total time: %.1f seconds%n", (simEnd - simStart) / 1000.0);
     }
 
     public void run(String[] args, boolean loadConfig,
@@ -1025,6 +1081,11 @@ public class TruckSimulation {
             case EXPANDED:
                 System.out.println("[Config] Simulation mode: EXPANDED (nationwide 106 zones)");
                 sim.runExpanded(args);
+                break;
+
+            case UNIFIED:
+                System.out.println("[Config] Simulation mode: UNIFIED (Kanto + Keihanshin 134 zones)");
+                sim.runUnified(args);
                 break;
 
             default:
