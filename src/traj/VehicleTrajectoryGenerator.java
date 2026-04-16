@@ -53,6 +53,7 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
     private final RoutingCache cache;          // nullable — null means no caching
     private final RoutingCache highwayCache;   // nullable — cache for highway network
     private final double highwayThresholdKm;   // trips above this use highway network
+    private final boolean includeGeometry;     // true = emit intermediate road shape points
 
     // Counters for summary
     private final AtomicInteger routedTrips = new AtomicInteger(0);
@@ -66,7 +67,7 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
                                        Map<Integer, List<R>> vehicleRecords,
                                        TrajectoryOutputWriter<R> writer,
                                        double fallbackSpeedKmh) {
-        this(road, vehicleRecords, writer, fallbackSpeedKmh, null);
+        this(road, vehicleRecords, writer, fallbackSpeedKmh, null, false);
     }
 
     /** Single-network with cache (taxis). */
@@ -75,7 +76,17 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
                                        TrajectoryOutputWriter<R> writer,
                                        double fallbackSpeedKmh,
                                        RoutingCache cache) {
-        this(road, null, vehicleRecords, writer, fallbackSpeedKmh, cache, null, Double.MAX_VALUE);
+        this(road, null, vehicleRecords, writer, fallbackSpeedKmh, cache, null, Double.MAX_VALUE, false);
+    }
+
+    /** Single-network with cache and geometry mode (taxis). */
+    public VehicleTrajectoryGenerator(Network road,
+                                       Map<Integer, List<R>> vehicleRecords,
+                                       TrajectoryOutputWriter<R> writer,
+                                       double fallbackSpeedKmh,
+                                       RoutingCache cache,
+                                       boolean includeGeometry) {
+        this(road, null, vehicleRecords, writer, fallbackSpeedKmh, cache, null, Double.MAX_VALUE, includeGeometry);
     }
 
     /**
@@ -90,13 +101,15 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
      * @param cache              routing cache for full network
      * @param highwayCache       routing cache for highway network, or null
      * @param highwayThresholdKm trips above this use highway network (e.g. 200km)
+     * @param includeGeometry    true = emit intermediate road shape points in output
      */
     public VehicleTrajectoryGenerator(Network road, Network highwayRoad,
                                        Map<Integer, List<R>> vehicleRecords,
                                        TrajectoryOutputWriter<R> writer,
                                        double fallbackSpeedKmh,
                                        RoutingCache cache, RoutingCache highwayCache,
-                                       double highwayThresholdKm) {
+                                       double highwayThresholdKm,
+                                       boolean includeGeometry) {
         this.road = road;
         this.highwayRoad = highwayRoad;
         this.vehicleRecords = vehicleRecords;
@@ -105,6 +118,7 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
         this.cache = cache;
         this.highwayCache = highwayCache;
         this.highwayThresholdKm = highwayThresholdKm;
+        this.includeGeometry = includeGeometry;
     }
 
     /**
@@ -153,27 +167,35 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
 
     /**
      * Write a routed trajectory: interpolate timestamps along route nodes.
+     * <p>
+     * In lightweight mode, emits one waypoint per network node (~150m apart).
+     * In full geometry mode, emits intermediate road shape points from each link's
+     * stored WKT geometry, producing road-following curves (~10-30m apart).
+     *
      * @return number of waypoints written
      */
     private int writeRoute(BufferedWriter bw, R rec, Trip trip, Route route,
                            ILonLat origin, ILonLat dest) throws Exception {
         List<Node> nodes = route.listNodes();
+        List<Link> links = route.listLinks();
         long startTimeSec = BASE_DATE_SEC + trip.getDepTime();
         long endTimeSec = startTimeSec + (long) route.getCost();
 
+        if (includeGeometry) {
+            return writeRouteWithGeometry(bw, rec, links, origin, dest, startTimeSec, endTimeSec);
+        }
+
+        // Lightweight mode: one waypoint per network node
         Map<Node, Date> timeMap = TrajectoryUtils.putTimeStamp(
                 nodes,
                 new Date(startTimeSec * 1000),
                 new Date(endTimeSec * 1000)
         );
 
-        List<Link> links = route.listLinks();
-
         for (int i = 0; i < nodes.size(); i++) {
             ILonLat node = nodes.get(i);
             Date date = timeMap.get(node);
 
-            // Override first/last with exact trip coordinates
             double lon = node.getLon();
             double lat = node.getLat();
             if (i == 0) {
@@ -190,6 +212,76 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
             writer.writeWaypoint(bw, rec, unixMs, lon, lat, linkId);
         }
         return nodes.size();
+    }
+
+    /**
+     * Full geometry mode: emit intermediate road shape points from each link.
+     * Builds a flat point list from all link geometries, then interpolates
+     * timestamps proportional to cumulative distance.
+     */
+    private int writeRouteWithGeometry(BufferedWriter bw, R rec, List<Link> links,
+                                        ILonLat origin, ILonLat dest,
+                                        long startTimeSec, long endTimeSec) throws Exception {
+        // Build flat list of all waypoints with their link IDs and cumulative distances
+        List<double[]> points = new ArrayList<>();   // [lon, lat, cumDist]
+        List<String> linkIds = new ArrayList<>();
+        double cumDist = 0.0;
+
+        // First point: exact origin
+        points.add(new double[]{origin.getLon(), origin.getLat(), 0.0});
+        linkIds.add("");
+
+        for (Link link : links) {
+            List<ILonLat> geom = link.getLineString();
+            String lid = link.getLinkID();
+
+            if (geom != null && geom.size() > 1) {
+                // Emit intermediate points (skip first — it's the previous node/point)
+                for (int j = 1; j < geom.size(); j++) {
+                    ILonLat prev = geom.get(j - 1);
+                    ILonLat curr = geom.get(j);
+                    cumDist += haversineM(prev.getLat(), prev.getLon(), curr.getLat(), curr.getLon());
+                    points.add(new double[]{curr.getLon(), curr.getLat(), cumDist});
+                    linkIds.add(lid);
+                }
+            } else {
+                // No geometry on this link — use head node position
+                Node head = link.getHeadNode();
+                double[] prev = points.get(points.size() - 1);
+                cumDist += haversineM(prev[1], prev[0], head.getLat(), head.getLon());
+                points.add(new double[]{head.getLon(), head.getLat(), cumDist});
+                linkIds.add(lid);
+            }
+        }
+
+        // Override last point with exact destination
+        if (!points.isEmpty()) {
+            double[] last = points.get(points.size() - 1);
+            last[0] = dest.getLon();
+            last[1] = dest.getLat();
+        }
+
+        // Interpolate timestamps proportional to cumulative distance
+        double totalDist = cumDist > 0 ? cumDist : 1.0;
+        long durationMs = (endTimeSec - startTimeSec) * 1000;
+        long startMs = startTimeSec * 1000;
+
+        for (int i = 0; i < points.size(); i++) {
+            double[] pt = points.get(i);
+            long unixMs = startMs + (long)(durationMs * pt[2] / totalDist);
+            writer.writeWaypoint(bw, rec, unixMs, pt[0], pt[1], linkIds.get(i));
+        }
+        return points.size();
+    }
+
+    /** Fast haversine distance in meters. */
+    private static double haversineM(double lat1, double lon1, double lat2, double lon2) {
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                   Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                   Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        return 6371000.0 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
     /**

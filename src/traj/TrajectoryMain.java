@@ -57,6 +57,15 @@ public class TrajectoryMain {
             }
         }
         int maxRoadClass = args.length > 5 ? Integer.parseInt(args[5].trim()) : 9;
+        boolean includeGeometry = false;
+        if (args.length > 6) {
+            String geoArg = args[6].trim().toLowerCase();
+            includeGeometry = "full".equals(geoArg);
+            if (!"full".equals(geoArg) && !"lightweight".equals(geoArg)) {
+                System.err.printf("[MAIN] Unknown geometry mode '%s'. Use 'full' or 'lightweight'.%n", geoArg);
+                return;
+            }
+        }
 
         // Set default output dir based on vehicle type if not specified
         if (outputDir == null) {
@@ -77,14 +86,17 @@ public class TrajectoryMain {
         System.out.printf("[MAIN] Prefectures: %s%n", Arrays.toString(prefCodes));
         System.out.printf("[MAIN] Max road class: %d (%s)%n", maxRoadClass,
                 maxRoadClass > 0 ? "filtering minor roads" : "all roads");
+        System.out.printf("[MAIN] Geometry mode: %s (%s)%n",
+                includeGeometry ? "full" : "lightweight",
+                includeGeometry ? "road-following curves, ~14GB heap" : "node-only waypoints, ~10GB heap");
 
         // Dispatch to vehicle-specific pipeline
         switch (vehicleType) {
             case "truck":
-                runTruck(tripsCsv, networkDir, outputDir, prefCodes, maxRoadClass);
+                runTruck(tripsCsv, networkDir, outputDir, prefCodes, maxRoadClass, includeGeometry);
                 break;
             case "taxi":
-                runTaxi(tripsCsv, networkDir, outputDir, prefCodes, maxRoadClass);
+                runTaxi(tripsCsv, networkDir, outputDir, prefCodes, maxRoadClass, includeGeometry);
                 break;
             default:
                 System.err.printf("[MAIN] Unknown vehicle type: '%s'. Supported: truck, taxi%n", vehicleType);
@@ -102,7 +114,7 @@ public class TrajectoryMain {
     private static final int HIGHWAY_ROAD_CLASS = 7;
 
     private static void runTruck(String tripsCsv, String networkDir, String outputDir,
-                                  int[] prefCodes, int maxRoadClass) {
+                                  int[] prefCodes, int maxRoadClass, boolean includeGeometry) {
         // Step 1: Parse trips (single read)
         System.out.println("\n[STEP 1] Loading truck trips...");
         long t1 = System.currentTimeMillis();
@@ -117,13 +129,14 @@ public class TrajectoryMain {
         }
 
         // Step 2a: Load full DRM road network (rdclass ≤ 9, for short/medium trips)
-        Network road = loadNetwork(networkDir, prefCodes, maxRoadClass);
+        Network road = loadNetwork(networkDir, prefCodes, maxRoadClass, includeGeometry);
         if (road == null) return;
 
         // Step 2b: Load highway-only network (rdclass ≤ 5, for long-haul trips > 200km)
+        // Highway network always lightweight — geometry not needed for long-haul routing
         System.out.println("\n[STEP 2b] Loading highway-only network (rdclass <= " + HIGHWAY_ROAD_CLASS + ")...");
         long t2b = System.currentTimeMillis();
-        Network highway = DrmNetworkLoader.loadPrefectures(networkDir, prefCodes, HIGHWAY_ROAD_CLASS);
+        Network highway = DrmNetworkLoader.loadPrefectures(networkDir, prefCodes, HIGHWAY_ROAD_CLASS, false);
         System.out.printf("[STEP 2b] Done in %.1fs — %,d highway links%n",
                 (System.currentTimeMillis() - t2b) / 1000.0, highway.linkCount());
 
@@ -142,13 +155,13 @@ public class TrajectoryMain {
                 NativeNearestNode.SLOT_HIGHWAY);
         VehicleTrajectoryGenerator<TruckTripRecord> gen =
                 new VehicleTrajectoryGenerator<>(road, highway, records, new TruckTrajectoryWriter(),
-                        30.0, fullCache, highwayCache, HIGHWAY_THRESHOLD_KM);
+                        30.0, fullCache, highwayCache, HIGHWAY_THRESHOLD_KM, includeGeometry);
         gen.generate(persons, outputDir);
         System.out.printf("[STEP 4] Done in %.1fs%n", (System.currentTimeMillis() - t3) / 1000.0);
     }
 
     private static void runTaxi(String tripsCsv, String networkDir, String outputDir,
-                                 int[] prefCodes, int maxRoadClass) {
+                                 int[] prefCodes, int maxRoadClass, boolean includeGeometry) {
         // Step 1: Parse trips (single read)
         System.out.println("\n[STEP 1] Loading taxi trips...");
         long t1 = System.currentTimeMillis();
@@ -163,7 +176,7 @@ public class TrajectoryMain {
         }
 
         // Step 2: Load DRM road network
-        Network road = loadNetwork(networkDir, prefCodes, maxRoadClass);
+        Network road = loadNetwork(networkDir, prefCodes, maxRoadClass, includeGeometry);
         if (road == null) return;
 
         // Step 3: Build KD-tree for accelerated nearest-node snapping
@@ -175,7 +188,8 @@ public class TrajectoryMain {
         RoutingCache cache = new RoutingCache(0.3, kdBuild.tree, kdBuild.nodes,
                 NativeNearestNode.SLOT_FULL);
         VehicleTrajectoryGenerator<TaxiTripRecord> gen =
-                new VehicleTrajectoryGenerator<>(road, records, new TaxiTrajectoryWriter(), 25.0, cache);
+                new VehicleTrajectoryGenerator<>(road, records, new TaxiTrajectoryWriter(), 25.0, cache,
+                        includeGeometry);
         gen.generate(persons, outputDir);
         System.out.printf("[STEP 4] Done in %.1fs%n", (System.currentTimeMillis() - t3) / 1000.0);
     }
@@ -214,10 +228,11 @@ public class TrajectoryMain {
         return result;
     }
 
-    private static Network loadNetwork(String networkDir, int[] prefCodes, int maxRoadClass) {
+    private static Network loadNetwork(String networkDir, int[] prefCodes, int maxRoadClass,
+                                        boolean includeGeometry) {
         System.out.println("\n[STEP 2] Loading DRM road network...");
         long t2 = System.currentTimeMillis();
-        Network road = DrmNetworkLoader.loadPrefectures(networkDir, prefCodes, maxRoadClass);
+        Network road = DrmNetworkLoader.loadPrefectures(networkDir, prefCodes, maxRoadClass, includeGeometry);
         System.out.printf("[STEP 2] Done in %.1fs — %,d links loaded%n",
                 (System.currentTimeMillis() - t2) / 1000.0, road.linkCount());
 
@@ -232,17 +247,18 @@ public class TrajectoryMain {
     private static void printUsage() {
         System.out.println("Unified Trajectory Generator for Pseudo-PFLOW");
         System.out.println();
-        System.out.println("Usage: TrajectoryMain <vehicle_type> <trips_csv> [network_dir] [output_dir] [pref_codes] [maxRoadClass]");
+        System.out.println("Usage: TrajectoryMain <vehicle_type> <trips_csv> [network_dir] [output_dir] [pref_codes] [maxRoadClass] [geometryMode]");
         System.out.println();
-        System.out.println("  vehicle_type : truck | taxi");
-        System.out.println("  trips_csv    : path to trips_pseudo_pflow.csv");
-        System.out.println("  network_dir  : directory with drm_XX.tsv files (default: $PFLOW_HOME/data/processing/network)");
-        System.out.println("  output_dir   : trajectory output directory (default: $PFLOW_HOME/output/trajectory/<type>)");
-        System.out.println("  pref_codes   : comma-separated prefecture codes (default: 8,9,10,11,12,13,14)");
-        System.out.println("  maxRoadClass : max road class to keep, 0=all (default: 9, includes minor roads)");
+        System.out.println("  vehicle_type  : truck | taxi");
+        System.out.println("  trips_csv     : path to trips_pseudo_pflow.csv");
+        System.out.println("  network_dir   : directory with drm_XX.tsv files (default: $PFLOW_HOME/data/processing/network)");
+        System.out.println("  output_dir    : trajectory output directory (default: $PFLOW_HOME/output/trajectory/<type>)");
+        System.out.println("  pref_codes    : comma-separated prefecture codes (default: 8,9,10,11,12,13,14)");
+        System.out.println("  maxRoadClass  : max road class to keep, 0=all (default: 9, includes minor roads)");
+        System.out.println("  geometryMode  : lightweight (default, ~10GB, node-only) | full (~14GB, road-following curves)");
         System.out.println();
         System.out.println("Examples:");
-        System.out.println("  TrajectoryMain truck $PFLOW_HOME/output/trips/truck/run_LATEST/trips_pseudo_pflow.csv");
-        System.out.println("  TrajectoryMain taxi  $PFLOW_HOME/output/trips/taxi/tokyo/run_LATEST/trips_pseudo_pflow.csv");
+        System.out.println("  TrajectoryMain truck trips.csv                                         # lightweight (default)");
+        System.out.println("  TrajectoryMain taxi  trips.csv netdir outdir 8,9,10,11,12,13,14 9 full # full road geometry");
     }
 }
