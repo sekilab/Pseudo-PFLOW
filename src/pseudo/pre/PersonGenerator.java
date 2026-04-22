@@ -24,6 +24,7 @@ import pseudo.res.ELabor;
 import pseudo.res.GLonLat;
 import pseudo.res.HouseHold;
 import pseudo.res.Person;
+import util.PathResolver;
 import utils.Roulette;
 
 public class PersonGenerator{
@@ -222,7 +223,7 @@ public class PersonGenerator{
 		Properties prop = new Properties();
 		prop.load(inputStream);
 
-		String root = prop.getProperty("legacy.stat.root");
+		String root = PathResolver.resolve(prop.getProperty("legacy.stat.root"));
 		
 		// load data
 		String laborFile = String.format("%spre_labor_rate.csv", root);

@@ -2,6 +2,7 @@ package truck.sim;
 
 import truck.sim.spatial.GeoValidator;
 import truck.sim.spatial.PointGenerator;
+import util.MetricsDashboard;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -47,6 +48,7 @@ public class TruckSimulation {
 
     // Simulation components
     private OriginDestinationMatrix odMatrix;
+    private GATargetsLoader gaTargets;
     private CommodityRouter commodityRouter;
     private TripGenerator tripGenerator;
     private POIManager poiManager;
@@ -126,10 +128,20 @@ public class TruckSimulation {
      * Delegates to {@link ZoneLoader} and unpacks the result.
      */
     private void initializeZones(boolean isDualMode, String intraZonesFile, String interZonesFile) {
+        initializeZones(isDualMode, false, false, intraZonesFile, interZonesFile);
+    }
+
+    private void initializeZones(boolean isDualMode, boolean isExpandedMode,
+                                  boolean isUnifiedMode,
+                                  String intraZonesFile, String interZonesFile) {
         ZoneLoader loader = new ZoneLoader(config, random, geoValidator, zoneManager, metroConfig);
 
         ZoneLoadResult result;
-        if (isDualMode) {
+        if (isUnifiedMode) {
+            result = loader.loadUnified();
+        } else if (isExpandedMode) {
+            result = loader.loadExpanded();
+        } else if (isDualMode) {
             result = loader.loadDual(intraZonesFile, interZonesFile);
         } else {
             result = loader.loadSingle();
@@ -138,6 +150,7 @@ public class TruckSimulation {
         // Unpack results into simulation fields
         this.deliveryZones = result.deliveryZones;
         this.odMatrix = result.odMatrix;
+        this.gaTargets = result.gaTargets;
         this.commodityRouter = result.commodityRouter;
         this.tripGenerator = result.tripGenerator;
         this.poiManager = result.poiManager;
@@ -157,7 +170,8 @@ public class TruckSimulation {
      */
     private void initializeTrucks() {
         FleetFactory factory = new FleetFactory(config, random,
-            deliveryZones, odMatrix, poiManager, pointGenerator, zoneManager);
+            deliveryZones, odMatrix, gaTargets,
+            poiManager, pointGenerator, zoneManager);
         this.truckFleet = factory.createFleet();
     }
 
@@ -304,7 +318,7 @@ public class TruckSimulation {
             // Generate delivery trip — pass current zone ID to avoid re-computation
             DeliveryTripResult result = generateDeliveryTrip(truck, lastDropoffLon, lastDropoffLat,
                                                   hasLastDropoff, currentTime,
-                                                  lastDropoffPOIId, currentZoneId);
+                                                  lastDropoffPOIId, currentZoneId, tripNum);
             TruckTrip trip = result.trip;
             if (trip == null) {
                 break;
@@ -481,7 +495,7 @@ public class TruckSimulation {
      */
     private DeliveryTripResult generateDeliveryTrip(TruckAgent truck, double lastDropoffLon, double lastDropoffLat,
                                          boolean hasLastDropoff, long currentTime,
-                                         String originPOIId, String currentZoneId) {
+                                         String originPOIId, String currentZoneId, int tourStopNumber) {
         boolean isInterMetro = metroConfig.shouldMakeInterMetroTrip(ThreadLocalRandom.current(), truck.getTruckType(), config);
 
         double[] origin = hasLastDropoff ?
@@ -501,8 +515,28 @@ public class TruckSimulation {
             distance = destinationSelector.calculateInterMetroDistance();
         } else {
             isInterMetro = false;
-            destResult = destinationSelector.selectIntraMetroDestination(
-                truck, origin, currentTime, commodityType, originZoneId);
+
+            // V5.2: DELIVERY trucks use tour-based destination selection
+            if (truck.getTruckType() == TruckType.DELIVERY) {
+                double maxDistKm;
+                double decayFactor;
+                if (tourStopNumber == 0) {
+                    // First stop: depot → first POI (longer trip allowed)
+                    maxDistKm = config.getDeliveryFirstStopMaxKm();
+                    decayFactor = config.getDeliveryDecayFirst();
+                } else {
+                    // Subsequent stops: POI → POI (short legs)
+                    maxDistKm = config.getDeliveryStopToStopMaxKm();
+                    decayFactor = config.getDeliveryDecaySubsequent();
+                }
+
+                destResult = destinationSelector.selectDeliveryTourStop(
+                    truck, origin, maxDistKm, decayFactor,
+                    originZoneId, currentTime, commodityType);
+            } else {
+                destResult = destinationSelector.selectIntraMetroDestination(
+                    truck, origin, currentTime, commodityType, originZoneId);
+            }
 
             if (destResult == null) {
                 return DeliveryTripResult.atCapacity(currentTime);
@@ -510,15 +544,23 @@ public class TruckSimulation {
 
             distance = zoneManager.calculateDistanceFast(origin[0], origin[1], destResult.coords[0], destResult.coords[1]);
 
-            if (truck.getTruckType() == TruckType.LONG_HAUL) {
-                destResult = destinationSelector.applyLongHaulConstraints(truck, origin, commodityType);
-                distance = zoneManager.calculateDistanceFast(origin[0], origin[1], destResult.coords[0], destResult.coords[1]);
-            }
-
-            // DELIVERY trucks: enforce maximum distance constraint
-            if (truck.getTruckType() == TruckType.DELIVERY && distance > 35.0) {
-                destResult = destinationSelector.selectNearbyDestination(truck, origin, 35.0, originZoneId);
-                distance = zoneManager.calculateDistanceFast(origin[0], origin[1], destResult.coords[0], destResult.coords[1]);
+            // LONG_HAUL: enforce minimum distance floor (50 km) — if O-D balanced
+            // result is too short, retry with inter-zone selection as fallback
+            if (truck.getTruckType() == TruckType.LONG_HAUL && distance < 50.0) {
+                // O-D matrix gave a nearby zone — acceptable for some trips, but
+                // retry once for a longer destination to match long-haul character
+                DestinationResult retry = destinationSelector.selectBalancedDestination(
+                    truck, origin, originZoneId, currentTime, commodityType);
+                if (retry != null) {
+                    double retryDist = zoneManager.calculateDistanceFast(
+                        origin[0], origin[1], retry.coords[0], retry.coords[1]);
+                    if (retryDist >= 50.0) {
+                        destResult = retry;
+                        distance = retryDist;
+                    }
+                }
+                // If still short, keep the O-D result — some long-haul trips are
+                // legitimately intra-zone (loading at depot, delivering nearby)
             }
 
             // MIXED trucks: enforce maximum distance constraint
@@ -541,7 +583,8 @@ public class TruckSimulation {
 
         double cargoWeight = tripGenerator.generateCargoWeight(
             originFacility, commodityType, truck.getVehicleSize(),
-            truck.getCapacityTons(), commodityRouter, constraint
+            truck.getCapacityTons(), commodityRouter, constraint,
+            originZoneId
         );
 
         double loadingTime = generateLoadingTime();
@@ -575,47 +618,6 @@ public class TruckSimulation {
         }
 
         return new DeliveryTripResult(trip, currentTime, isInterMetro, destResult.poiId);
-    }
-
-    /**
-     * Generate cargo weight using gamma distribution.
-     */
-    private double generateCargoWeight(double capacityTons) {
-        double shape = config.getCargoWeightGammaShape();
-        double scale = config.getCargoWeightGammaScale();
-        double cargoWeight = generateGamma(shape, scale);
-        return Math.min(cargoWeight, capacityTons);
-    }
-
-    /**
-     * Generate gamma-distributed random variable using Marsaglia and Tsang method.
-     */
-    private double generateGamma(double shape, double scale) {
-        if (shape < 1.0) {
-            return generateGamma(shape + 1.0, scale) * Math.pow(ThreadLocalRandom.current().nextDouble(), 1.0 / shape);
-        }
-
-        double d = shape - 1.0 / 3.0;
-        double c = 1.0 / Math.sqrt(9.0 * d);
-
-        while (true) {
-            double x, v;
-            do {
-                x = ThreadLocalRandom.current().nextGaussian();
-                v = 1.0 + c * x;
-            } while (v <= 0);
-
-            v = v * v * v;
-            double u = ThreadLocalRandom.current().nextDouble();
-
-            if (u < 1.0 - 0.0331 * x * x * x * x) {
-                return d * v * scale;
-            }
-
-            if (Math.log(u) < 0.5 * x * x + d * (1.0 - v + Math.log(v))) {
-                return d * v * scale;
-            }
-        }
     }
 
     // ========================================================================
@@ -688,6 +690,118 @@ public class TruckSimulation {
      * @param intraZonesFile Intra-metro zones file for DUAL mode (null for SINGLE mode)
      * @param interZonesFile Inter-metro zones file for DUAL mode (null for SINGLE mode)
      */
+    /**
+     * Run in EXPANDED mode (nationwide 106 zones).
+     */
+    public void runExpanded(String[] args) {
+        long simStart = System.currentTimeMillis();
+
+        System.out.println("=================================================================");
+        System.out.println("  TRUCK ABM V3.0 - EXPANDED NATIONWIDE (106 ZONES)");
+        System.out.println("  MFS 2013 + prefecture-level disaggregation");
+        System.out.println("=================================================================");
+
+        // Initialize delivery zones in expanded mode
+        long t0 = System.currentTimeMillis();
+        initializeZones(false, true, false, null, null);
+        long t1 = System.currentTimeMillis();
+        System.out.println("[TIMING] Zone init: " + String.format("%.1f", (t1 - t0) / 1000.0) + "s");
+
+        // Run same simulation phases as DUAL
+        initializeTrucks();
+        long t2 = System.currentTimeMillis();
+        System.out.println("[TIMING] Fleet init: " + String.format("%.1f", (t2 - t1) / 1000.0) + "s");
+
+        generateTrips();
+        long t3 = System.currentTimeMillis();
+        System.out.println("[TIMING] Trip gen: " + String.format("%.1f", (t3 - t2) / 1000.0) + "s");
+
+        // Validation
+        System.out.println("\n[CHECKPOINT] Running MFS validation...");
+        ValidationEngine.ValidationReport validationReport = runMFSValidation();
+
+        // Export
+        System.out.println("\n[CHECKPOINT] Exporting results...");
+        TruckDataExporter exporter = new TruckDataExporter(config.getOutputDirectory());
+        exporter.setDeliveryZones(deliveryZones);
+        exporter.exportAll(truckFleet, allTrips);
+
+        try {
+            metricsTracker.exportToCSV(exporter.getRunDirectory());
+        } catch (IOException e) {
+            System.err.println("[ERROR] Failed to export metrics: " + e.getMessage());
+        }
+
+        // Unified dashboard + validation files
+        writeTruckDashboard(exporter.getRunDirectory());
+        if (validationReport != null) {
+            writeTruckValidation(exporter.getRunDirectory(), validationReport);
+        }
+
+        long simEnd = System.currentTimeMillis();
+        System.out.printf("\n[COMPLETE] Output: %s%n", exporter.getRunDirectory());
+        System.out.printf("[TIMING] Total simulation: %.1fs%n", (simEnd - simStart) / 1000.0);
+        if (validationReport != null) {
+            System.out.printf("[VALIDATION] Grade: %s (%d/%d tests passed)%n",
+                    validationReport.grade, validationReport.passedTests, validationReport.totalTests);
+        }
+        System.out.println("  Total trucks: " + truckFleet.size());
+        System.out.println("  Total zones: " + deliveryZones.size() + " (expanded nationwide)");
+    }
+
+    /**
+     * Run in UNIFIED mode (134 zones: Kanto + Keihanshin detail + nationwide).
+     */
+    public void runUnified(String[] args) {
+        long simStart = System.currentTimeMillis();
+
+        System.out.println("=================================================================");
+        System.out.println("  TRUCK ABM V3.1 - UNIFIED KANTO + KEIHANSHIN (134 ZONES)");
+        System.out.println("  MFS 2013 Kanto + Osaka overlay");
+        System.out.println("=================================================================");
+
+        // Initialize delivery zones in unified mode
+        long t0 = System.currentTimeMillis();
+        initializeZones(false, false, true, null, null);
+        long t1 = System.currentTimeMillis();
+        System.out.println("[TIMING] Zone init: " + String.format("%.1f", (t1 - t0) / 1000.0) + "s");
+
+        // Run same simulation phases as DUAL/EXPANDED
+        initializeTrucks();
+        long t2 = System.currentTimeMillis();
+        System.out.println("[TIMING] Fleet init: " + String.format("%.1f", (t2 - t1) / 1000.0) + "s");
+
+        generateTrips();
+        long t3 = System.currentTimeMillis();
+        System.out.println("[TIMING] Trip gen: " + String.format("%.1f", (t3 - t2) / 1000.0) + "s");
+
+        // Validation
+        System.out.println("\n[CHECKPOINT] Running MFS validation...");
+        ValidationEngine.ValidationReport validationReport = runMFSValidation();
+
+        // Export
+        System.out.println("\n[CHECKPOINT] Exporting results...");
+        TruckDataExporter exporter = new TruckDataExporter(config.getOutputDirectory());
+        exporter.setDeliveryZones(deliveryZones);
+        exporter.exportAll(truckFleet, allTrips);
+
+        try {
+            metricsTracker.exportToCSV(exporter.getRunDirectory());
+        } catch (IOException e) {
+            System.err.println("[ERROR] Failed to export metrics: " + e.getMessage());
+        }
+
+        // Unified dashboard + validation files
+        writeTruckDashboard(exporter.getRunDirectory());
+        if (validationReport != null) {
+            writeTruckValidation(exporter.getRunDirectory(), validationReport);
+        }
+
+        long simEnd = System.currentTimeMillis();
+        System.out.printf("\n[COMPLETE] Output: %s%n", exporter.getRunDirectory());
+        System.out.printf("[COMPLETE] Total time: %.1f seconds%n", (simEnd - simStart) / 1000.0);
+    }
+
     public void run(String[] args, boolean loadConfig,
                     String intraZonesFile, String interZonesFile) {
         boolean isDualMode = (intraZonesFile != null && interZonesFile != null);
@@ -761,6 +875,13 @@ public class TruckSimulation {
         } catch (IOException e) {
             System.err.println("[ERROR] Failed to export metrics: " + e.getMessage());
         }
+
+        // Write unified dashboard.csv and validation.csv
+        writeTruckDashboard(exporter.getRunDirectory());
+        if (validationReport != null) {
+            writeTruckValidation(exporter.getRunDirectory(), validationReport);
+        }
+
         long t5 = System.currentTimeMillis();
         System.out.println("[TIMING] Export: " + String.format("%.1f", (t5 - t4) / 1000.0) + "s");
 
@@ -774,6 +895,7 @@ public class TruckSimulation {
             System.out.println("  Total trucks: " + truckFleet.size() + " (target: 327,108)");
             System.out.println("  Total zones: " + deliveryZones.size() + " (intra + inter combined)");
         }
+        destinationSelector.printDeliveryTourDiagnostics();
     }
 
     /**
@@ -815,6 +937,109 @@ public class TruckSimulation {
         return sb.toString();
     }
 
+    /** Write unified dashboard.csv for truck ABM. */
+    private void writeTruckDashboard(String runDir) {
+        int heavy = 0, medium = 0, small = 0, light = 0;
+        int delivery = 0, longHaul = 0, mixed = 0;
+        for (TruckAgent t : truckFleet) {
+            switch (t.getVehicleSize()) {
+                case "heavy": heavy++; break;
+                case "medium": medium++; break;
+                case "small": small++; break;
+                case "light": light++; break;
+            }
+            TruckType tt = t.getTruckType();
+            if (tt == TruckType.DELIVERY) delivery++;
+            else if (tt == TruckType.LONG_HAUL) longHaul++;
+            else if (tt == TruckType.MIXED_OPERATION) mixed++;
+        }
+        int totalTrips = allTrips.size();
+        int deliveryTrips = 0, emptyTrips = 0;
+        double totalDist = 0, deliveryDist = 0, emptyDist = 0, totalCargo = 0;
+        // Per-truck-type accumulators
+        int deliveryTypeTrips = 0, longHaulTypeTrips = 0, mixedTypeTrips = 0;
+        double deliveryTypeDist = 0, longHaulTypeDist = 0, mixedTypeDist = 0;
+        double deliveryTypeCargo = 0, longHaulTypeCargo = 0, mixedTypeCargo = 0;
+
+        // Build truck lookup for type resolution
+        Map<Integer, TruckAgent> truckMap = new HashMap<>();
+        for (TruckAgent t : truckFleet) truckMap.put(t.getTruckId(), t);
+
+        for (TruckTrip trip : allTrips) {
+            totalDist += trip.getDistanceKm();
+            TruckAgent truck = truckMap.get(trip.getTruckId());
+            TruckType tt = truck != null ? truck.getTruckType() : null;
+
+            if (trip.isCargoLoaded()) {
+                deliveryTrips++;
+                deliveryDist += trip.getDistanceKm();
+                totalCargo += trip.getCargoWeightTons();
+            } else {
+                emptyTrips++;
+                emptyDist += trip.getDistanceKm();
+            }
+            // Accumulate per-type
+            if (tt == TruckType.DELIVERY) {
+                deliveryTypeTrips++; deliveryTypeDist += trip.getDistanceKm();
+                if (trip.isCargoLoaded()) deliveryTypeCargo += trip.getCargoWeightTons();
+            } else if (tt == TruckType.LONG_HAUL) {
+                longHaulTypeTrips++; longHaulTypeDist += trip.getDistanceKm();
+                if (trip.isCargoLoaded()) longHaulTypeCargo += trip.getCargoWeightTons();
+            } else if (tt == TruckType.MIXED_OPERATION) {
+                mixedTypeTrips++; mixedTypeDist += trip.getDistanceKm();
+                if (trip.isCargoLoaded()) mixedTypeCargo += trip.getCargoWeightTons();
+            }
+        }
+        double avgCargo = deliveryTrips > 0 ? totalCargo / deliveryTrips : 0;
+        double avgDist = totalTrips > 0 ? totalDist / totalTrips : 0;
+        double avgTripsPerTruck = truckFleet.size() > 0 ? (double) totalTrips / truckFleet.size() : 0;
+
+        Map<String, Double> metrics = MetricsDashboard.buildTruckMetrics(
+                truckFleet.size(), delivery, longHaul, mixed,
+                heavy, medium, small, light,
+                totalTrips, deliveryTrips, emptyTrips,
+                totalDist, deliveryDist, emptyDist,
+                totalCargo, avgCargo, avgTripsPerTruck, avgDist, null);
+
+        // Per-truck-type breakdown
+        metrics.put("TRUCK_TYPE.delivery_trips", (double) deliveryTypeTrips);
+        metrics.put("TRUCK_TYPE.delivery_distance_km", deliveryTypeDist);
+        metrics.put("TRUCK_TYPE.delivery_avg_dist_km", deliveryTypeTrips > 0 ? deliveryTypeDist / deliveryTypeTrips : 0);
+        metrics.put("TRUCK_TYPE.delivery_cargo_tons", deliveryTypeCargo);
+        metrics.put("TRUCK_TYPE.long_haul_trips", (double) longHaulTypeTrips);
+        metrics.put("TRUCK_TYPE.long_haul_distance_km", longHaulTypeDist);
+        metrics.put("TRUCK_TYPE.long_haul_avg_dist_km", longHaulTypeTrips > 0 ? longHaulTypeDist / longHaulTypeTrips : 0);
+        metrics.put("TRUCK_TYPE.long_haul_cargo_tons", longHaulTypeCargo);
+        metrics.put("TRUCK_TYPE.mixed_trips", (double) mixedTypeTrips);
+        metrics.put("TRUCK_TYPE.mixed_distance_km", mixedTypeDist);
+        metrics.put("TRUCK_TYPE.mixed_avg_dist_km", mixedTypeTrips > 0 ? mixedTypeDist / mixedTypeTrips : 0);
+        metrics.put("TRUCK_TYPE.mixed_cargo_tons", mixedTypeCargo);
+
+        // Validation reference targets
+        TruckConfig cfg = TruckConfig.getInstance();
+        metrics.put("REFERENCE.survey_trucks_per_day", (double) cfg.getBaselineSurveyTrucks());
+        metrics.put("REFERENCE.survey_tons_per_day", (double) cfg.getBaselineSurveyTons());
+        metrics.put("REFERENCE.avg_loaded_trips_per_truck", deliveryTrips > 0 ? (double) deliveryTrips / truckFleet.size() : 0);
+
+        MetricsDashboard.writeDashboard(runDir, "truck", null, metrics);
+    }
+
+    /** Write unified validation.csv for truck ABM. */
+    private void writeTruckValidation(String runDir, ValidationEngine.ValidationReport report) {
+        List<String[]> rows = new ArrayList<>();
+        for (ValidationEngine.ValidationResult r : report.results) {
+            rows.add(new String[]{
+                    r.category, r.metric,
+                    String.format("%.2f", r.actual),
+                    String.format("%.2f", r.target),
+                    String.format("%.0f", r.tolerance * 100),
+                    String.format("%.1f", r.getErrorPercent()),
+                    r.passed ? "PASS" : "FAIL"
+            });
+        }
+        MetricsDashboard.writeValidation(runDir, rows, report.grade, report.passRate);
+    }
+
     /**
      * Main entry point.
      */
@@ -851,6 +1076,16 @@ public class TruckSimulation {
                 System.out.println("[Config] Simulation mode: INTER_METROPOLITAN only");
                 sim.config.setZonesFile(config.getProperty("zones.file.inter", "zones_inter_metro.csv"));
                 sim.run(args, false, null, null);
+                break;
+
+            case EXPANDED:
+                System.out.println("[Config] Simulation mode: EXPANDED (nationwide 106 zones)");
+                sim.runExpanded(args);
+                break;
+
+            case UNIFIED:
+                System.out.println("[Config] Simulation mode: UNIFIED (Kanto + Keihanshin 134 zones)");
+                sim.runUnified(args);
                 break;
 
             default:

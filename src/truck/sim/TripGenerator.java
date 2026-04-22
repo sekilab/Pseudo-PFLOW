@@ -28,18 +28,35 @@ public class TripGenerator {
     private final Map<String, Double> inoutRatios;
     // FacilityType -> Mean Weight (Tons)
     private final Map<FacilityType, Double> facilityMeanWeights;
-    
+    private final ZoneCargoModel zoneCargoModel;
+
     private static final double DEFAULT_MEAN_WEIGHT = 4.8;
 
     public TripGenerator(TruckConfig config) {
+        this(config, loadDefaultZoneCargoModel());
+    }
+
+    /** Test/DI constructor allowing a pre-built zone cargo model. */
+    public TripGenerator(TruckConfig config, ZoneCargoModel zoneCargoModel) {
         this.config = config;
+        this.zoneCargoModel = zoneCargoModel;
         this.subRegionRates = new HashMap<>();
         this.inoutRatios = new HashMap<>();
         this.facilityMeanWeights = new HashMap<>();
-        
+
         loadSubRegionRates("config/truck/facilities/est_subregion.csv");
         loadInoutRatios("config/truck/operations/inout_ratios.csv");
         loadFacilityCargoWeights("config/truck/operations/cargo_weights.csv");
+    }
+
+    private static ZoneCargoModel loadDefaultZoneCargoModel() {
+        try {
+            return ZoneCargoModel.loadDefault();
+        } catch (IOException e) {
+            throw new IllegalStateException(
+                "Failed to load zone_cargo_gamma.csv — run "
+                + "mfs/extract_phase4_zone_cargo_gamma.py first", e);
+        }
     }
     
     private void loadSubRegionRates(String filePath) {
@@ -108,80 +125,32 @@ public class TripGenerator {
     }
 
     /**
-     * Calculate total trips to generate for a zone based on establishments.
-     */
-    public int generateTripsForZone(DeliveryZone zone, double scaleFactor) {
-        String sub = zone.getSubRegion();
-        if (sub == null) sub = "metropolitan_area_total";
-        
-        double totalLambda = 0.0;
-        String[] facilities = {"factory", "logistics", "office", "store", "other"};
-        
-        for (String fac : facilities) {
-            Map<String, Integer> industries = zone.getIndustryCounts(fac);
-            for (Map.Entry<String, Integer> entry : industries.entrySet()) {
-                String ind = entry.getKey();
-                int count = entry.getValue();
-                
-                double rate = getRate(sub, ind, fac);
-                totalLambda += count * rate;
-            }
-        }
-        
-        // Scale factor for simulation speed/fleet size
-        totalLambda *= scaleFactor;
-        
-        int trips = samplePoisson(totalLambda);
-        return Math.max(config.getTruckTripsMin(), Math.min(config.getTruckTripsMax(), trips));
-    }
-    
-    private double getRate(String sub, String ind, String fac) {
-        Map<String, Map<String, Double>> indMap = subRegionRates.get(sub);
-        if (indMap == null) indMap = subRegionRates.get("metropolitan_area_total");
-        if (indMap == null) return 5.0; // fallback
-        
-        Map<String, Double> facMap = indMap.get(ind);
-        if (facMap == null) return 5.0;
-        
-        return facMap.getOrDefault(fac, 5.0);
-    }
-
-    /**
-     * Generate cargo weight based on MFS File 18 utilization rates.
-     * Calibrated for trip counts: DELIVERY=3, MIXED=2, LONG_HAUL=1.
+     * Generate cargo weight from the per-zone Gamma profile derived from
+     * MFS File 08 (see {@link ZoneCargoModel} and
+     * {@code mfs/extract_phase4_zone_cargo_gamma.py}).
      *
-     * MFS targets (tons/truck/day):
-     * - Light (<2t): 0.78 (capacity 2.0t, ~39% utilization)
-     * - Small (2-4t): 2.72 (capacity 5.0t, ~54% utilization)
-     * - Medium (4-10t): 7.64 (capacity 8.0t, ~76% utilization)
-     * - Heavy (10t+): 11.46 (capacity 20.0t, ~57% utilization)
+     * <p>The raw draw is then capped by:
+     * <ul>
+     *   <li>The vehicle's physical capacity (always)</li>
+     *   <li>The commodity's loading rate * capacity (only when the trip is
+     *       capacity-constrained, not weight-constrained)</li>
+     * </ul>
+     *
+     * @param facilityType    origin facility type — kept for the unknown-zone
+     *                        fallback path that uses {@code facilityMeanWeights}
+     * @param commodity       commodity key (used by loading-rate cap)
+     * @param vehicleSize     "light" / "small" / "medium" / "heavy"
+     * @param vehicleCapacity tons
+     * @param router          source of commodity-specific loading rates
+     * @param constraint      WEIGHT or CAPACITY
+     * @param originZoneId    MFS zone id of the trip origin (e.g. "MFS01")
      */
-    public double generateCargoWeight(FacilityType facilityType, String commodity, String vehicleSize,
-                                      double vehicleCapacity, CommodityRouter router, LoadingConstraint constraint) {
-        double cargoWeight;
-
-        switch (vehicleSize.toLowerCase()) {
-            case "light":
-                // Target: 0.78t/truck/day ÷ ~2.8 loaded trips = ~0.28t/trip
-                cargoWeight = generateGamma(1.5, 0.19);
-                break;
-            case "small":
-                // Target: 2.72t/truck/day ÷ ~1.9 effective loaded trips = ~1.43t/trip
-                cargoWeight = generateGamma(1.8, 0.80);
-                break;
-            case "medium":
-                // Target: 7.64t/truck/day ÷ ~1.15 effective loaded trips = ~6.6t/trip
-                cargoWeight = generateGamma(2.0, 3.50);
-                break;
-            case "heavy":
-                // Target: 11.46t/truck/day ÷ ~1.0 loaded trip = ~11.5t/trip
-                cargoWeight = generateGamma(2.5, 4.6);
-                break;
-            default:
-                double mean = facilityMeanWeights.getOrDefault(facilityType, DEFAULT_MEAN_WEIGHT);
-                cargoWeight = generateGamma(2.0, mean / 2.0);
-                break;
-        }
+    public double generateCargoWeight(FacilityType facilityType, String commodity,
+                                      String vehicleSize, double vehicleCapacity,
+                                      CommodityRouter router,
+                                      LoadingConstraint constraint,
+                                      String originZoneId) {
+        double cargoWeight = zoneCargoModel.sampleWeight(originZoneId, vehicleSize);
 
         // Always respect vehicle capacity (physical limit)
         cargoWeight = Math.min(cargoWeight, vehicleCapacity);

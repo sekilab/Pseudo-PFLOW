@@ -1,0 +1,16 @@
+metric_name,category,survey_value,unit,tolerance_pct,source,notes,priority
+LOCAL Type Share,FLEET,65.0,percent,15,Config default,65% LOCAL / 25% CITYWIDE / 10% HUB,MEDIUM
+CITYWIDE Type Share,FLEET,25.0,percent,15,Config default,Intra-city wide-range taxis,MEDIUM
+HUB Type Share,FLEET,10.0,percent,15,Config default,Station/airport hub taxis,MEDIUM
+Avg Passenger Trips per Taxi,TRIPS,27.0,trips/taxi,15,THTA 2024,26.8 actual rounded; trip gen failure reduces this,CRITICAL
+Avg Trip Distance,DISTANCE,5.5,km,25,MLIT Taxi Survey,Gaussian centered at 5km but short-trip rejection skews up,HIGH
+Total Daily Distance per Taxi,DISTANCE,250.0,km/taxi,30,THTA 2024,Includes empty running; 200-300km range,MEDIUM
+Trip Distance Min Check,DISTANCE,0.5,km,50,Config,Minimum trip distance enforced,LOW
+Trip Distance Max Check,DISTANCE,15.0,km,50,Config,Maximum trip distance enforced,LOW
+Empty Running Ratio (distance),EMPTY,40.0,percent,15,Industry standard,Distance-based empty ratio,CRITICAL
+Empty Trip Count Ratio,EMPTY,48.0,percent,15,Derived,Count-based: ~1 empty per passenger trip,HIGH
+Avg Fare,REVENUE,2500.0,yen,25,THTA 2024,Base 500 + 392/km * 5.5km = 2656 theoretical,HIGH
+Total Daily Revenue per Taxi,REVENUE,45000.0,yen/taxi,35,THTA 2024,Revenue per operating taxi per day,MEDIUM
+Night Trip Ratio,TEMPORAL,25.0,percent,25,THTA 2024,22:00-05:00 trips as % of total,HIGH
+Nearby Trip Ratio,SPATIAL,80.0,percent,20,Config,Configured at 80% probability,MEDIUM
+Trips Within City Bounds,SPATIAL,99.0,percent,2,Validation,Spatial validation should reject out-of-bounds,HIGH

@@ -1,65 +1,54 @@
 zone_id,zone_type,name,center_lon,center_lat,radius_km,jobs_weight,shops_weight,nightlife_weight,residential_weight,transport_hub
-Z01,business,KYOTO,135.7540,34.9848,3.0,1.0,0.7,0.5,0.1,1
-Z02,residential,MUKO,135.7008,34.9394,1.4,0.2,0.3,0.1,1.0,0
-Z03,residential,OTSU,135.8600,35.0087,3.0,0.2,0.3,0.1,1.0,0
-Z04,residential,NAGAOKAKYO,135.6902,34.9195,1.0,0.2,0.3,0.1,1.0,0
-Z05,residential,UJI,135.8031,34.8919,3.0,0.2,0.3,0.1,1.0,0
-Z06,residential,OYAMAZAKI,135.6855,34.9043,1.0,0.2,0.3,0.1,1.0,0
-Z07,residential,KUMIYAMA,135.7356,34.8798,2.0,0.2,0.3,0.1,1.0,0
-Z08,residential,SETA,135.9109,34.9776,3.0,0.2,0.3,0.1,1.0,0
-Z09,residential,YAWATA,135.7008,34.8694,1.7,0.2,0.3,0.1,1.0,0
-Z10,residential,SHIMAMOTO,135.6723,34.8780,1.7,0.2,0.3,0.1,1.0,0
-Z11,residential,JOYO,135.7789,34.8504,3.0,0.2,0.3,0.1,1.0,0
-Z12,residential,UJITAWARA,135.8538,34.8504,3.0,0.2,0.3,0.1,1.0,0
-Z13,hub,OSAKA INTL,135.4320,34.7912,3.0,0.5,0.3,0.2,0.1,1
-Z14,hub,YAO,135.5990,34.5985,3.0,0.5,0.3,0.2,0.1,1
-Z15,hub,KOBE,135.2286,34.6368,3.0,0.5,0.3,0.2,0.1,1
-ZS01,hub,Shinosaka Station Area,135.5011,34.7331,1.5,0.7,0.5,0.3,0.2,1
-ZP01,residential,Habikino,135.6143,34.5496,2.0,0.2,0.3,0.1,0.9,0
-ZP02,residential,Tawaramoto,135.8009,34.5568,2.0,0.2,0.3,0.1,0.9,0
-ZP03,residential,Uemaki,135.7170,34.5622,2.0,0.2,0.3,0.1,0.9,0
-ZP04,residential,Miyake,135.7744,34.5749,2.0,0.2,0.3,0.1,0.9,0
-ZP05,mixed,Matsubara,135.5573,34.5755,2.0,0.3,0.4,0.2,0.7,0
-ZP06,mixed,Fujiidera,135.5890,34.5755,2.0,0.3,0.4,0.2,0.7,0
-ZP07,mixed,Kawai,135.7332,34.5763,2.0,0.3,0.4,0.2,0.7,0
-ZP08,mixed,Kawanishi,135.7750,34.5844,2.0,0.3,0.4,0.2,0.7,0
-ZP09,mixed,Kashiwara,135.6238,34.5868,2.0,0.3,0.4,0.2,0.7,0
-ZP10,mixed,Oji,135.7048,34.5943,2.0,0.3,0.4,0.2,0.7,0
-ZP11,residential,Tenri,135.8367,34.5974,2.0,0.2,0.3,0.1,0.9,0
-ZP12,mixed,Ando,135.7622,34.6012,2.0,0.3,0.4,0.2,0.7,0
-ZP13,mixed,Ikaruga,135.7338,34.6056,2.0,0.3,0.4,0.2,0.7,0
-ZP14,mixed,Sango,135.7065,34.6063,2.0,0.3,0.4,0.2,0.7,0
-ZP15,mixed,Heguri,135.6994,34.6285,2.0,0.3,0.4,0.2,0.7,0
-ZP16,mixed,Yamatokoriyama,135.7853,34.6482,2.0,0.3,0.4,0.2,0.7,0
-ZP17,mixed,Toyoura,135.6428,34.6628,2.0,0.3,0.4,0.2,0.7,0
-ZP18,mixed,Higashiosaka,135.6008,34.6794,2.0,0.6,0.6,0.4,0.5,0
-ZP19,mixed,Ikoma,135.7082,34.6896,2.0,0.6,0.6,0.4,0.5,0
-ZP20,mixed,Daito,135.6227,34.7034,2.0,0.6,0.6,0.4,0.5,0
-ZP21,mixed,Kizugawa,135.8138,34.7320,2.0,0.6,0.6,0.4,0.5,0
-ZP22,mixed,Kadoma,135.5879,34.7371,2.0,0.6,0.6,0.4,0.5,0
-ZP23,mixed,Shijonawate,135.6335,34.7404,2.0,0.6,0.6,0.4,0.5,0
-ZP24,mixed,Kasagi,135.9348,34.7553,2.0,0.3,0.4,0.2,0.7,0
-ZP25,residential,Arima,135.2491,34.7958,2.0,0.2,0.3,0.1,0.9,0
-ZP26,mixed,Araki,135.8621,34.7565,2.0,0.3,0.4,0.2,0.7,0
-ZP27,mixed,Neyagawa,135.6195,34.7622,2.0,0.6,0.6,0.4,0.5,0
-ZP28,mixed,Seika,135.7839,34.7651,2.0,0.6,0.6,0.4,0.5,0
-ZP29,mixed,Settsu,135.5622,34.7772,2.0,0.6,0.6,0.4,0.5,0
-ZP30,mixed,Ide,135.8074,34.7942,2.0,0.6,0.6,0.4,0.5,0
-ZP31,mixed,Wazuka,135.9024,34.7951,2.0,0.3,0.4,0.2,0.7,0
-ZP32,commercial,Katano,135.6786,34.7994,2.0,0.9,0.8,0.6,0.2,0
-ZP33,mixed,Takarazuka,135.3504,34.8071,2.0,0.3,0.4,0.2,0.7,0
-ZP34,commercial,Hirakata,135.6523,34.8089,2.0,0.9,0.8,0.6,0.2,0
-ZP35,commercial,Ibaraki,135.5720,34.8158,2.0,0.9,0.8,0.6,0.2,0
-ZP36,mixed,Kyotanabe,135.7715,34.8167,2.0,0.6,0.6,0.4,0.5,0
-ZP37,mixed,Mino,135.4718,34.8218,2.0,0.6,0.6,0.4,0.5,0
-ZP38,mixed,Kawanishi,135.4161,34.8300,2.0,0.3,0.4,0.2,0.7,0
-ZP39,commercial,Takatsuki,135.6195,34.8469,2.0,0.9,0.8,0.6,0.2,0
-ZP40,residential,Sanda,135.2248,34.8797,2.0,0.2,0.3,0.1,0.9,0
-ZP41,mixed,Inagawa,135.3736,34.9013,2.0,0.3,0.4,0.2,0.7,0
-ZP42,mixed,Toyono,135.4939,34.9126,2.0,0.6,0.6,0.4,0.5,0
-ZP43,mixed,Nose,135.4137,34.9704,2.0,0.3,0.4,0.2,0.7,0
-ZP44,mixed,Kameoka,135.5793,35.0070,2.0,0.6,0.6,0.4,0.5,0
-ZR01,hub,Sakai-Senboku Port,135.3882,34.5774,2.0,0.4,0.2,0.1,0.2,1
-ZR02,hub,Osaka Port,135.3506,34.6298,2.0,0.4,0.2,0.1,0.2,1
-ZR03,hub,Kobe Port,135.2524,34.6637,2.0,0.4,0.2,0.1,0.2,1
-ZR04,hub,Amagasaki-Nishinomiya-Ashiya Port,135.3355,34.6823,2.0,0.4,0.2,0.1,0.2,1
+Z01,hub,Kyoto Station,135.7587,34.9856,1.5,0.9,0.8,0.5,0.2,1
+Z02,commercial,Kawaramachi/Shijo,135.77,35.0036,1.2,0.6,1.0,0.9,0.2,1
+Z03,nightlife,Gion/Hanamikoji,135.7752,35.0036,0.8,0.3,0.7,1.0,0.1,0
+Z04,commercial,Nishiki Market/Teramachi,135.765,35.005,0.8,0.4,1.0,0.5,0.1,0
+Z05,business,Karasuma Oike,135.759,35.011,1.0,0.8,0.6,0.3,0.2,0
+Z06,mixed,Sanjo/Keihan,135.771,35.009,1.0,0.5,0.7,0.6,0.3,0
+Z07,commercial,Kiyomizu-Gojo Area,135.779,34.995,1.0,0.3,0.7,0.4,0.3,0
+Z08,mixed,Nijo Castle Area,135.7479,35.0144,1.0,0.4,0.6,0.3,0.5,0
+Z09,mixed,Kitaoji/Shimogamo,135.761,35.047,1.2,0.4,0.5,0.3,0.7,0
+Z10,commercial,Kinkakuji Area,135.7293,35.0393,1.2,0.3,0.6,0.3,0.5,0
+Z11,commercial,Arashiyama,135.673,35.0106,1.5,0.2,0.7,0.4,0.4,0
+Z12,mixed,Fushimi Inari/Fukakusa,135.7716,34.9671,1.2,0.3,0.5,0.3,0.6,0
+Z13,mixed,Toji/Kujo,135.75,34.981,1.0,0.4,0.5,0.3,0.6,0
+Z14,residential,Kamigyo-ku,135.756,35.03,1.2,0.3,0.5,0.2,0.8,0
+Z15,residential,Nakagyo-ku North,135.758,35.018,1.0,0.5,0.6,0.3,0.5,0
+Z16,residential,Sakyo-ku South,135.781,35.025,1.5,0.4,0.5,0.3,0.7,0
+Z17,residential,Sakyo-ku North/Ichijoji,135.79,35.05,1.5,0.3,0.4,0.2,0.8,0
+Z18,residential,Ukyo-ku,135.71,35.015,2.0,0.3,0.4,0.2,0.8,0
+Z19,residential,Nishikyo-ku,135.69,34.99,2.0,0.3,0.4,0.2,0.9,0
+Z20,residential,Minami-ku,135.75,34.965,1.5,0.3,0.4,0.2,0.8,0
+Z21,residential,Fushimi-ku Central,135.76,34.94,1.5,0.4,0.5,0.3,0.7,0
+Z22,residential,Yamashina-ku,135.813,34.975,1.5,0.3,0.4,0.2,0.8,1
+Z23,mixed,Takaragaike/Kokusaikaikan,135.785,35.063,1.5,0.4,0.4,0.2,0.6,1
+Z24,residential,Katsura,135.713,34.98,1.2,0.3,0.5,0.2,0.8,0
+Z25,commercial,Shugakuin/Eizan Line,135.794,35.045,1.0,0.3,0.5,0.3,0.7,0
+Z26,mixed,Daigo/醍醐,135.82,34.951,1.5,0.3,0.4,0.2,0.8,0
+Z27,mixed,Uji,135.8031,34.8919,2.0,0.4,0.5,0.3,0.7,0
+Z28,residential,Muko,135.7008,34.9394,1.2,0.3,0.3,0.1,0.9,0
+Z29,residential,Nagaokakyo,135.6902,34.9195,1.2,0.3,0.4,0.2,0.9,0
+Z30,residential,Oyamazaki,135.6855,34.9043,1.0,0.2,0.3,0.1,0.9,0
+Z31,residential,Kumiyama,135.7356,34.8798,1.5,0.2,0.3,0.1,0.9,0
+Z32,residential,Yawata,135.7008,34.8694,1.5,0.3,0.3,0.1,0.9,0
+Z33,residential,Joyo,135.7789,34.8504,1.5,0.3,0.3,0.2,0.9,0
+Z34,residential,Kyotanabe,135.767,34.813,1.5,0.3,0.3,0.2,0.9,0
+Z35,mixed,Otsu,135.86,35.0087,2.0,0.4,0.5,0.3,0.7,0
+Z36,residential,Seta/Otsu South,135.9109,34.9776,2.0,0.3,0.3,0.1,0.9,0
+Z37,mixed,Kusatsu,135.959,34.991,1.5,0.4,0.5,0.3,0.7,0
+Z38,residential,Shimamoto,135.6723,34.878,1.2,0.2,0.3,0.1,0.9,0
+Z39,residential,Kameoka,135.578,35.013,2.0,0.3,0.3,0.2,0.8,0
+Z40,residential,Ujitawara,135.8538,34.8504,2.0,0.2,0.2,0.1,0.9,0
+Z41,hub,Osaka Intl Airport,135.432,34.7912,2.5,0.5,0.3,0.2,0.1,1
+Z43,commercial,Pontocho/Kiyamachi,135.77,35.006,0.5,0.3,0.7,1.0,0.1,0
+Z44,mixed,Kyoto Gosho/Imperial Palace,135.762,35.025,1.0,0.3,0.4,0.2,0.5,0
+Z45,commercial,Higashiyama/Maruyama Park,135.783,35.001,1.0,0.2,0.6,0.4,0.3,0
+Z46,commercial,Philosopher's Path/Nanzenji,135.794,35.011,1.0,0.2,0.5,0.3,0.4,0
+Z47,mixed,Nishijin,135.745,35.035,1.0,0.3,0.5,0.2,0.7,0
+Z48,mixed,Tofukuji/Sennyuji,135.774,34.977,1.0,0.3,0.5,0.3,0.6,0
+Z49,residential,Seika/Hosono,135.782,34.762,1.5,0.3,0.3,0.1,0.9,0
+Z50,residential,Kizugawa,135.82,34.73,2.0,0.2,0.3,0.1,0.9,0
+ZS01,hub,Demachiyanagi Station,135.772,35.03,1.0,0.4,0.5,0.3,0.4,1
+ZP01,residential,Wazuka,135.897,34.8,2.0,0.1,0.2,0.1,0.9,0
+ZP02,residential,Ide,135.787,34.785,2.0,0.2,0.3,0.1,0.9,0
+Z42,mixed,Takeda/Keihan Fushimi,135.7650,34.9550,1.2,0.3,0.4,0.2,0.7,0

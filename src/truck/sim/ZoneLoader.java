@@ -5,6 +5,7 @@ import truck.sim.spatial.GeoValidator;
 import truck.sim.spatial.PointGenerator;
 import truck.sim.spatial.TransportNetworkIndex;
 import truck.sim.spatial.NetworkAwarePointGenerator;
+import util.PathResolver;
 import java.io.*;
 import java.util.*;
 
@@ -36,6 +37,7 @@ public class ZoneLoader {
     // Populated during loading
     private List<DeliveryZone> deliveryZones;
     private OriginDestinationMatrix odMatrix;
+    private GATargetsLoader gaTargets;
     private CommodityRouter commodityRouter;
     private TripGenerator tripGenerator;
     private POIManager poiManager;
@@ -118,6 +120,52 @@ public class ZoneLoader {
 
         // Compute geography bounds from all loaded zones so inter-regional zones
         // (MFS67-MFS71) generate home points inside their actual geography
+        computeGeographyBounds();
+
+        return buildResult();
+    }
+
+    /**
+     * Load nationwide expanded zones from a single CSV file (EXPANDED mode).
+     * Contains 106 zones: 66 existing Kanto (MFS01-66) + 40 prefecture sub-zones (PRF01-PRF47).
+     * Uses expanded O-D matrix (od_volume_expanded.csv) and expanded zone mapping.
+     *
+     * @return ZoneLoadResult with all initialized subsystems
+     */
+    public ZoneLoadResult loadExpanded() {
+        System.out.println("[EXPANDED] Loading nationwide zones (106 zones)...");
+
+        String configDir = "config/truck/";
+        String expandedZonesFile = config.getProperty("zones.file.expanded", "zones/expanded.csv");
+        int loaded = loadZonesFromFile(configDir + expandedZonesFile, "EXPANDED");
+
+        System.out.println("[EXPANDED] Total zones loaded: " + loaded + " (Kanto + nationwide prefectures)");
+
+        wireSubsystems();
+        computeGeographyBounds();
+
+        return buildResult();
+    }
+
+    /**
+     * Load unified zones from a single CSV file (UNIFIED mode).
+     * Contains 134 zones: 66 Kanto (MFS01-66) + 5 long-haul (MFS67-71)
+     * + 33 non-Kinki prefectures (PRF01-24,PRF31-47)
+     * + 30 Keihanshin detail (OSK01-30).
+     *
+     * @return ZoneLoadResult with all initialized subsystems
+     */
+    public ZoneLoadResult loadUnified() {
+        System.out.println("[UNIFIED] Loading nationwide zones with Keihanshin detail...");
+
+        String configDir = "config/truck/";
+        String unifiedZonesFile = config.getUnifiedZonesFile();
+        int loaded = loadZonesFromFile(configDir + unifiedZonesFile, "UNIFIED");
+
+        System.out.println("[UNIFIED] Total zones loaded: " + loaded +
+            " (Kanto + Keihanshin detail + nationwide prefectures)");
+
+        wireSubsystems();
         computeGeographyBounds();
 
         return buildResult();
@@ -249,17 +297,31 @@ public class ZoneLoader {
 
         if (config.getUseMFSODMatrix()) {
             try {
-                Map<String, Integer> zoneMapping = loadZoneMapping("config/truck/zones/mapping.csv");
-                odMatrix.loadFromMFSCSV("config/truck/flows/od_volume.csv", zoneMapping);
-                System.out.println("[CHECKPOINT] Loaded MFS O-D probability matrix from CSV");
+                String mappingFile = config.getProperty("datasets.zone.mapping.file", "zones/mapping.csv");
+                String odFile = config.getProperty("datasets.od.matrix.file", "flows/od_volume.csv");
+                Map<String, Integer> zoneMapping = loadZoneMapping("config/truck/" + mappingFile);
+                odMatrix.loadFromMFSCSV("config/truck/" + odFile, zoneMapping);
+                System.out.println("[CHECKPOINT] Loaded O-D probability matrix from " + odFile);
             } catch (IOException e) {
-                System.err.println("[O-D] Warning: Could not load MFS O-D matrix: " + e.getMessage());
+                System.err.println("[O-D] Warning: Could not load O-D matrix: " + e.getMessage());
             }
         }
 
         // Commodity router
         commodityRouter = new CommodityRouter();
         System.out.println("[CHECKPOINT] Initialized CommodityRouter with 9 commodity types");
+
+        // F0084: load File 08 generation/attraction totals — used by
+        // FleetFactory to weight zone fleet seeding by truck counts.
+        try {
+            String gaFile = "config/truck/" + config.getGaTargetsFile();
+            gaTargets = GATargetsLoader.loadFromCsv(
+                PathResolver.resolve("${PFLOW_HOME}/Pseudo-PFLOW/" + gaFile));
+            System.out.println("[CHECKPOINT] Loaded GA targets ("
+                + gaTargets.size() + " zones) from " + gaFile);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load ga_targets.csv", e);
+        }
 
         // Trip generator
         tripGenerator = new TripGenerator(config);
@@ -343,7 +405,14 @@ public class ZoneLoader {
                 System.out.println("[CHECKPOINT] Loaded POIs from CSV files");
             }
 
-            // Link POIs to zones
+            // Census-enhanced POIs: nationwide coverage from Economic Census mesh data
+            boolean censusPOIEnabled = Boolean.parseBoolean(
+                config.getProperty("datasets.census.poi.enabled", "false"));
+            if (censusPOIEnabled) {
+                poiManager.loadCensusPOIs("config/truck/facilities/");
+            }
+
+            // Link POIs to zones (includes both Telepoint + census POIs)
             for (DeliveryZone zone : deliveryZones) {
                 List<PointOfInterest> zonePOIs = poiManager.getPOIsInZone(zone.getZoneId());
                 zone.setPOIs(zonePOIs);
@@ -351,7 +420,8 @@ public class ZoneLoader {
             System.out.println("[POI] Total: " +
                 poiManager.getLogisticCenters().size() + " logistic centers, " +
                 poiManager.getRetailShops().size() + " retail shops, " +
-                poiManager.getShoppingMalls().size() + " shopping malls");
+                poiManager.getShoppingMalls().size() + " shopping malls, " +
+                poiManager.getWholesaleFacilities().size() + " wholesale facilities");
         } catch (IOException e) {
             System.err.println("[POI] Warning: Could not initialize POIs: " + e.getMessage());
             System.err.println("[POI] Will use zone-based destination selection");
@@ -365,7 +435,7 @@ public class ZoneLoader {
         if (config.getUseGABalance()) {
             try {
                 gaBalancer = new GenerationAttractionBalancer();
-                gaBalancer.loadTargets("config/truck/flows/ga_targets.csv");
+                gaBalancer.loadTargets("config/truck/" + config.getGaTargetsFile());
 
                 // Scale G-A targets to match expected trip volume for current fleet size.
                 double fleetSize = config.getTruckFleetSize();
@@ -470,8 +540,8 @@ public class ZoneLoader {
      * Gracefully degrades to pure polygon sampling if loading fails.
      */
     private void loadTransportNetworks() {
-        String roadPath = "src/truck/gm-jp/roadl_jpn.shp";
-        String railPath = "src/truck/gm-jp/raill_jpn.shp";
+        String roadPath = "src/shared/gm-jp/roadl_jpn.shp";
+        String railPath = "src/shared/gm-jp/raill_jpn.shp";
 
         System.out.println("[NETWORK] Loading transport networks...");
 
@@ -515,7 +585,7 @@ public class ZoneLoader {
      */
     private void loadPolygonZones() {
         String mappingPath = "config/truck/zones/zone_boundary_mapping.csv";
-        String shapefilePath = "src/truck/gm-jp/polbnda_jpn_new.shp";
+        String shapefilePath = "src/shared/gm-jp/polbnda_jpn_new.shp";
         System.out.println("[ZONE] Loading polygon-based zone boundaries...");
 
         try {
@@ -599,11 +669,25 @@ public class ZoneLoader {
         java.util.concurrent.atomic.AtomicInteger mergedCount = new java.util.concurrent.atomic.AtomicInteger();
 
         deliveryZones.parallelStream().forEach(zone -> {
+            // Skip BuiltUpIndex for zones with radius > 30km — raster envelope
+            // at this scale causes int overflow in SAT array allocation.
+            // These zones fall back to zone-center coordinate generation.
+            if (zone.getRadiusKm() > 30.0) {
+                skippedCount.incrementAndGet();
+                return;
+            }
+
             List<PointOfInterest> zonePOIs = poiManager.getPOIsInZone(zone.getZoneId());
 
-            // Build from primary raster
-            BuiltUpIndex primaryIndex = new BuiltUpIndex(zone, r1,
-                r1MinLon, r1MaxLon, r1MinLat, r1MaxLat, r1Width, r1Height, zonePOIs);
+            // Build from primary raster (try-catch for large-envelope overflow)
+            BuiltUpIndex primaryIndex;
+            try {
+                primaryIndex = new BuiltUpIndex(zone, r1,
+                    r1MinLon, r1MaxLon, r1MinLat, r1MaxLat, r1Width, r1Height, zonePOIs);
+            } catch (NegativeArraySizeException | OutOfMemoryError e) {
+                skippedCount.incrementAndGet();
+                return;
+            }
 
             // Build from extension raster if zone extends beyond primary bounds
             BuiltUpIndex extIndex = null;
@@ -619,9 +703,13 @@ public class ZoneLoader {
                     // Exclude primary raster bounds to avoid duplicate pixels
                     org.locationtech.jts.geom.Envelope primaryBounds =
                         new org.locationtech.jts.geom.Envelope(r1MinLon, r1MaxLon, r1MinLat, r1MaxLat);
-                    extIndex = new BuiltUpIndex(zone, r2,
-                        r2MinLon, r2MaxLon, r2MinLat, r2MaxLat, r2Width, r2Height, zonePOIs,
-                        primaryBounds);
+                    try {
+                        extIndex = new BuiltUpIndex(zone, r2,
+                            r2MinLon, r2MaxLon, r2MinLat, r2MaxLat, r2Width, r2Height, zonePOIs,
+                            primaryBounds);
+                    } catch (NegativeArraySizeException | OutOfMemoryError e2) {
+                        // Extension raster overflow — skip, primary index still usable
+                    }
                 }
             }
 
@@ -746,7 +834,7 @@ public class ZoneLoader {
 
     private ZoneLoadResult buildResult() {
         return new ZoneLoadResult(
-            deliveryZones, odMatrix, commodityRouter, tripGenerator,
+            deliveryZones, odMatrix, gaTargets, commodityRouter, tripGenerator,
             poiManager, gaBalancer, metricsTracker, destinationSelector,
             pointGenerator, networkIndex
         );

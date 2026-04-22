@@ -12,6 +12,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import util.PathResolver;
 
 public class CensusKakou2{
 
@@ -85,7 +86,7 @@ public class CensusKakou2{
 		Properties prop = new Properties();
 		prop.load(inputStream);
 
-		String root = prop.getProperty("legacy.stat.root");
+		String root = PathResolver.resolve(prop.getProperty("legacy.stat.root"));
 		String dir =  String.format("%sstatdata/国勢調査27ー労働/", root);
 		String outfile =  String.format("%spre_labor_rate.csv", root); 
 		

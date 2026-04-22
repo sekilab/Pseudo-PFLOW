@@ -34,6 +34,13 @@ public class DestinationSelector {
     private final CommodityRouter commodityRouter;
     private final MetropolitanConfig metroConfig;
 
+    // Diagnostic counters for delivery tour tier usage
+    private final java.util.concurrent.atomic.AtomicInteger deliveryTier1Hits = new java.util.concurrent.atomic.AtomicInteger();
+    private final java.util.concurrent.atomic.AtomicInteger deliveryTier2Hits = new java.util.concurrent.atomic.AtomicInteger();
+    private final java.util.concurrent.atomic.AtomicInteger deliveryTier3Hits = new java.util.concurrent.atomic.AtomicInteger();
+    private final java.util.concurrent.atomic.AtomicInteger deliveryFallbackHits = new java.util.concurrent.atomic.AtomicInteger();
+    private final java.util.concurrent.atomic.AtomicInteger deliveryTotalCalls = new java.util.concurrent.atomic.AtomicInteger();
+
     public DestinationSelector(TruckConfig config,
                                ZoneManager zoneManager, GeoValidator geoValidator,
                                PointGenerator pointGenerator, POIManager poiManager,
@@ -162,6 +169,14 @@ public class DestinationSelector {
                 } else if (truckType == TruckType.MIXED_OPERATION) {
                     if (dist > 100.0 && !isIntraZone) continue;
                     odProb *= Math.exp(-dist / MIXED_DISTANCE_DECAY_FACTOR);
+                } else if (truckType == TruckType.LONG_HAUL) {
+                    // LONG_HAUL: prefer distant zones, but allow all O-D flows.
+                    // Boost probability for zones >50km, dampen zones <50km.
+                    if (dist < 50.0 && !isIntraZone) {
+                        odProb *= 0.1;  // heavily dampen short destinations
+                    } else if (dist >= 50.0) {
+                        odProb *= Math.sqrt(dist / 50.0);  // mild boost for distance
+                    }
                 }
 
                 if (isIntraZone) {
@@ -200,11 +215,34 @@ public class DestinationSelector {
             return DestinationResult.withZone(coords, selectedZoneId);
         }
 
-        // POI-based destination selection (commodity-aware routing)
+        // POI-based destination selection — truck-type-aware routing
         if (poiManager != null && poiManager.hasPOIs()) {
-            int timePeriod = zoneManager.getTimePeriod(currentTime);
-            PointOfInterest targetPOI = poiManager.selectPOIForTrip(
-                truck, selectedZoneId, commodityType, timePeriod);
+            // Resolve origin facility type and destination facility type from MFS File 07
+            FacilityType originFT = truck.getHomeFacilityType();
+            String destTypeKey = (originFT != null)
+                ? commodityRouter.selectDestinationFacilityType(originFT)
+                : null;
+
+            // Truck-type-aware POI selection:
+            // LONG_HAUL -> logistics/industrial/port POIs (B2B)
+            // DELIVERY -> retail/wholesale POIs (last-mile), null for residential
+            // MIXED -> all types, weighted by destTypeKey
+            PointOfInterest targetPOI = poiManager.selectPOIByTruckType(
+                truckType, selectedZoneId, destTypeKey, commodityType);
+
+            // DELIVERY to residential: use BuiltUpIndex density sampling
+            if (targetPOI == null && truckType == TruckType.DELIVERY
+                    && "residential".equals(destTypeKey)) {
+                double[] coords = pointGenerator.generatePointInZone(selectedZone);
+                return DestinationResult.withZone(coords, selectedZoneId);
+            }
+
+            // Fallback: commodity-only POI selection (legacy path)
+            if (targetPOI == null) {
+                int timePeriod = zoneManager.getTimePeriod(currentTime);
+                targetPOI = poiManager.selectPOIForTrip(
+                    truck, selectedZoneId, commodityType, timePeriod);
+            }
 
             if (targetPOI != null && geoValidator.isOnLand(targetPOI.getLongitude(), targetPOI.getLatitude())
                     && geoValidator.isValidPOILandUse(targetPOI.getLongitude(), targetPOI.getLatitude())) {
@@ -389,125 +427,138 @@ public class DestinationSelector {
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // INTER-ZONE DESTINATION (LONG_HAUL)
+    // DELIVERY TOUR STOP (V5.2)
     // ════════════════════════════════════════════════════════════════════════
 
     /**
-     * Selects INTER-metro destination for LONG_HAUL trucks.
-     * Uses pre-computed distance matrix for zone distance calculations.
+     * Selects destination for a delivery tour stop with progressive distance constraint.
+     *
+     * <p>For the first stop (stopNumber=0), uses wider radius and softer decay from depot.
+     * For subsequent stops (stopNumber>0), uses tight radius and aggressive decay to
+     * produce realistic 2-5km inter-stop legs.
+     *
+     * @param truck       The truck agent
+     * @param origin      Current position [lon, lat]
+     * @param maxDistKm   Max allowed distance (first stop: 15km, subsequent: 5km)
+     * @param decayFactor Distance decay for exp(-dist/decayFactor) scoring
+     * @param originZoneId Pre-computed origin zone ID
+     * @param currentTime  Current simulation time
+     * @param commodityType Commodity being carried
+     * @return DestinationResult with coordinates and zone
      */
-    public DestinationResult selectInterZoneDestination(TruckAgent truck, double[] origin) {
-        final double MIN_DISTANCE_KM = 100.0;
+    public DestinationResult selectDeliveryTourStop(TruckAgent truck, double[] origin,
+                                                     double maxDistKm, double decayFactor,
+                                                     String originZoneId, long currentTime,
+                                                     String commodityType) {
+        deliveryTotalCalls.incrementAndGet();
 
+        // ── Tier 1: Direct POI proximity search (bypasses zone-center spacing problem) ──
+        if (poiManager != null && poiManager.hasPOIs()) {
+            List<PointOfInterest> nearbyPOIs = poiManager.findPOIsNearPoint(
+                origin[0], origin[1], maxDistKm);
+
+            if (!nearbyPOIs.isEmpty()) {
+                List<Double> scores = new ArrayList<>();
+                for (PointOfInterest poi : nearbyPOIs) {
+                    double dist = poi.distanceTo(origin[0], origin[1]);
+                    if (dist < 0.1) dist = 0.1;  // avoid zero-distance same-point
+                    scores.add(Math.exp(-dist / decayFactor));
+                }
+                int idx = utils.Roulette.choice(scores, ThreadLocalRandom.current().nextDouble());
+                PointOfInterest selected = nearbyPOIs.get(idx);
+
+                if (geoValidator.isOnLand(selected.getLongitude(), selected.getLatitude())) {
+                    String zoneId = zoneManager.findZoneForLocation(
+                        selected.getLongitude(), selected.getLatitude());
+                    double[] coords = pointGenerator.jitterPoint(
+                        selected.getLongitude(), selected.getLatitude(), 0.3);
+                    deliveryTier1Hits.incrementAndGet();
+                    return new DestinationResult(coords, zoneId, selected.getPoiId());
+                }
+            }
+        }
+
+        // ── Tier 2: Widened zone filter with intra-zone BONUS (not damping) ──
         List<DeliveryZone> zones = zoneManager.getZones();
+        List<DeliveryZone> candidateZones = new ArrayList<>();
+        List<Double> candidateScores = new ArrayList<>();
+        double zoneMaxDist = Math.max(maxDistKm, 25.0);  // widen to 25km minimum
 
-        // Find origin zone index for distance matrix lookup
-        int originIdx = zoneManager.findNearestZoneIndex(origin[0], origin[1]);
+        for (DeliveryZone zone : zones) {
+            if (zone.getZoneId().equals("MFS62")) continue;
 
-        // Find the 10 farthest zones from Tokyo center using pre-computed distances
-        // Tokyo center is roughly zone MFS01 area — use pre-computed matrix
-        int tokyoCenterIdx = zoneManager.getZoneListIndex("MFS01");
-        if (tokyoCenterIdx < 0) tokyoCenterIdx = 0;
+            // Use Haversine (no Manhattan factor) for spatial filter
+            double dist = zoneManager.calculateHaversineDistanceFast(origin[0], origin[1],
+                zone.getCenterLongitude(), zone.getCenterLatitude());
+            if (dist > zoneMaxDist) continue;
 
-        // Build sorted list of zones by distance from Tokyo center
-        int[] sortedByDist = new int[zones.size()];
-        double[] distFromTokyo = new double[zones.size()];
-        for (int i = 0; i < zones.size(); i++) {
-            sortedByDist[i] = i;
-            distFromTokyo[i] = zoneManager.getZoneDistance(tokyoCenterIdx, i);
+            double score = zone.calculateAttractiveness(0,
+                config.getAttractivenessBeta1(), config.getAttractivenessBeta2(),
+                config.getAttractivenessBeta3(), config.getAttractivenessBeta4());
+            score *= Math.exp(-dist / decayFactor);
+
+            // BONUS for intra-zone — delivery trucks prefer staying local
+            if (zone.getZoneId().equals(originZoneId)) {
+                score *= config.getDeliveryTourIntrazoneBonus();
+            }
+
+            if (score > 1e-10) {
+                candidateZones.add(zone);
+                candidateScores.add(score);
+            }
         }
-        // Simple selection of top-10 farthest (no need to sort all)
-        int numFarZones = Math.min(10, zones.size());
-        for (int k = 0; k < numFarZones; k++) {
-            int maxIdx = k;
-            for (int i = k + 1; i < zones.size(); i++) {
-                if (distFromTokyo[sortedByDist[i]] > distFromTokyo[sortedByDist[maxIdx]]) {
-                    maxIdx = i;
+
+        if (!candidateZones.isEmpty()) {
+            int selectedIndex = utils.Roulette.choice(candidateScores, ThreadLocalRandom.current().nextDouble());
+            DeliveryZone selectedZone = candidateZones.get(selectedIndex);
+            String selectedZoneId = selectedZone.getZoneId();
+
+            // POI-based destination within selected zone
+            if (poiManager != null && poiManager.hasPOIs()
+                    && ThreadLocalRandom.current().nextDouble() >= getZoneAwareBypass(selectedZone, config.getDeliveryRandomDestRatio())) {
+                int timePeriod = zoneManager.getTimePeriod(currentTime);
+                PointOfInterest targetPOI = poiManager.selectPOIForTrip(
+                    truck, selectedZoneId, commodityType, timePeriod);
+                if (targetPOI != null
+                        && geoValidator.isOnLand(targetPOI.getLongitude(), targetPOI.getLatitude())
+                        && geoValidator.isValidPOILandUse(targetPOI.getLongitude(), targetPOI.getLatitude())) {
+                    double[] coords = pointGenerator.jitterPoint(
+                        targetPOI.getLongitude(), targetPOI.getLatitude(), selectedZone.getRadiusKm());
+                    deliveryTier2Hits.incrementAndGet();
+                    return new DestinationResult(coords, selectedZoneId, targetPOI.getPoiId());
                 }
             }
-            int tmp = sortedByDist[k];
-            sortedByDist[k] = sortedByDist[maxIdx];
-            sortedByDist[maxIdx] = tmp;
+
+            double[] coords = pointGenerator.generatePointInZone(selectedZone);
+            deliveryTier2Hits.incrementAndGet();
+            return DestinationResult.withZone(coords, selectedZoneId);
         }
 
-        // Filter to zones beyond minimum distance from origin
-        List<DeliveryZone> validFarZones = new ArrayList<>();
-        List<Double> zoneWeights = new ArrayList<>();
-        for (int k = 0; k < numFarZones; k++) {
-            int zIdx = sortedByDist[k];
-            double distFromOrigin = (originIdx >= 0) ?
-                zoneManager.getZoneDistance(originIdx, zIdx) :
-                zoneManager.calculateDistanceFast(origin[0], origin[1],
-                    zones.get(zIdx).getCenterLongitude(), zones.get(zIdx).getCenterLatitude());
-
-            if (distFromOrigin >= MIN_DISTANCE_KM) {
-                validFarZones.add(zones.get(zIdx));
-                zoneWeights.add(Math.exp(-distFromOrigin / LONGHAUL_DISTANCE_DECAY_FACTOR));
+        // ── Tier 3: Nearest POI fallback (NOT nearest zone center) ──
+        if (poiManager != null && poiManager.hasPOIs()) {
+            PointOfInterest nearest = poiManager.findNearestPOI(origin[0], origin[1]);
+            if (nearest != null) {
+                String zoneId = zoneManager.findZoneForLocation(
+                    nearest.getLongitude(), nearest.getLatitude());
+                double[] coords = pointGenerator.jitterPoint(
+                    nearest.getLongitude(), nearest.getLatitude(), 0.3);
+                deliveryTier3Hits.incrementAndGet();
+                return new DestinationResult(coords, zoneId, nearest.getPoiId());
             }
         }
 
-        // Fallback: force MFS67-71
-        if (validFarZones.isEmpty()) {
-            for (int k = 0; k < numFarZones; k++) {
-                int zIdx = sortedByDist[k];
-                String zoneId = zones.get(zIdx).getZoneId();
-                if (zoneId.startsWith("MFS67") || zoneId.startsWith("MFS68") ||
-                    zoneId.startsWith("MFS69") || zoneId.startsWith("MFS70") ||
-                    zoneId.startsWith("MFS71")) {
-                    validFarZones.add(zones.get(zIdx));
-                    zoneWeights.add(1.0);
-                }
-            }
-        }
-
-        if (validFarZones.isEmpty()) {
-            for (int k = 0; k < numFarZones; k++) {
-                validFarZones.add(zones.get(sortedByDist[k]));
-                zoneWeights.add(1.0);
-            }
-        }
-
-        int selectedIndex = utils.Roulette.choice(zoneWeights, ThreadLocalRandom.current().nextDouble());
-        DeliveryZone selectedZone = validFarZones.get(selectedIndex);
-
-        double[] coords = pointGenerator.generatePointInZoneFarSide(selectedZone, origin);
-        return DestinationResult.withZone(coords, selectedZone.getZoneId());
+        // Ultimate fallback: nearest zone center
+        deliveryFallbackHits.incrementAndGet();
+        int nearestIdx = zoneManager.findNearestZoneIndex(origin[0], origin[1]);
+        DeliveryZone nearestZone = zones.get(Math.max(0, nearestIdx));
+        double[] coords = pointGenerator.generatePointInZone(nearestZone);
+        return DestinationResult.withZone(coords, nearestZone.getZoneId());
     }
 
-    /**
-     * Applies LONG_HAUL distance constraints with POI snapping.
-     */
-    public DestinationResult applyLongHaulConstraints(TruckAgent truck, double[] origin,
-                                                      String commodityType) {
-        DestinationResult interResult = selectInterZoneDestination(truck, origin);
-        String destZoneId = interResult.zoneId;
-
-        DeliveryZone destZoneLH = (destZoneId != null) ? zoneManager.findZoneByZoneId(destZoneId) : null;
-        boolean bypass = ThreadLocalRandom.current().nextDouble() < getZoneAwareBypass(destZoneLH, config.getLongHaulRandomDestRatio());
-
-        if (!bypass && poiManager != null && poiManager.hasPOIs() && destZoneId != null) {
-            PointOfInterest poi = poiManager.selectPOIForTrip(truck, destZoneId, commodityType, 0);
-            if (poi != null) {
-                double lon = poi.getLongitude();
-                double lat = poi.getLatitude();
-                if (geoValidator.isOnLand(lon, lat) && geoValidator.isValidPOILandUse(lon, lat)) {
-                    double lhRadius = (destZoneLH != null) ? destZoneLH.getRadiusKm() : 5.0;
-                    double[] coords = pointGenerator.jitterPoint(lon, lat, lhRadius);
-                    return new DestinationResult(coords, destZoneId, poi.getPoiId());
-                }
-            }
-        }
-
-        if (destZoneId != null) {
-            DeliveryZone destZone = zoneManager.findZoneByZoneId(destZoneId);
-            if (destZone != null) {
-                double[] coords = pointGenerator.generatePointInZone(destZone);
-                return DestinationResult.withZone(coords, destZoneId);
-            }
-        }
-
-        return interResult;
-    }
+    // NOTE: selectInterZoneDestination() and applyLongHaulConstraints() removed (W12-2026).
+    // LONG_HAUL trucks now use selectBalancedDestination() via the O-D matrix,
+    // with distance-boost weighting (>50km) in the LONG_HAUL branch.
+    // See selectBalancedDestination() lines 172-179 for the replacement logic.
 
     // ════════════════════════════════════════════════════════════════════════
     // EMPTY TRIP DESTINATION
@@ -523,7 +574,14 @@ public class DestinationSelector {
         if (truck.getTruckType() == TruckType.DELIVERY) {
             return selectNearbyDestination(truck, lastDropoff, 8.0);
         } else if (truck.getTruckType() == TruckType.LONG_HAUL) {
-            return selectInterZoneDestination(truck, lastDropoff);
+            // Use O-D balanced destination for empty repositioning (bidirectional)
+            String originZoneId = zoneManager.findZoneForLocation(lastDropoffLon, lastDropoffLat);
+            DestinationResult balanced = selectBalancedDestination(
+                truck, lastDropoff, originZoneId, currentTime, "EMPTY");
+            if (balanced != null) return balanced;
+            // Fallback: facility-based if G-A exhausted
+            double[] coords = selectFacilityBasedCoords(truck, originZoneId, currentTime);
+            return DestinationResult.coordsOnly(coords);
         } else {
             String originZoneId = zoneManager.findZoneForLocation(lastDropoffLon, lastDropoffLat);
             double[] coords = selectFacilityBasedCoords(truck, originZoneId, currentTime);
@@ -548,5 +606,20 @@ public class DestinationSelector {
             metroConfig.getSecondaryMetro()
         );
         return route != null ? route.distanceKm : 350.0;
+    }
+
+    /** Print delivery tour tier usage diagnostics. */
+    public void printDeliveryTourDiagnostics() {
+        int total = deliveryTotalCalls.get();
+        if (total == 0) return;
+        System.out.printf("[DELIVERY-DIAG] Total calls: %d%n", total);
+        System.out.printf("[DELIVERY-DIAG]   Tier 1 (POI proximity): %d (%.1f%%)%n",
+            deliveryTier1Hits.get(), 100.0 * deliveryTier1Hits.get() / total);
+        System.out.printf("[DELIVERY-DIAG]   Tier 2 (zone filter):   %d (%.1f%%)%n",
+            deliveryTier2Hits.get(), 100.0 * deliveryTier2Hits.get() / total);
+        System.out.printf("[DELIVERY-DIAG]   Tier 3 (nearest POI):   %d (%.1f%%)%n",
+            deliveryTier3Hits.get(), 100.0 * deliveryTier3Hits.get() / total);
+        System.out.printf("[DELIVERY-DIAG]   Fallback (zone center): %d (%.1f%%)%n",
+            deliveryFallbackHits.get(), 100.0 * deliveryFallbackHits.get() / total);
     }
 }

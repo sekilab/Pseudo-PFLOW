@@ -6,6 +6,7 @@ import java.util.*;
 import jp.ac.ut.csis.pflow.geom2.Mesh;
 import jp.ac.ut.csis.pflow.geom2.MeshUtils;
 import pseudo.gen.Commuter;
+import util.PathResolver;
 
 public class MeshVolumeCalculator {
 
@@ -100,7 +101,7 @@ public class MeshVolumeCalculator {
         Properties prop = new Properties();
         prop.load(inputStream);
 
-        dir = prop.getProperty("root");
+        dir = PathResolver.resolve(prop.getProperty("root"));
         String inputDir = String.format("%s/trajectory/", dir);
         String outputDir = String.format("%s/mesh_volume/", dir);
         //String input = "/home/ubuntu/Data/pseudo/trajectory/city/";

@@ -340,4 +340,17 @@ public class ZoneManager {
         double dLat = lat2 - lat1;
         return Math.sqrt(dLon * dLon + dLat * dLat) * 111.0 * manhattanFactor;
     }
+
+    /**
+     * Pure Haversine distance without Manhattan factor.
+     * Used for spatial proximity filters where we want actual straight-line distance,
+     * not road-network-adjusted distance.
+     */
+    public double calculateHaversineDistanceFast(double lon1, double lat1, double lon2, double lat2) {
+        double midLat = (lat1 + lat2) * 0.5;
+        double cosLat = Math.cos(Math.toRadians(midLat));
+        double dLon = (lon2 - lon1) * cosLat;
+        double dLat = lat2 - lat1;
+        return Math.sqrt(dLon * dLon + dLat * dLat) * 111.0;
+    }
 }

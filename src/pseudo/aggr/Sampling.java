@@ -8,6 +8,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.InputStream;
 import java.util.Properties;
+import util.PathResolver;
 
 public class Sampling {
 
@@ -70,8 +71,8 @@ public class Sampling {
 		Properties prop = new Properties();
 		prop.load(inputStream);
 
-		String input = prop.getProperty("legacy.input.dir");
-		String output = prop.getProperty("legacy.sampling.output");
+		String input = PathResolver.resolve(prop.getProperty("legacy.input.dir"));
+		String output = PathResolver.resolve(prop.getProperty("legacy.sampling.output"));
 		File[] files = (new File(input)).listFiles();
 		try(BufferedWriter bw = new BufferedWriter(new FileWriter(output));){
 			for (File file : files) {

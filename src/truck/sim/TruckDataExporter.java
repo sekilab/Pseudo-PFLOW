@@ -10,10 +10,8 @@ import java.util.*;
  *
  * OUTPUT STRUCTURE:
  * - trucks.csv: Truck agent information and statistics
- * - trips.csv: Individual trip records (original format)
+ * - trips.csv: Comprehensive trip records (all columns)
  * - trips_pseudo_pflow.csv: Pseudo PFLOW format (transport_mode=9)
- * - trips_with_zones.csv: Trips with zone annotations
- * - summary.csv: Aggregate validation metrics
  *
  * PSEUDO PFLOW FORMAT:
  * - Transport mode: 9 (truck)
@@ -76,10 +74,8 @@ public class TruckDataExporter {
      */
     public void exportAll(List<TruckAgent> trucks, List<TruckTrip> trips) {
         exportTrucks(trucks);
-        exportTrips(trips);
+        exportTripsComplete(trucks, trips);
         exportTripsPseudoPFlow(trips);
-        exportTripsWithZones(trucks, trips);
-        exportSummary(trucks, trips);
     }
 
     /**
@@ -134,26 +130,36 @@ public class TruckDataExporter {
     }
 
     /**
-     * Export trip information (original format)
+     * Export comprehensive trip records with all columns including
+     * truck type, facility IDs, and loading/unloading times.
      */
-    private void exportTrips(List<TruckTrip> trips) {
+    private void exportTripsComplete(List<TruckAgent> trucks, List<TruckTrip> trips) {
         String filename = runDirectory + "/trips.csv";
         int tripCount = 0;
 
+        Map<Integer, TruckAgent> truckMap = new HashMap<>();
+        for (TruckAgent truck : trucks) {
+            truckMap.put(truck.getTruckId(), truck);
+        }
+
         try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(filename), 65536))) {
-            // Header
-            writer.println("trip_id,truck_id,origin_lon,origin_lat,dest_lon,dest_lat," +
+            writer.println("trip_id,truck_id,truck_type,vehicle_size,capacity_tons," +
+                "origin_lon,origin_lat,dest_lon,dest_lat," +
                 "origin_zone,dest_zone,origin_facility_id,dest_facility_id," +
                 "request_time,loading_start,departure_time,arrival_time,unloading_end," +
-                "distance_km,cargo_loaded,goods_type,vehicle_size," +
-                "cargo_weight_tons,capacity_tons," +
+                "distance_km,cargo_loaded,goods_type,cargo_weight_tons," +
                 "loading_time_min,unloading_time_min,status");
 
-            // Data rows
             for (TruckTrip trip : trips) {
-                writer.printf("%d,%d,%.6f,%.6f,%.6f,%.6f,%s,%s,%s,%s,%s,%s,%s,%s,%s,%.2f,%s,%s,%s,%.2f,%.2f,%.2f,%.2f,%s%n",
+                TruckAgent truck = truckMap.get(trip.getTruckId());
+                String truckType = truck != null ? truck.getTruckType().toString() : "UNKNOWN";
+
+                writer.printf("%d,%d,%s,%s,%.2f,%.6f,%.6f,%.6f,%.6f,%s,%s,%s,%s,%s,%s,%s,%s,%s,%.2f,%s,%s,%.2f,%.2f,%.2f,%s%n",
                     trip.getTripId(),
                     trip.getTruckId(),
+                    truckType,
+                    trip.getVehicleSize(),
+                    trip.getCapacityTons(),
                     trip.getOriginLongitude(),
                     trip.getOriginLatitude(),
                     trip.getDestLongitude(),
@@ -170,9 +176,7 @@ public class TruckDataExporter {
                     trip.getDistanceKm(),
                     trip.isCargoLoaded() ? "true" : "false",
                     trip.getGoodsType(),
-                    trip.getVehicleSize(),
                     trip.getCargoWeightTons(),
-                    trip.getCapacityTons(),
                     trip.getLoadingTimeMinutes(),
                     trip.getUnloadingTimeMinutes(),
                     trip.getStatus().toString()
@@ -267,165 +271,6 @@ public class TruckDataExporter {
 
         } catch (IOException e) {
             System.err.println("Error exporting Pseudo PFLOW trips: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Export trips with agent type and zone information
-     */
-    private void exportTripsWithZones(List<TruckAgent> trucks, List<TruckTrip> trips) {
-        String filename = runDirectory + "/trips_with_zones.csv";
-        int tripCount = 0;
-
-        // Build a map of truck ID to truck agent for quick lookup
-        Map<Integer, TruckAgent> truckMap = new HashMap<>();
-        for (TruckAgent truck : trucks) {
-            truckMap.put(truck.getTruckId(), truck);
-        }
-
-        try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(filename), 65536))) {
-            // Header
-            writer.println("trip_id,truck_id,truck_type,vehicle_size,capacity_tons," +
-                "origin_lon,origin_lat,dest_lon,dest_lat," +
-                "origin_zone,dest_zone," +
-                "request_time,departure_time,arrival_time," +
-                "distance_km,cargo_loaded,cargo_weight_tons,goods_type,status");
-
-            // Data rows
-            for (TruckTrip trip : trips) {
-                TruckAgent truck = truckMap.get(trip.getTruckId());
-                String truckType = truck != null ? truck.getTruckType().toString() : "UNKNOWN";
-                String vehicleSize = truck != null ? truck.getVehicleSize() : "UNKNOWN";
-                double capacityTons = truck != null ? truck.getCapacityTons() : 0.0;
-
-                writer.printf("%d,%d,%s,%s,%.2f,%.6f,%.6f,%.6f,%.6f,%s,%s,%s,%s,%s,%.2f,%s,%.2f,%s,%s%n",
-                    trip.getTripId(),
-                    trip.getTruckId(),
-                    truckType,
-                    vehicleSize,
-                    capacityTons,
-                    trip.getOriginLongitude(),
-                    trip.getOriginLatitude(),
-                    trip.getDestLongitude(),
-                    trip.getDestLatitude(),
-                    trip.getOriginZoneId() != null ? trip.getOriginZoneId() : "UNKNOWN",
-                    trip.getDestZoneId() != null ? trip.getDestZoneId() : "UNKNOWN",
-                    formatTime(trip.getRequestTime()),
-                    formatTime(trip.getDepartureTime()),
-                    formatTime(trip.getArrivalTime()),
-                    trip.getDistanceKm(),
-                    trip.isCargoLoaded() ? "true" : "false",
-                    trip.getCargoWeightTons(),
-                    trip.getGoodsType(),
-                    trip.getStatus().toString()
-                );
-                tripCount++;
-            }
-
-            System.out.println("Exported trips_with_zones.csv: " + tripCount + " trips");
-
-        } catch (IOException e) {
-            System.err.println("Error exporting trips with zones: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Export summary statistics with validation metrics
-     */
-    private void exportSummary(List<TruckAgent> trucks, List<TruckTrip> trips) {
-        String filename = runDirectory + "/summary.csv";
-
-        try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(filename), 65536))) {
-            // Calculate statistics
-            int totalTrucks = trucks.size();
-            int totalTrips = trips.size();
-
-            // Fleet mix by vehicle size
-            long heavyCount = trucks.stream().filter(t -> t.getVehicleSize().equals("heavy")).count();
-            long mediumCount = trucks.stream().filter(t -> t.getVehicleSize().equals("medium")).count();
-            long smallCount = trucks.stream().filter(t -> t.getVehicleSize().equals("small")).count();
-            long lightCount = trucks.stream().filter(t -> t.getVehicleSize().equals("light")).count();
-
-            // Fleet mix by truck type
-            long deliveryTypeCount = trucks.stream().filter(t -> t.getTruckType() == TruckType.DELIVERY).count();
-            long longHaulTypeCount = trucks.stream().filter(t -> t.getTruckType() == TruckType.LONG_HAUL).count();
-            long urbanTypeCount = trucks.stream().filter(t -> t.getTruckType() == TruckType.MIXED_OPERATION).count();
-
-            // Trip statistics
-            long deliveryTrips = trips.stream().filter(TruckTrip::isCargoLoaded).count();
-            long emptyTrips = trips.stream().filter(t -> !t.isCargoLoaded()).count();
-
-            double totalDistance = trips.stream().mapToDouble(TruckTrip::getDistanceKm).sum();
-            double deliveryDistance = trips.stream()
-                .filter(TruckTrip::isCargoLoaded)
-                .mapToDouble(TruckTrip::getDistanceKm).sum();
-            double emptyDistance = trips.stream()
-                .filter(t -> !t.isCargoLoaded())
-                .mapToDouble(TruckTrip::getDistanceKm).sum();
-
-            double totalCargo = trips.stream()
-                .filter(TruckTrip::isCargoLoaded)
-                .mapToDouble(TruckTrip::getCargoWeightTons).sum();
-
-            // Calculated metrics
-            double avgTripsPerTruck = (double) totalTrips / totalTrucks;
-            double avgDeliveryTripsPerTruck = (double) deliveryTrips / totalTrucks;
-            double avgDistancePerTruck = totalDistance / totalTrucks;
-            double avgTripDistance = totalDistance / totalTrips;
-            double avgCargoWeight = deliveryTrips > 0 ? totalCargo / deliveryTrips : 0;
-            double emptyRunningRatio = totalDistance > 0 ? emptyDistance / totalDistance : 0;
-            double deliveryTripPercentage = 100.0 * deliveryTrips / totalTrips;
-            double emptyTripPercentage = 100.0 * emptyTrips / totalTrips;
-
-            // Write summary
-            writer.println("metric,value");
-            writer.println("# FLEET COMPOSITION");
-            writer.println("total_trucks," + totalTrucks);
-            writer.println("fleet_heavy_count," + heavyCount);
-            writer.println("fleet_medium_count," + mediumCount);
-            writer.println("fleet_small_count," + smallCount);
-            writer.println("fleet_light_count," + lightCount);
-            writer.println("fleet_heavy_percentage," + String.format("%.2f", 100.0 * heavyCount / totalTrucks));
-            writer.println("fleet_medium_percentage," + String.format("%.2f", 100.0 * mediumCount / totalTrucks));
-            writer.println("fleet_small_percentage," + String.format("%.2f", 100.0 * smallCount / totalTrucks));
-            writer.println("fleet_light_percentage," + String.format("%.2f", 100.0 * lightCount / totalTrucks));
-            writer.println("# TRUCK TYPE DISTRIBUTION");
-            writer.println("type_delivery_count," + deliveryTypeCount);
-            writer.println("type_long_haul_count," + longHaulTypeCount);
-            writer.println("type_urban_logistics_count," + urbanTypeCount);
-            writer.println("type_delivery_percentage," + String.format("%.2f", 100.0 * deliveryTypeCount / totalTrucks));
-            writer.println("type_long_haul_percentage," + String.format("%.2f", 100.0 * longHaulTypeCount / totalTrucks));
-            writer.println("type_urban_logistics_percentage," + String.format("%.2f", 100.0 * urbanTypeCount / totalTrucks));
-            writer.println("# TRIP STATISTICS");
-            writer.println("total_trips," + totalTrips);
-            writer.println("delivery_trips," + deliveryTrips);
-            writer.println("empty_trips," + emptyTrips);
-            writer.println("delivery_trip_percentage," + String.format("%.2f", deliveryTripPercentage));
-            writer.println("empty_trip_percentage," + String.format("%.2f", emptyTripPercentage));
-            writer.println("avg_trips_per_truck," + String.format("%.2f", avgTripsPerTruck));
-            writer.println("avg_delivery_trips_per_truck," + String.format("%.2f", avgDeliveryTripsPerTruck));
-            writer.println("# DISTANCE METRICS");
-            writer.println("total_distance_km," + String.format("%.2f", totalDistance));
-            writer.println("delivery_distance_km," + String.format("%.2f", deliveryDistance));
-            writer.println("empty_distance_km," + String.format("%.2f", emptyDistance));
-            writer.println("empty_running_ratio," + String.format("%.3f", emptyRunningRatio));
-            writer.println("empty_running_percentage," + String.format("%.2f", 100.0 * emptyRunningRatio));
-            writer.println("avg_distance_per_truck_km," + String.format("%.2f", avgDistancePerTruck));
-            writer.println("avg_trip_distance_km," + String.format("%.2f", avgTripDistance));
-            writer.println("# CARGO METRICS");
-            writer.println("total_cargo_tons," + String.format("%.2f", totalCargo));
-            writer.println("avg_cargo_weight_tons," + String.format("%.2f", avgCargoWeight));
-            writer.println("avg_cargo_per_truck_tons," + String.format("%.2f", totalCargo / totalTrucks));
-            writer.println("# VALIDATION TARGETS (from survey)");
-            writer.println("validation_target_vehicles_per_day,327108");
-            writer.println("validation_target_tons_per_day,1726420");
-            writer.println("validation_target_avg_load_tons,5.28");
-            writer.println("validation_target_empty_ratio,0.37");
-
-            System.out.println("Exported summary.csv");
-
-        } catch (IOException e) {
-            System.err.println("Error exporting summary: " + e.getMessage());
         }
     }
 

@@ -40,27 +40,8 @@ public enum FacilityType {
         this.retailBias = retailBias;
     }
 
-    public String getDescription() {
-        return description;
-    }
-
     public double getBaseTripsPerDay() {
         return baseTripsPerDay;
-    }
-
-    public double getWarehouseBias() {
-        return warehouseBias;
-    }
-
-    public double getRetailBias() {
-        return retailBias;
-    }
-
-    /**
-     * Get trip generation multiplier relative to baseline (9.7 trips/day).
-     */
-    public double getTripMultiplier() {
-        return baseTripsPerDay / 9.7;
     }
 
     /**

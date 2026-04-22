@@ -254,10 +254,9 @@ src/truck/sim/
                                 → Balanced trip distribution
 
 8. Data Export
-   TruckDataExporter → trips.csv (all trips)
-                    → trips_pseudo_pflow.csv (with sim_day)
-                    → trips_with_zones.csv (zone assignments)
-                    → trucks.csv (fleet roster)
+   TruckDataExporter → trucks.csv (fleet roster)
+                    → trips.csv (comprehensive, 25 columns)
+                    → trips_pseudo_pflow.csv (PFLOW format, 19 columns)
 
 9. Validation
    ValidationEngine → 51 metrics checked
@@ -326,11 +325,14 @@ java -Xmx4G -cp bin truck.sim.TruckSimulation
 [VALIDATION] Overall grade: A+ (51/51 tests passed)
 ```
 
-Output files in `data/output/truck/run_YYYYMMDD_HHMMSS/`:
-- `trips.csv` - All trips (468 MB for full scale)
-- `trips_pseudo_pflow.csv` - PFLOW format with sim_day (350 MB)
-- `trips_with_zones.csv` - With zone assignments (209 MB)
+Output files in `output/trips/truck/run_YYYYMMDD_HHMMSS/`:
 - `trucks.csv` - Fleet roster (173 MB)
+- `trips.csv` - Comprehensive trip records (25 columns)
+- `trips_pseudo_pflow.csv` - PFLOW format with sim_day (19 columns)
+- `od_flows.csv` - Zone-to-zone trip matrix
+- `zone_trips.csv` - Per-zone trip counts
+- `dashboard.csv` - Unified metrics (41 metrics)
+- `validation.csv` - Pass/fail results with grade
 
 ---
 

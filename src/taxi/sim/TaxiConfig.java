@@ -4,6 +4,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
 
+import util.PathResolver;
+
 /**
  * Central configuration class for Tokyo Taxi ABM Simulation
  *
@@ -140,7 +142,7 @@ public class TaxiConfig {
 
     // ===== SPATIAL VALIDATION =====
     private boolean spatialValidationEnabled = true;
-    private String shapefileDir = "src/taxi/gm-jp/";
+    private String shapefileDir = "src/shared/gm-jp/";
     private double riverBufferKm = 0.15;
     private String prefectureCodes = "";  // e.g. "13,14" — filter polbnda_jpn.shp by adm_code prefix
 
@@ -148,6 +150,15 @@ public class TaxiConfig {
     private boolean transportIndexEnabled = true;
     private double stationProximityMaxKm = 2.0;     // Max distance for station boost
     private double stationBiasProb = 0.4;           // Probability of station-biased point generation
+
+    // ===== SPATIAL DISTRIBUTION (V5.2) =====
+    // Replaces radial-uniform polar sampling with configurable distribution
+    private String spatialDistributionMode = "gaussian";  // "gaussian" or "uniform"
+    private double spatialGaussianSigmaFactor = 2.5;      // sigma = radius / this value
+    private double spatialGaussianClipFactor = 1.2;       // max distance = radius * this value
+    private double spatialAspectX = 1.0;                  // E-W stretch factor (>1 = wider)
+    private double spatialAspectY = 1.0;                  // N-S stretch factor (>1 = taller)
+    private double spatialJitterMeters = 50.0;            // final random perturbation in meters
 
     // ===== ZONE ENRICHMENT FROM SHAPEFILES =====
     private boolean zoneEnrichmentEnabled = true;
@@ -207,6 +218,7 @@ public class TaxiConfig {
             loadZoneConfig(props);
             loadSpatialConfig(props);
             loadTransportIndexConfig(props);
+            loadSpatialDistributionConfig(props);
             loadZoneEnrichmentConfig(props);
 
             System.out.println("✓ Configuration loaded successfully from: " + configPath);
@@ -224,8 +236,8 @@ public class TaxiConfig {
     }
 
     private void loadDirectories(Properties props) {
-        inputDirectory = props.getProperty("input.directory", inputDirectory);
-        outputDirectory = props.getProperty("output.directory", outputDirectory);
+        inputDirectory = PathResolver.resolve(props.getProperty("input.directory", inputDirectory));
+        outputDirectory = PathResolver.resolve(props.getProperty("output.directory", outputDirectory));
         System.out.println("  Input: " + inputDirectory);
         System.out.println("  Output: " + outputDirectory);
     }
@@ -441,6 +453,19 @@ public class TaxiConfig {
         }
     }
 
+    private void loadSpatialDistributionConfig(Properties props) {
+        spatialDistributionMode = props.getProperty("spatial.distribution.mode", spatialDistributionMode).trim();
+        spatialGaussianSigmaFactor = getDouble(props, "spatial.gaussian.sigma.factor", spatialGaussianSigmaFactor);
+        spatialGaussianClipFactor = getDouble(props, "spatial.gaussian.clip.factor", spatialGaussianClipFactor);
+        spatialAspectX = getDouble(props, "spatial.aspect.x", spatialAspectX);
+        spatialAspectY = getDouble(props, "spatial.aspect.y", spatialAspectY);
+        spatialJitterMeters = getDouble(props, "spatial.jitter.meters", spatialJitterMeters);
+        System.out.println("  Spatial distribution: " + spatialDistributionMode +
+            " (sigma=" + spatialGaussianSigmaFactor + ", clip=" + spatialGaussianClipFactor +
+            ", aspect=" + spatialAspectX + "x" + spatialAspectY +
+            ", jitter=" + spatialJitterMeters + "m)");
+    }
+
     private void loadZoneEnrichmentConfig(Properties props) {
         zoneEnrichmentEnabled = getBoolean(props, "zone.enrichment.enabled", zoneEnrichmentEnabled);
         stationCoverageKm = getDouble(props, "zone.enrichment.station.coverage.km", stationCoverageKm);
@@ -629,4 +654,12 @@ public class TaxiConfig {
     public boolean isZoneEnrichmentEnabled() { return zoneEnrichmentEnabled; }
     public double getStationCoverageKm() { return stationCoverageKm; }
     public double getSettlementCoverageKm() { return settlementCoverageKm; }
+
+    // V5.2: Spatial distribution getters
+    public String getSpatialDistributionMode() { return spatialDistributionMode; }
+    public double getSpatialGaussianSigmaFactor() { return spatialGaussianSigmaFactor; }
+    public double getSpatialGaussianClipFactor() { return spatialGaussianClipFactor; }
+    public double getSpatialAspectX() { return spatialAspectX; }
+    public double getSpatialAspectY() { return spatialAspectY; }
+    public double getSpatialJitterMeters() { return spatialJitterMeters; }
 }

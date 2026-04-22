@@ -10,16 +10,8 @@ import jp.ac.ut.csis.pflow.geom2.Mesh;
 import jp.ac.ut.csis.pflow.geom2.MeshUtils;
 import jp.ac.ut.csis.pflow.routing4.res.Network;
 import jp.ac.ut.csis.pflow.routing4.res.Node;
-import org.geotools.geometry.jts.JTS;
-import org.geotools.geometry.jts.JTSFactoryFinder;
-import org.geotools.referencing.CRS;
-import org.locationtech.jts.geom.Point;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-
-import org.opengis.referencing.FactoryException;
-import org.opengis.referencing.crs.CoordinateReferenceSystem;
-import org.opengis.referencing.operation.MathTransform;
+// GeoTools CRS imports removed — using hardcoded Tokyo Datum → WGS84 shift instead
+// to avoid GeoTools version conflicts between 20.1 and 26-SNAPSHOT jars
 
 
 import pseudo.res.City;
@@ -165,34 +157,25 @@ public class DataAccessor {
 		return 1;
 	}
 
-	public static void loadRestaurantData(String filename, Country japan) throws FactoryException {
-		CoordinateReferenceSystem sourceCRS = CRS.decode("EPSG:4301"); // Replace <sourceCRSCode> with your original CRS code
-		CoordinateReferenceSystem targetCRS = CRS.decode("EPSG:4326");
-		MathTransform transform = CRS.findMathTransform(sourceCRS, targetCRS, true);
+	// Tokyo Datum (EPSG:4301) → WGS84 (EPSG:4326) approximate shift for Kanto region
+	// Molodensky parameters: dx=-148, dy+507, dz+681 → ~12m accuracy, sufficient for mesh assignment
+	private static final double TOKYO_TO_WGS84_DLAT = +0.000106950;
+	private static final double TOKYO_TO_WGS84_DLON = -0.000293000;
 
-		GeometryFactory geometryFactory = (GeometryFactory) JTSFactoryFinder.getGeometryFactory();
-
+	public static void loadRestaurantData(String filename, Country japan) {
 		// restaurant data from TelePointDB 2018
 		try(BufferedReader br = new BufferedReader((new FileReader(filename)));){
 			String line;
 			br.readLine();
 			while((line = br.readLine()) != null){
 				String[] items = line.split(",");
-//				poi.rename(columns={0:'DN', 1: 'DN+', 2: 'DNKN', 3: 'TEL', 4: 'TEL-', 5: 'ADD', 6: 'ADDKN', 7: 'ADDCD', 8: 'ADD#', 9: 'ZIP', 10: 'BUSC',
-//						11: 'REP', 12: 'COMP', 13: 'ATR', 14: 'DOE', 15: 'DOP', 16: 'DEL#', 17: 'FLAG', 18: 'PFLAG', 19: 'ACC', 20: 'LON', 21: 'LAT'})
 				String gcode = items[7];  // admin code
 				double lon = Double.parseDouble(items[20]);
 				double lat = Double.parseDouble(items[21]);
 
-				Coordinate coord = new Coordinate(lat, lon);
-				Point point = geometryFactory.createPoint(coord);
-
-				// Transform point
-				Point transformedPoint = (Point) JTS.transform(point, transform);
-
-				// Extract transformed coordinates
-				double transformedLon = transformedPoint.getCoordinate().y;
-				double transformedLat = transformedPoint.getCoordinate().x;
+				// Apply Tokyo Datum → WGS84 shift
+				double transformedLon = lon + TOKYO_TO_WGS84_DLON;
+				double transformedLat = lat + TOKYO_TO_WGS84_DLAT;
 
 				Mesh mesh = MeshUtils.createMesh(3, transformedLon, transformedLat);
 				String mcode = mesh.getCode();
@@ -200,7 +183,7 @@ public class DataAccessor {
 				City city = japan.getCity(gcode);
 				if (city != null) {
 					GMesh gmesh = japan.hasMesh(mcode) ? japan.getMesh(mcode) : new GMesh(mesh);
-					double capacity = 10000; //
+					double capacity = 10000;
 					Facility fac = new Facility(0, transformedLon, transformedLat, gcode, capacity);
 					gmesh.addRestaurant(fac);
 					city.addMesh(gmesh);
@@ -211,31 +194,20 @@ public class DataAccessor {
 		}
 	};
 
-	public static void loadRetailData(String filename, Country japan) throws FactoryException {
-		CoordinateReferenceSystem sourceCRS = CRS.decode("EPSG:4301"); // Replace <sourceCRSCode> with your original CRS code
-		CoordinateReferenceSystem targetCRS = CRS.decode("EPSG:4326");
-		MathTransform transform = CRS.findMathTransform(sourceCRS, targetCRS, true);
-
-		GeometryFactory geometryFactory = (GeometryFactory) JTSFactoryFinder.getGeometryFactory();
-		// restaurant data from TelePointDB 2018
+	public static void loadRetailData(String filename, Country japan) {
+		// retail data from TelePointDB 2018
 		try(BufferedReader br = new BufferedReader((new FileReader(filename)));){
 			String line;
 			br.readLine();
 			while((line = br.readLine()) != null){
 				String[] items = line.split(",");
-//				poi.rename(columns={0:'DN', 1: 'DN+', 2: 'DNKN', 3: 'TEL', 4: 'TEL-', 5: 'ADD', 6: 'ADDKN', 7: 'ADDCD', 8: 'ADD#', 9: 'ZIP', 10: 'BUSC',
-//						11: 'REP', 12: 'COMP', 13: 'ATR', 14: 'DOE', 15: 'DOP', 16: 'DEL#', 17: 'FLAG', 18: 'PFLAG', 19: 'ACC', 20: 'LON', 21: 'LAT'})
 				String gcode = items[7];  // admin code
 				double lon = Double.parseDouble(items[20]);
 				double lat = Double.parseDouble(items[21]);
 
-				Point point = geometryFactory.createPoint(new Coordinate(lat, lon));
-				// Transform point to the target CRS
-				Point transformedPoint = (Point) JTS.transform(point, transform);
-
-				// Extract transformed coordinates
-				double transformedLon = transformedPoint.getCoordinate().y;
-				double transformedLat = transformedPoint.getCoordinate().x;
+				// Apply Tokyo Datum → WGS84 shift
+				double transformedLon = lon + TOKYO_TO_WGS84_DLON;
+				double transformedLat = lat + TOKYO_TO_WGS84_DLAT;
 
 				Mesh mesh = MeshUtils.createMesh(3, transformedLon, transformedLat);
 				String mcode = mesh.getCode();

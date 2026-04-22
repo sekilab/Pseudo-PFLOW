@@ -9,6 +9,7 @@ import java.io.FileWriter;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Properties;
+import util.PathResolver;
 
 public class CensusKakou3{
 
@@ -39,7 +40,7 @@ public class CensusKakou3{
 		prop.load(inputStream);
 
 		System.out.println("start");
-		String censusData500 = prop.getProperty("legacy.census.data.500");
+		String censusData500 = PathResolver.resolve(prop.getProperty("legacy.census.data.500"));
 		File[] files = new File(censusData500).listFiles();
 		int count=0;
 		for (File file : files) {

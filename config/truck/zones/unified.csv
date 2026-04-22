@@ -1,0 +1,135 @@
+zone_id,name,center_lon,center_lat,radius_km,warehouses_weight,retail_weight,construction_weight,residential_weight
+MFS01,Chiyoda/Chuo/Minato (Central Tokyo CBD),139.7673,35.6809,3.5,0.2,0.8,0.1,0.2
+MFS02,Meguro/Shinagawa/Ota (Southern Tokyo Port),139.7400,35.6100,3.5,1.0,0.3,0.4,0.3
+MFS03,Toshima/Bunkyo/Shinjuku/Shibuya (Northwest),139.7000,35.6950,3.5,0.2,1.0,0.2,0.6
+MFS04,Arakawa/Taito/Sumida/Koto (Eastern Industrial),139.8,35.68,3.5,1.0,0.4,0.6,0.4
+MFS05,Nakano/Suginami/Setagaya (Western Residential),139.6500,35.6700,4.0,0.1,0.6,0.2,1.0
+MFS06,Nerima/Itabashi/Kita (Northern Tokyo),139.6800,35.7500,3.5,0.4,0.5,0.3,0.8
+MFS07,Adachi/Katsushika/Edogawa (Northeast Tokyo),139.8500,35.7400,4.0,0.7,0.5,0.4,0.7
+MFS08,Chofu/Nishitokyo/Fuchu/Musashino,139.5500,35.6700,4.0,0.4,0.5,0.3,0.7
+MFS09,Machida/Tama/Hachioji/Inagi,139.3200,35.6500,6.0,0.4,0.5,0.3,0.6
+MFS10,Mizuho/Fussa/Hamura/Akiruno,139.2500,35.7400,5.0,0.3,0.4,0.2,0.5
+MFS11,Yokohama Nishi/Naka (Central),139.62,35.47,3.0,1.0,0.6,0.3,0.4
+MFS12,Yokohama Isogo/Minami/Kanazawa/Konan (South Port),139.6200,35.4100,3.0,1.0,0.4,0.5,0.3
+MFS13,Yokohama Hodogaya/Totsuka/Sakae/Izumi (West),139.5500,35.4400,4.5,0.7,0.5,0.3,0.5
+MFS14,Yokohama Kohoku/Tsuzuki/Midori/Aoba (North),139.5800,35.5300,4.0,0.6,0.5,0.3,0.6
+MFS15,Yokohama Tsurumi/Kanagawa (East),139.6600,35.5100,2.5,0.9,0.4,0.4,0.4
+MFS16,Kawasaki Kawasaki/Saiwai/Nakahara (Central),139.69,35.55,3.0,0.9,0.4,0.6,0.3
+MFS17,Kawasaki Takatsu/Miyamae/Tama/Asao (North),139.6000,35.5900,4.0,0.5,0.5,0.3,0.6
+MFS18,Sagamihara City,139.3700,35.5700,6.0,0.5,0.4,0.3,0.5
+MFS19,Yokosuka/Miura,139.647255,35.289154,5.0,0.5,0.4,0.3,0.4
+MFS20,Kamakura/Zushi/Hayama,139.5500,35.3200,5.0,0.3,0.5,0.2,0.5
+MFS21,Fujisawa/Chigasaki/Samukawa,139.4800,35.3400,6.0,0.4,0.5,0.3,0.5
+MFS25,Atsugi/Hadano/Kiyokawa/Isehara,139.3300,35.4400,8.0,0.4,0.4,0.3,0.4
+MFS26,Zama/Yamato/Ebina/Ayase,139.4500,35.4800,6.0,0.5,0.5,0.3,0.5
+MFS27,Saitama City (Urawa/Omiya),139.6500,35.8600,5.0,0.5,0.6,0.3,0.7
+MFS28,Kawaguchi/Warabi/Toda,139.7200,35.8300,3.5,0.6,0.5,0.4,0.6
+MFS29,Asaka/Wako/Niiza/Tokorozawa,139.5700,35.8000,4.5,0.4,0.5,0.3,0.6
+MFS30,Soka/Kasukabe/Misato/Koshigaya (East Saitama),139.8200,35.8900,5.0,0.5,0.5,0.3,0.6
+MFS31,Hanno/Hidaka/Moroyama/Ogose,139.3300,35.8500,8.0,0.3,0.4,0.2,0.4
+MFS32,Tsurugashima/Sakado/Kawajima/Higashimatsuyama,139.4000,35.9500,7.0,0.3,0.4,0.3,0.4
+MFS33,Ageo/Konosu/Okegawa/Kitamoto,139.6000,36.0000,6.0,0.4,0.4,0.3,0.5
+MFS38,Chiba City,140.1200,35.6100,5.0,0.6,0.5,0.3,0.6
+MFS39,Ichikawa/Urayasu/Narashino/Funabashi,139.9200,35.7000,4.0,0.7,0.5,0.4,0.6
+MFS40,Matsudo/Kamagaya/Kashiwa/Abiko (North Chiba),139.9500,35.8400,5.0,0.5,0.5,0.3,0.6
+MFS41,Nagareyama/Noda (Northwest Chiba),139.9000,35.9500,4.5,0.4,0.4,0.3,0.5
+MFS42,Yachiyo/Sakura/Narita/Shiroi (Central Chiba),140.1500,35.7200,6.0,0.5,0.4,0.3,0.5
+MFS43,Ichihara City,140.1200,35.5000,8.0,0.5,0.4,0.3,0.4
+MFS44,Kisarazu/Sodegaura/Kimitsu/Futtsu,140.065109,35.615836,6.0,0.4,0.4,0.3,0.4
+MFS22,Hiratsuka/Oiso/Ninomiya,139.3300,35.3300,7.0,0.4,0.4,0.3,0.4
+MFS23,Odawara/Manazuru/Yugawara/Hakone,139.1500,35.2500,10.0,0.3,0.4,0.2,0.4
+MFS24,Minami-Ashigara/Nakai/Oi/Matsuda,139.1000,35.3200,8.0,0.2,0.3,0.2,0.3
+MFS34,Kuki/Kazo/Hanyu/Gyoda,139.6500,36.1300,8.0,0.3,0.4,0.2,0.4
+MFS35,Kumagaya/Fukaya/Ogawa/Yorii,139.3900,36.1500,10.0,0.4,0.4,0.3,0.4
+MFS36,Honjo/Kamikawa/Kamisato,139.1900,36.2400,7.0,0.3,0.3,0.2,0.3
+MFS37,Chichibu/Yokoze/Minano/Nagatoro,139.0800,36.0000,12.0,0.2,0.3,0.2,0.3
+MFS45,Katsuura/Otaki/Tateyama/Kamogawa,140.25,35.35,15.0,0.3,0.3,0.2,0.3
+MFS46,Choshi/Asahi/Sosa/Katori,140.8200,35.7300,12.0,0.3,0.3,0.2,0.3
+MFS47,Togane/Mobara/Sanmu/Oamishirasato,140.29,35.6,10.0,0.3,0.4,0.2,0.4
+MFS48,Tsuchiura/Ishioka/Omitama/Kasumigaura,140.2000,36.0700,10.0,0.4,0.4,0.3,0.4
+MFS49,Koga/Shimotsuma/Yachiyo/Goka,139.9500,36.1800,8.0,0.3,0.3,0.2,0.3
+MFS50,Tsukuba City,140.1100,36.0800,8.0,0.5,0.5,0.3,0.5
+MFS51,Joso/Bando,139.9800,36.0200,7.0,0.3,0.3,0.2,0.3
+MFS52,Ryugasaki/Toride/Ushiku/Moriya,140.1700,35.9100,6.0,0.4,0.4,0.3,0.4
+MFS53,Inashiki/Miho/Kawachi,140.3200,35.9500,7.0,0.2,0.3,0.2,0.3
+MFS54,Kashima/Kamisu/Namegata/Itako,140.6400,35.9700,12.0,0.5,0.4,0.4,0.3
+MFS55,Mito/Hitachi/Kasama/Hitachinaka,140.4700,36.3800,15.0,0.5,0.5,0.3,0.5
+MFS56,Yuki/Chikusei/Sakuragawa,139.8700,36.3000,8.0,0.3,0.3,0.2,0.3
+MFS57,Maebashi/Takasaki/Isesaki/Shibukawa,139.0600,36.3900,12.0,0.5,0.5,0.3,0.5
+MFS58,Kiryu/Ota/Tatebayashi/Midori,139.3700,36.3100,10.0,0.4,0.4,0.3,0.4
+MFS65,Gunma North,138.9500,36.7000,15.0,0.3,0.3,0.2,0.3
+MFS66,Gunma Other (Ueno/Kanna/Nanmoku),138.8000,36.1500,10.0,0.2,0.2,0.1,0.2
+MFS59,Utsunomiya/Kanuma/Moka/Kaminokawa,139.8800,36.5600,12.0,0.5,0.5,0.3,0.5
+MFS60,Tochigi/Oyama/Shimotsuke/Nogi,139.7300,36.3800,8.0,0.4,0.4,0.3,0.4
+MFS61,Ashikaga/Sano,139.4500,36.3400,7.0,0.4,0.4,0.3,0.4
+MFS64,Tochigi North,139.8000,36.8500,12.0,0.3,0.3,0.2,0.3
+MFS63,Ibaraki North,140.4500,36.7000,15.0,0.3,0.3,0.2,0.3
+MFS67,Hokkaido & Tohoku,140.7400,38.2700,150.0,0.5,0.4,0.3,0.6
+MFS68,Hokuriku,137.674553,36.948566,80.0,0.4,0.4,0.3,0.5
+MFS69,Yamanashi & Nagano,138.5000,36.0000,60.0,0.3,0.4,0.2,0.5
+MFS70,Shizuoka,138.3828,34.9756,50.0,0.6,0.5,0.4,0.4
+MFS71,Chubu-West (Osaka/Nagoya),136.5000,35.0000,100.0,0.8,0.7,0.5,0.6
+PRF01,Hokkaido Prefecture,143.05,43.06,120.0,0.18,0.22,0.11,0.14
+PRF02,Aomori Prefecture,140.74,40.82,40.0,0.05,0.06,0.03,0.04
+PRF03,Iwate Prefecture,141.15,39.7,45.0,0.05,0.06,0.03,0.04
+PRF04,Miyagi Prefecture,140.87,38.27,35.0,0.09,0.11,0.06,0.07
+PRF05,Akita Prefecture,140.1,39.72,40.0,0.05,0.06,0.03,0.04
+PRF06,Yamagata Prefecture,140.34,38.24,35.0,0.05,0.06,0.03,0.04
+PRF07,Fukushima Prefecture,140.47,37.75,40.0,0.07,0.09,0.04,0.06
+PRF15,Niigata Prefecture,139.0236,37.9022,45.0,0.20,0.24,0.12,0.16
+PRF16,Toyama Prefecture,137.21,36.7,25.0,0.11,0.13,0.07,0.09
+PRF17,Ishikawa Prefecture,136.63,36.59,30.0,0.11,0.13,0.07,0.09
+PRF18,Fukui Prefecture,136.22,35.85,25.0,0.08,0.09,0.05,0.06
+PRF19,Yamanashi Prefecture,138.57,35.66,25.0,0.14,0.17,0.09,0.11
+PRF20,Nagano Prefecture,138.18,36.23,45.0,0.36,0.43,0.21,0.29
+PRF22,Shizuoka Prefecture,138.38,34.98,50.0,0.50,0.60,0.30,0.40
+PRF21,Gifu Prefecture,136.72,35.39,35.0,0.05,0.06,0.03,0.04
+PRF23,Aichi Prefecture,136.91,35.18,30.0,0.09,0.10,0.05,0.07
+PRF24,Mie Prefecture,136.51,34.73,35.0,0.05,0.06,0.03,0.04
+PRF31,Tottori Prefecture,134.24,35.5,25.0,0.05,0.06,0.03,0.04
+PRF32,Shimane Prefecture,132.630477,35.434296,30.0,0.05,0.06,0.03,0.04
+PRF33,Okayama Prefecture,133.93,34.66,25.0,0.05,0.06,0.03,0.04
+PRF34,Hiroshima Prefecture,132.46,34.4,30.0,0.05,0.06,0.03,0.04
+PRF35,Yamaguchi Prefecture,131.47,34.19,25.0,0.05,0.06,0.03,0.04
+PRF36,Tokushima Prefecture,134.56,34.07,20.0,0.05,0.06,0.03,0.04
+PRF37,Kagawa Prefecture,134.05,34.34,15.0,0.05,0.06,0.03,0.04
+PRF38,Ehime Prefecture,132.77,33.84,25.0,0.05,0.06,0.03,0.04
+PRF39,Kochi Prefecture,133.53,33.56,30.0,0.05,0.06,0.03,0.04
+PRF40,Fukuoka Prefecture,130.42,33.61,25.0,0.05,0.06,0.03,0.04
+PRF41,Saga Prefecture,130.3,33.25,15.0,0.05,0.06,0.03,0.04
+PRF42,Nagasaki Prefecture,129.87,32.75,20.0,0.05,0.06,0.03,0.04
+PRF43,Kumamoto Prefecture,130.74,32.79,25.0,0.05,0.06,0.03,0.04
+PRF44,Oita Prefecture,131.61,33.24,20.0,0.05,0.06,0.03,0.04
+PRF45,Miyazaki Prefecture,131.42,31.91,25.0,0.05,0.06,0.03,0.04
+PRF46,Kagoshima Prefecture,130.56,31.56,30.0,0.05,0.06,0.03,0.04
+PRF47,Okinawa Prefecture,127.74337,26.350038,20.0,0.05,0.06,0.03,0.04
+OSK01,shiga_southwest,136.0500,34.9500,15.0,0.70,0.50,0.30,0.30
+OSK02,shiga_central,136.1000,35.1000,12.0,0.70,0.50,0.30,0.30
+OSK03,shiga_northeast,136.2000,35.2500,15.0,0.70,0.50,0.30,0.30
+OSK04,nantan,135.4700,35.1000,18.0,0.70,0.50,0.30,0.30
+OSK05,yamashiro,135.7800,34.8200,12.0,0.70,0.50,0.30,0.30
+OSK06,tango_chutan,135.1500,35.4700,25.0,0.70,0.50,0.30,0.30
+OSK07,kyoto_city,135.7600,35.0100,8.0,0.70,0.50,0.30,0.30
+OSK08,north_osaka,135.5500,34.8200,10.0,0.70,0.50,0.30,0.30
+OSK09,east_osaka,135.6000,34.6800,8.0,0.70,0.50,0.30,0.30
+OSK10,minami_kawachi,135.5800,34.5200,10.0,0.70,0.50,0.30,0.30
+OSK11,senshu,135.3800,34.4800,12.0,0.70,0.50,0.30,0.30
+OSK12,sakai_city,135.4800,34.5700,6.0,0.70,0.50,0.30,0.30
+OSK13,osaka_city,135.5000,34.6900,6.0,0.70,0.50,0.30,0.30
+OSK14,hanshin_coastal,135.2800,34.7200,8.0,0.70,0.50,0.30,0.30
+OSK15,hanshin_inland,135.3500,34.8200,10.0,0.70,0.50,0.30,0.30
+OSK16,toban,134.8500,34.8300,18.0,0.70,0.50,0.30,0.30
+OSK17,awaji,134.8500,34.3500,12.0,0.70,0.50,0.30,0.30
+OSK18,tamba,135.0700,35.1000,15.0,0.70,0.50,0.30,0.30
+OSK19,seiban,134.6500,35.0000,20.0,0.70,0.50,0.30,0.30
+OSK20,tajima,134.8500,35.3700,18.0,0.70,0.50,0.30,0.30
+OSK21,kobe_city,135.1800,34.6900,8.0,0.70,0.50,0.30,0.30
+OSK22,nara_north,135.8000,34.6800,10.0,0.70,0.50,0.30,0.30
+OSK23,nara_central,135.8300,34.5000,12.0,0.70,0.50,0.30,0.30
+OSK24,nara_east,136.0000,34.4700,15.0,0.20,0.30,0.20,0.70
+OSK25,nara_south,135.7500,34.2800,18.0,0.70,0.50,0.30,0.30
+OSK26,wakayama_west,135.1700,34.2300,12.0,0.70,0.50,0.30,0.30
+OSK27,wakayama_northeast,135.4000,34.2800,15.0,0.70,0.50,0.30,0.30
+OSK28,gobo,135.1500,33.9000,15.0,0.40,0.60,0.30,0.50
+OSK29,tanabe,135.3800,33.7300,18.0,0.70,0.50,0.30,0.30
+OSK30,shingu,135.9800,33.7300,20.0,0.20,0.30,0.20,0.70

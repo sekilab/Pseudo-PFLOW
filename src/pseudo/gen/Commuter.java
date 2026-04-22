@@ -7,7 +7,7 @@ import java.util.*;
 import java.util.concurrent.Callable;
 
 import jp.ac.ut.csis.pflow.routing4.res.Network;
-import org.opengis.referencing.FactoryException;
+// import org.opengis.referencing.FactoryException;
 import pseudo.acs.CensusODAccessor;
 import pseudo.acs.DataAccessor;
 import pseudo.acs.MNLParamAccessor;
@@ -26,6 +26,7 @@ import pseudo.res.HouseHold;
 import pseudo.res.Country;
 import pseudo.res.GLonLat;
 import pseudo.res.Person;
+import util.PathResolver;
 import utils.Roulette;
 
 public class Commuter extends ActGenerator {
@@ -185,7 +186,7 @@ public class Commuter extends ActGenerator {
 		return new ActivityTask(id, households, mapMotif);
 	}
 
-	public static void main(String[] args) throws IOException, FactoryException {
+	public static void main(String[] args) throws IOException {
 
         Country country = new Country();
 
@@ -201,8 +202,8 @@ public class Commuter extends ActGenerator {
 		Properties prop = new Properties();
 		prop.load(inputStream);
 
-		root = prop.getProperty("root");
-		inputDir = prop.getProperty("inputDir");
+		root = PathResolver.resolve(prop.getProperty("root"));
+		inputDir = PathResolver.resolve(prop.getProperty("inputDir"));
 		System.out.println("Root Directory: " + root);
 		System.out.println("Input Directory: " + inputDir);
 
@@ -238,8 +239,8 @@ public class Commuter extends ActGenerator {
         MNLParamAccessor mnlAcs = new MNLParamAccessor();
         mnlAcs.add(mnlFile, ELabor.WORKER);
 
-        // 10 times
-        int mfactor = 1;
+        // expansion factor: 50 = 2% sample for testing, 1 = full population
+        int mfactor = 50;
 
         // create activities
 
@@ -247,9 +248,7 @@ public class Commuter extends ActGenerator {
 
         long starttime = System.currentTimeMillis();
         ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
-            22, 23
-            //13, 14, 23, 19
-            // , 12, 11, 27, 26, 24, 21, 28
+            13  // Tokyo
         ));
 
         for (int i: prefectureCodes){

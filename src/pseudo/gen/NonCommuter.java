@@ -8,7 +8,7 @@ import java.util.*;
 import java.util.concurrent.Callable;
 
 import jp.ac.ut.csis.pflow.routing4.res.Network;
-import org.opengis.referencing.FactoryException;
+// import org.opengis.referencing.FactoryException;
 import pseudo.acs.DataAccessor;
 import pseudo.acs.MNLParamAccessor;
 import pseudo.acs.MkChainAccessor;
@@ -23,6 +23,7 @@ import pseudo.res.HouseHold;
 import pseudo.res.Country;
 import pseudo.res.GLonLat;
 import pseudo.res.Person;
+import util.PathResolver;
 import utils.Roulette;
 
 public class NonCommuter extends ActGenerator {
@@ -145,7 +146,7 @@ public class NonCommuter extends ActGenerator {
 		return new ActivityTask(id, households, mapMotif);
 	}
 
-	public static void main(String[] args) throws IOException, FactoryException {
+	public static void main(String[] args) throws IOException {
 
 		Country japan = new Country();
 
@@ -161,8 +162,8 @@ public class NonCommuter extends ActGenerator {
 		Properties prop = new Properties();
 		prop.load(inputStream);
 
-		root = prop.getProperty("root");
-		inputDir = prop.getProperty("inputDir");
+		root = PathResolver.resolve(prop.getProperty("root"));
+		inputDir = PathResolver.resolve(prop.getProperty("inputDir"));
 		System.out.println("Root Directory: " + root);
 		System.out.println("Input Directory: " + inputDir);
 
@@ -196,16 +197,14 @@ public class NonCommuter extends ActGenerator {
 		MNLParamAccessor mnlAcs = new MNLParamAccessor();
 		mnlAcs.add(mnlFile, ELabor.NO_LABOR);
 
-		int mfactor = 1;
+		int mfactor = 50;
 
 		// create activities
 		String outputDir = String.format("%s/activity/", root);
 
 		long starttime = System.currentTimeMillis();
         ArrayList<Integer> prefectureCodes = new ArrayList<>(Arrays.asList(
-            22, 23
-            //13, 14, 23, 19
-            //, 12, 11, 27, 26, 24, 21, 28
+            13  // Tokyo
         ));
 
         for (int i: prefectureCodes){

@@ -23,7 +23,7 @@ MFS17,Kawasaki Takatsu/Miyamae/Tama/Asao (North),139.6000,35.5900,4.0,0.5,0.5,0.
 # Sagamihara - MFS Zone 18 (30km),,,,,,,,
 MFS18,Sagamihara City,139.3700,35.5700,6.0,0.5,0.4,0.3,0.5
 # Kanagawa Near Coast - MFS Zones 19-21 (45-46km, within 50km limit),,,,,,,
-MFS19,Yokosuka/Miura,139.6500,35.2900,5.0,0.5,0.4,0.3,0.4
+MFS19,Yokosuka/Miura,139.647255,35.289154,5.0,0.5,0.4,0.3,0.4
 MFS20,Kamakura/Zushi/Hayama,139.5500,35.3200,5.0,0.3,0.5,0.2,0.5
 MFS21,Fujisawa/Chigasaki/Samukawa,139.4800,35.3400,6.0,0.4,0.5,0.3,0.5
 # Kanagawa Central - MFS Zones 25-26 (36-48km, within 50km),,,,,,,
@@ -44,4 +44,4 @@ MFS40,Matsudo/Kamagaya/Kashiwa/Abiko (North Chiba),139.9500,35.8400,5.0,0.5,0.5,
 MFS41,Nagareyama/Noda (Northwest Chiba),139.9000,35.9500,4.5,0.4,0.4,0.3,0.5
 MFS42,Yachiyo/Sakura/Narita/Shiroi (Central Chiba),140.1500,35.7200,6.0,0.5,0.4,0.3,0.5
 MFS43,Ichihara City,140.1200,35.5000,8.0,0.5,0.4,0.3,0.4
-MFS44,Kisarazu/Sodegaura/Kimitsu/Futtsu,140.06,35.61,6.0,0.4,0.4,0.3,0.4
+MFS44,Kisarazu/Sodegaura/Kimitsu/Futtsu,140.065109,35.615836,6.0,0.4,0.4,0.3,0.4

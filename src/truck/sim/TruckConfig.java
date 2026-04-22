@@ -4,6 +4,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Properties;
 
+import util.PathResolver;
+
 /**
  * Configuration management singleton for Truck ABM.
  * 
@@ -24,7 +26,11 @@ public class TruckConfig {
         /** Long-haul between regions (MFS regions 61-71) */
         INTER_METROPOLITAN,
         /** Run BOTH for complete validation */
-        DUAL
+        DUAL,
+        /** Nationwide: 106 zones (66 Kanto + 40 prefecture sub-zones from MFS67-71 disaggregation) */
+        EXPANDED,
+        /** Unified: 134 zones (Kanto detail + Keihanshin detail + national coverage) */
+        UNIFIED
     }
 
     private static TruckConfig instance;
@@ -34,6 +40,10 @@ public class TruckConfig {
     private int truckFleetSize;           // Daily active trucks (after operating rate)
     private double truckOperatingRate;    // MLIT 実働率 (reference only, not applied)
     private int registeredFleetSize;      // Total registered fleet (MLIT)
+
+    // MFS survey-day raw baseline (File 18 un-scaled values)
+    private int baselineSurveyTrucks;     // File 18 observed trucks on survey day
+    private long baselineSurveyTons;      // File 18 observed total tons on survey day
     
     // Truck type distribution
     private double truckTypeDeliveryProb;
@@ -54,6 +64,15 @@ public class TruckConfig {
     private int truckTripsDelivery;
     private int truckTripsMixed;
     private int truckTripsLongHaul;
+
+    // V5.2: Delivery tour parameters — multi-stop tour model
+    private double deliveryFirstStopMaxKm = 15.0;      // Depot → first POI max distance
+    private double deliveryStopToStopMaxKm = 5.0;       // Between consecutive POIs
+    private int deliveryTourMinStops = 8;                // Min stops per tour
+    private int deliveryTourMaxStops = 15;               // Max stops per tour
+    private double deliveryDecayFirst = 3.0;             // Distance decay for first trip
+    private double deliveryDecaySubsequent = 1.0;        // Distance decay for stop-to-stop
+    private double deliveryTourIntrazoneBonus = 3.0;     // Intra-zone bonus for tour stops (replaces damping)
     
     // Vehicle size distribution
     private double vehicleSizeLargeProb;
@@ -171,6 +190,10 @@ public class TruckConfig {
         truckOperatingRate = getDoubleProperty("truck.operating.rate", 0.567);
         truckFleetSize = getIntProperty("truck.fleet.size",
             (int)(registeredFleetSize * truckOperatingRate));  // Default: calculate
+
+        // MFS survey-day raw baselines (File 18 un-scaled observed totals)
+        baselineSurveyTrucks = getIntProperty("truck.baseline.survey.trucks", 327108);
+        baselineSurveyTons = getLongProperty("truck.baseline.survey.tons", 1726420L);
         
         // Truck types
         truckTypeDeliveryProb = getDoubleProperty("truck.type.delivery.prob", 0.50);
@@ -197,7 +220,16 @@ public class TruckConfig {
         truckTripsDelivery = getIntProperty("truck.trips.DELIVERY", 6);
         truckTripsMixed = getIntProperty("truck.trips.MIXED_OPERATION", 4);
         truckTripsLongHaul = getIntProperty("truck.trips.LONG_HAUL", 2);
-        
+
+        // V5.2: Delivery tour parameters
+        deliveryFirstStopMaxKm = getDoubleProperty("delivery.first.stop.max.km", 15.0);
+        deliveryStopToStopMaxKm = getDoubleProperty("delivery.stop.to.stop.max.km", 5.0);
+        deliveryTourMinStops = getIntProperty("delivery.tour.min.stops", 8);
+        deliveryTourMaxStops = getIntProperty("delivery.tour.max.stops", 15);
+        deliveryDecayFirst = getDoubleProperty("delivery.distance.decay.first", 3.0);
+        deliveryDecaySubsequent = getDoubleProperty("delivery.distance.decay.subsequent", 1.0);
+        deliveryTourIntrazoneBonus = getDoubleProperty("delivery.tour.intrazone.bonus", 3.0);
+
         // Vehicle sizes
         vehicleSizeLargeProb = getDoubleProperty("vehicle.size.large.prob", 0.30);
         vehicleSizeMediumProb = getDoubleProperty("vehicle.size.medium.prob", 0.50);
@@ -296,11 +328,11 @@ public class TruckConfig {
     
     // Property utility methods
     public String getProperty(String key) {
-        return properties.getProperty(key);
+        return PathResolver.resolve(properties.getProperty(key));
     }
 
     public String getProperty(String key, String defaultValue) {
-        return properties.getProperty(key, defaultValue);
+        return PathResolver.resolve(properties.getProperty(key, defaultValue));
     }
 
     public void setProperty(String key, String value) {
@@ -377,6 +409,21 @@ public class TruckConfig {
         return SimulationMode.valueOf(mode.toUpperCase());
     }
 
+    /**
+     * Get the zones file for UNIFIED mode (134 zones: Kanto + Keihanshin detail).
+     */
+    public String getUnifiedZonesFile() {
+        return getProperty("zones.file.unified", "zones/unified.csv");
+    }
+
+    /**
+     * Get the GA targets file path (relative to config/truck/).
+     * Defaults to flows/ga_targets.csv; overridden in unified/expanded configs.
+     */
+    public String getGaTargetsFile() {
+        return getProperty("datasets.ga.targets.file", "flows/ga_targets.csv");
+    }
+
     public int getTruckFleetSize() { return truckFleetSize; }
     public double getTruckOperatingRate() { return truckOperatingRate; }
 
@@ -385,6 +432,20 @@ public class TruckConfig {
      * @return total registered trucks
      */
     public int getRegisteredFleetSize() { return registeredFleetSize; }
+
+    /**
+     * MFS File 18 raw survey-day truck count (un-scaled). Used by
+     * TruckDataExporter as the "validation target" baseline.
+     * @return survey-day observed truck count
+     */
+    public int getBaselineSurveyTrucks() { return baselineSurveyTrucks; }
+
+    /**
+     * MFS File 18 raw survey-day total tons (un-scaled). Used by
+     * TruckDataExporter as the "validation target" baseline.
+     * @return survey-day observed total tons
+     */
+    public long getBaselineSurveyTons() { return baselineSurveyTons; }
     
     public double getTruckTypeDeliveryProb() { return truckTypeDeliveryProb; }
     public double getTruckTypeLongHaulProb() { return truckTypeLongHaulProb; }
@@ -402,6 +463,15 @@ public class TruckConfig {
     public int getTruckTripsDelivery() { return truckTripsDelivery; }
     public int getTruckTripsMixed() { return truckTripsMixed; }
     public int getTruckTripsLongHaul() { return truckTripsLongHaul; }
+
+    // V5.2: Delivery tour getters
+    public double getDeliveryFirstStopMaxKm() { return deliveryFirstStopMaxKm; }
+    public double getDeliveryStopToStopMaxKm() { return deliveryStopToStopMaxKm; }
+    public int getDeliveryTourMinStops() { return deliveryTourMinStops; }
+    public int getDeliveryTourMaxStops() { return deliveryTourMaxStops; }
+    public double getDeliveryDecayFirst() { return deliveryDecayFirst; }
+    public double getDeliveryDecaySubsequent() { return deliveryDecaySubsequent; }
+    public double getDeliveryTourIntrazoneBonus() { return deliveryTourIntrazoneBonus; }
 
     /**
      * Get trips per day for a specific truck type.

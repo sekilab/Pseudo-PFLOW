@@ -1,0 +1,48 @@
+zone_id,zone_type,name,center_lon,center_lat,radius_km,jobs_weight,shops_weight,nightlife_weight,residential_weight,transport_hub
+Z01,hub,Shizuoka Station,138.3887,34.9718,1.5,0.8,0.8,0.5,0.2,1
+Z02,commercial,Shizuoka Gofukucho/Aoba,138.381,34.976,1.0,0.5,0.9,0.6,0.2,0
+Z03,business,Shizuoka City Hall/Aoi,138.383,34.978,1.0,0.7,0.5,0.3,0.3,0
+Z04,mixed,Shin-Shizuoka Station,138.379,34.979,1.0,0.5,0.7,0.4,0.3,1
+Z05,residential,Suruga-ku South,138.395,34.955,1.5,0.3,0.4,0.2,0.8,0
+Z06,residential,Aoi-ku North/Shizuoka Univ,138.37,34.995,1.5,0.3,0.4,0.2,0.7,0
+Z07,mixed,Shimizu Station,138.4893,35.0158,1.5,0.5,0.6,0.4,0.5,1
+Z08,commercial,Shimizu Port/S-Pulse Dream,138.5,35.01,1.2,0.3,0.6,0.4,0.3,0
+Z09,mixed,Kusanagi Station,138.425,34.991,1.0,0.4,0.5,0.3,0.6,0
+Z10,residential,Shimizu-ku North,138.47,35.04,1.5,0.2,0.3,0.1,0.9,0
+Z11,hub,Hamamatsu Station,137.7353,34.7038,1.5,0.8,0.8,0.5,0.2,1
+Z12,commercial,Hamamatsu Downtown/Kajimachi,137.729,34.709,1.0,0.5,0.8,0.6,0.3,0
+Z13,mixed,Enshu Hospital Area,137.718,34.715,1.2,0.5,0.5,0.3,0.5,0
+Z14,residential,Naka-ku West,137.71,34.705,1.5,0.3,0.4,0.2,0.8,0
+Z15,residential,Higashi-ku Hamamatsu,137.77,34.72,2.0,0.3,0.4,0.2,0.8,0
+Z16,residential,Kita-ku Hamamatsu,137.71,34.78,2.5,0.2,0.3,0.1,0.9,0
+Z17,residential,Hamakita,137.792,34.79,1.5,0.3,0.4,0.2,0.8,0
+Z18,commercial,Hamamatsu Act Tower/Zaza,137.732,34.706,0.8,0.6,0.7,0.5,0.2,0
+Z19,hub,Mt. Fuji Shizuoka Airport,138.1897,34.7958,2.5,0.5,0.3,0.2,0.1,1
+Z20,mixed,Numazu Station,138.8633,35.096,1.5,0.5,0.6,0.4,0.5,1
+Z21,residential,Numazu Port/Senbonhama,138.87,35.075,1.2,0.3,0.5,0.3,0.5,0
+Z22,hub,Mishima Station,138.9117,35.1272,1.2,0.6,0.5,0.3,0.4,1
+Z23,mixed,Fuji Station,138.6761,35.1617,1.5,0.5,0.5,0.3,0.6,1
+Z24,residential,Fujinomiya,138.621,35.222,2.0,0.3,0.4,0.2,0.8,0
+Z25,residential,Gotemba,138.934,35.309,2.0,0.3,0.4,0.2,0.8,0
+Z26,residential,Susono,138.906,35.174,1.5,0.2,0.3,0.1,0.9,0
+Z27,mixed,Yaizu,138.324,34.867,1.5,0.4,0.5,0.3,0.7,0
+Z28,mixed,Fujieda,138.258,34.867,1.5,0.4,0.5,0.3,0.7,0
+Z29,mixed,Shimada Station,138.177,34.827,1.5,0.4,0.5,0.3,0.7,1
+Z30,residential,Makinohara,138.227,34.742,2.0,0.2,0.3,0.1,0.9,0
+Z31,mixed,Kakegawa Station,138.014,34.769,1.5,0.4,0.5,0.3,0.7,1
+Z32,mixed,Fukuroi,137.925,34.749,1.5,0.4,0.5,0.3,0.7,0
+Z33,mixed,Iwata,137.851,34.717,1.5,0.4,0.5,0.3,0.7,0
+Z34,mixed,Kosai/Hamana Lake,137.529,34.688,2.0,0.3,0.4,0.2,0.8,0
+Z35,residential,Tenryu-ku/Futamata,137.77,34.87,2.0,0.2,0.3,0.1,0.9,0
+Z36,mixed,Ito,139.096,34.962,1.5,0.3,0.5,0.4,0.6,0
+Z37,mixed,Atami Station,139.0764,35.104,1.2,0.3,0.5,0.5,0.5,1
+Z38,residential,Shimoda,138.944,34.68,2.0,0.2,0.4,0.3,0.7,0
+Z39,mixed,Shuzenji/Izunokuni,138.945,35.036,1.5,0.2,0.5,0.3,0.7,0
+Z40,residential,Mariko/Okitsu,138.44,35.005,1.5,0.2,0.3,0.1,0.8,0
+Z41,mixed,Yoshiwara/Fuji East,138.695,35.15,1.2,0.4,0.5,0.3,0.6,0
+Z42,residential,Nagaizumi/Clémentia,138.896,35.132,1.2,0.3,0.4,0.2,0.8,0
+ZS01,hub,Shin-Fuji Shinkansen,138.655,35.143,1.0,0.5,0.4,0.2,0.3,1
+ZS02,hub,Kakegawa Shinkansen,138.014,34.769,1.0,0.5,0.4,0.2,0.3,1
+ZP01,residential,Omaezaki,138.226,34.638,2.0,0.2,0.3,0.1,0.9,0
+ZP02,residential,Yoshida,138.252,34.77,1.5,0.2,0.3,0.1,0.9,0
+ZR01,hub,Shimizu Port Terminal,138.51,35.022,1.5,0.4,0.2,0.1,0.2,1

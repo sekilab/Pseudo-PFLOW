@@ -134,20 +134,6 @@ public class TruckTrip {
         return (long) (distanceKm / avgSpeedKmh * 3600);
     }
     
-    /**
-     * Get total trip duration including loading, travel, and unloading.
-     * 
-     * @param avgSpeedKmh Average speed in km/h
-     * @return Total duration in seconds
-     */
-    public long getTotalDuration(double avgSpeedKmh) {
-        long travelTime = calculateTravelTime(avgSpeedKmh);
-        long loadingTimeSec = (long) (loadingTimeMinutes * 60);
-        long unloadingTimeSec = (long) (unloadingTimeMinutes * 60);
-        
-        return loadingTimeSec + travelTime + unloadingTimeSec;
-    }
-    
     // Setters for temporal attributes
     public void setLoadingStartTime(long time) { this.loadingStartTime = time; }
     public void setDepartureTime(long time) { this.departureTime = time; }

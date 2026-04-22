@@ -1,7 +1,5 @@
 package truck.sim;
 
-import truck.sim.util.DistanceCalculator;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,6 +24,7 @@ public class TruckAgent {
     private final double homeLongitude;
     private final double homeLatitude;
     private String homePOIId;  // POI anchoring first-trip origin (null if fallback)
+    private FacilityType homeFacilityType;  // Origin facility type for truck-type routing
     
     // Familiar area (for DELIVERY type)
     private final double familiarAreaRadiusKm;
@@ -92,23 +91,6 @@ public class TruckAgent {
     }
     
     /**
-     * Check if a location is within the familiar area (for DELIVERY type).
-     * 
-     * @param longitude Location longitude
-     * @param latitude Location latitude
-     * @return true if within familiar area or if not DELIVERY type
-     */
-    public boolean isInFamiliarArea(double longitude, double latitude) {
-        if (truckType != TruckType.DELIVERY) {
-            return true;  // No restriction for LONG_HAUL and MIXED_OPERATION
-        }
-
-        double distance = DistanceCalculator.calculateDistance(homeLatitude, homeLongitude,
-                                          latitude, longitude);
-        return distance <= familiarAreaRadiusKm;
-    }
-    
-    /**
      * Add a trip to this truck's history.
      */
     public void addTrip(TruckTrip trip) {
@@ -128,21 +110,6 @@ public class TruckAgent {
      */
     public boolean hasTimeInShift(long requiredSeconds) {
         return (currentTime + requiredSeconds) <= shiftEndTime;
-    }
-    
-    /**
-     * Get remaining shift time in seconds.
-     */
-    public long getRemainingShiftTime() {
-        return Math.max(0, shiftEndTime - currentTime);
-    }
-
-    /**
-     * Get distance from current location to a point.
-     */
-    public double getDistanceFromCurrent(double longitude, double latitude) {
-        return DistanceCalculator.calculateDistance(currentLatitude, currentLongitude,
-                               latitude, longitude);
     }
     
     /**
@@ -167,13 +134,6 @@ public class TruckAgent {
         return deliveryCount > 0 ? totalCargoWeightTons / deliveryCount : 0.0;
     }
     
-    /**
-     * Get vehicle utilization rate.
-     */
-    public double getVehicleUtilization() {
-        return totalCargoWeightTons / (deliveryCount * capacityTons);
-    }
-    
     // Setters
     public void setCurrentStatus(TruckStatus status) { this.currentStatus = status; }
     public void setCurrentLongitude(double lon) { this.currentLongitude = lon; }
@@ -181,13 +141,15 @@ public class TruckAgent {
     public void setCurrentTime(long time) { this.currentTime = time; }
     public void setFamiliarAreaZoneId(String zoneId) { this.familiarAreaZoneId = zoneId; }
     public void setHomePOIId(String poiId) { this.homePOIId = poiId; }
-    
+    public void setHomeFacilityType(FacilityType type) { this.homeFacilityType = type; }
+
     // Getters
     public int getTruckId() { return truckId; }
     public TruckType getTruckType() { return truckType; }
     public double getHomeLongitude() { return homeLongitude; }
     public double getHomeLatitude() { return homeLatitude; }
     public String getHomePOIId() { return homePOIId; }
+    public FacilityType getHomeFacilityType() { return homeFacilityType; }
     public double getFamiliarAreaRadiusKm() { return familiarAreaRadiusKm; }
     public String getFamiliarAreaZoneId() { return familiarAreaZoneId; }
     public String getVehicleSize() { return vehicleSize; }

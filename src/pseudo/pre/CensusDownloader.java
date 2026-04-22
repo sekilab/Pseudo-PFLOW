@@ -9,6 +9,7 @@ import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.URL;
 import java.util.Properties;
+import util.PathResolver;
 
 public class CensusDownloader {
 
@@ -81,7 +82,7 @@ public class CensusDownloader {
 		Properties prop = new Properties();
 		prop.load(configStream);
 
-		String censusDownloadDir = prop.getProperty("legacy.census.download.dir");
+		String censusDownloadDir = PathResolver.resolve(prop.getProperty("legacy.census.download.dir"));
 		
 //			String[] paths = {
 //					"https://www.e-stat.go.jp/gis/statmap-search/data?dlserveyId=A002005212015&code=01&coordSys=1&format=shape&downloadType=5&datum=2000",

@@ -96,12 +96,15 @@
  * </pre>
  *
  * <h2>Output</h2>
- * <p>Simulation generates CSV files in {@code data/output/truck/run_YYYYMMDD_HHMMSS/}:
+ * <p>Simulation generates CSV files in {@code output/trips/truck/run_YYYYMMDD_HHMMSS/}:
  * <ul>
- *   <li>trips.csv - All trips (delivery + empty)</li>
- *   <li>trips_pseudo_pflow.csv - PFLOW format with sim_day column</li>
- *   <li>trips_with_zones.csv - Trips with zone assignments</li>
  *   <li>trucks.csv - Fleet roster with home locations</li>
+ *   <li>trips.csv - Comprehensive trip records (25 columns)</li>
+ *   <li>trips_pseudo_pflow.csv - PFLOW format with sim_day column (19 columns)</li>
+ *   <li>od_flows.csv - Zone-to-zone trip matrix</li>
+ *   <li>zone_trips.csv - Per-zone trip counts</li>
+ *   <li>dashboard.csv - Unified metrics (41 metrics)</li>
+ *   <li>validation.csv - Pass/fail results with grade</li>
  * </ul>
  *
  * <h2>Validation</h2>

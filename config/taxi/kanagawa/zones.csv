@@ -1,39 +1,58 @@
 zone_id,zone_type,name,center_lon,center_lat,radius_km,jobs_weight,shops_weight,nightlife_weight,residential_weight,transport_hub
-Z01,hub,SHINYOKOHAMA,139.6181,35.5069,3.0,0.9,0.8,0.5,0.2,1
-Z02,hub,YOKOHAMA PORT,139.6997,35.4177,3.0,0.5,0.4,0.2,0.3,1
-Z03,residential,YAMATO,139.4573,35.4885,3.0,0.2,0.3,0.1,0.9,0
-Z04,hub,KAWASAKI PORT,139.8035,35.4820,3.0,0.5,0.4,0.2,0.3,1
-Z05,residential,AYASE,139.4415,35.4311,2.6,0.2,0.3,0.1,0.9,0
-Z06,hub,TOKYO INTL,139.7780,35.5500,3.0,0.5,0.3,0.2,0.1,1
-Z07,hub,YOKOSUKA PORT,139.6614,35.3134,3.0,0.5,0.4,0.2,0.3,1
-Z08,residential,MACHIDA,139.4526,35.5399,3.0,0.2,0.3,0.1,0.9,0
-Z09,residential,ZUSHI,139.5803,35.2950,1.8,0.2,0.3,0.1,0.9,0
-Z10,residential,EBINA,139.4003,35.4509,2.3,0.2,0.3,0.1,0.9,0
-Z11,hub,KISARAZU PORT,139.8313,35.3957,3.0,0.5,0.4,0.2,0.3,1
-Z12,residential,ZAMA,139.3897,35.4872,2.5,0.2,0.3,0.1,0.9,0
-Z13,hub,SHINAGAWA,139.7404,35.6309,3.0,0.7,0.6,0.4,0.3,1
-Z14,residential,INAGI,139.5028,35.6346,3.0,0.2,0.3,0.1,1.0,0
-Z15,residential,HAYAMA,139.5729,35.2686,1.8,0.2,0.3,0.1,1.0,0
-Z16,hub,TOKYO PORT,139.8338,35.5818,3.0,0.5,0.4,0.2,0.3,1
-Z17,residential,ATSUGI,139.3596,35.4401,2.3,0.2,0.3,0.1,1.0,0
-Z18,residential,SAMUKAWA,139.3823,35.3732,3.0,0.2,0.3,0.1,1.0,0
-Z19,residential,TAMA,139.4399,35.6246,3.0,0.2,0.3,0.1,1.0,0
-Z20,residential,SAGAMIHARA,139.3766,35.5736,3.0,0.2,0.3,0.1,1.0,0
-Z21,hub,TOKYO,139.7652,35.6753,3.0,0.6,0.5,0.3,0.4,1
-Z22,residential,KURIHAMA,139.7044,35.2276,3.0,0.2,0.3,0.1,1.0,0
-Z23,residential,ISEHARA,139.3105,35.3974,3.0,0.2,0.3,0.1,1.0,0
-Z24,residential,HINO,139.3967,35.6747,3.0,0.2,0.3,0.1,1.0,0
-Z25,residential,AIKAWA,139.2868,35.5317,3.0,0.2,0.3,0.1,1.0,0
-Z26,residential,KIYOKAWA,139.2751,35.4790,3.0,0.2,0.3,0.1,1.0,0
-Z27,residential,OISO,139.3100,35.3092,3.0,0.2,0.3,0.1,1.0,0
-Z28,residential,MIURA,139.6257,35.1476,3.0,0.2,0.3,0.1,1.0,0
-Z29,residential,HADANO,139.2255,35.3710,2.7,0.2,0.3,0.1,1.0,0
-Z30,residential,NINOMIYA,139.2577,35.2976,3.0,0.2,0.3,0.1,1.0,0
-Z31,residential,NAKAI,139.2207,35.3304,2.7,0.2,0.3,0.1,1.0,0
-Z32,hub,OSHIMA,139.3635,34.7864,3.0,0.5,0.3,0.2,0.1,1
-ZP01,residential,Oshima,139.3546,34.7493,2.0,0.2,0.3,0.1,0.9,0
-ZP02,mixed,Minamiboso,139.8374,35.0483,2.0,0.3,0.4,0.2,0.7,0
-ZP03,mixed,Kyonan,139.8342,35.1139,2.0,0.3,0.4,0.2,0.7,0
-ZP04,residential,Tateyama,139.8673,34.9908,2.0,0.2,0.3,0.1,0.9,0
-ZP05,mixed,Futtsu,139.8728,35.2150,2.0,0.3,0.4,0.2,0.7,0
-ZP06,mixed,Akiruno,139.2863,35.7249,2.0,0.3,0.4,0.2,0.7,0
+Z01,hub,Yokohama Station,139.6222,35.466,1.5,0.9,0.9,0.6,0.2,1
+Z02,commercial,Minato Mirai,139.632,35.454,1.5,0.7,1.0,0.5,0.1,0
+Z03,hub,Shin-Yokohama Station,139.6181,35.5069,1.5,0.8,0.6,0.3,0.2,1
+Z04,commercial,Sakuragicho/Kannai,139.634,35.447,1.2,0.6,0.8,0.5,0.3,1
+Z05,commercial,Chinatown/Motomachi,139.649,35.442,1.0,0.3,0.9,0.7,0.1,0
+Z06,hub,Yokohama Port,139.6997,35.4177,2.0,0.4,0.5,0.3,0.2,1
+Z07,nightlife,Noge/Isezakicho,139.63,35.438,0.8,0.3,0.6,1.0,0.3,0
+Z08,hub,Kawasaki Station,139.6967,35.5321,1.5,0.8,0.8,0.6,0.2,1
+Z09,commercial,Kawasaki Lazona,139.692,35.535,1.0,0.5,0.9,0.4,0.3,0
+Z10,business,Kawasaki Industrial,139.72,35.51,2.0,0.7,0.3,0.1,0.3,0
+Z11,mixed,Musashi-Kosugi,139.6592,35.5766,1.2,0.6,0.7,0.5,0.5,1
+Z12,mixed,Musashi-Shinjo/Mizonokuchi,139.612,35.593,1.2,0.4,0.6,0.4,0.6,0
+Z13,mixed,Noborito/Mukogaoka,139.5608,35.625,1.2,0.3,0.5,0.3,0.7,0
+Z14,residential,Kawasaki-Tama-ku,139.54,35.595,1.5,0.3,0.4,0.2,0.9,0
+Z15,mixed,Tsunashima/Hiyoshi,139.637,35.535,1.2,0.4,0.6,0.4,0.7,0
+Z16,residential,Kohoku New Town,139.583,35.54,2.0,0.3,0.5,0.2,0.9,0
+Z17,residential,Aoba-ku,139.536,35.544,1.5,0.3,0.6,0.3,0.8,0
+Z18,residential,Tsuzuki-ku,139.57,35.546,1.5,0.3,0.5,0.2,0.9,0
+Z19,mixed,Totsuka Station,139.534,35.3978,1.5,0.5,0.6,0.3,0.6,1
+Z20,mixed,Ofuna Station,139.5325,35.3546,1.2,0.5,0.6,0.3,0.5,1
+Z21,mixed,Isogo Station,139.619,35.4,1.2,0.4,0.5,0.3,0.7,0
+Z22,mixed,Kanazawa-Bunko/Hakkei,139.623,35.342,1.5,0.3,0.5,0.2,0.8,0
+Z23,residential,Hodogaya,139.59,35.45,1.5,0.3,0.4,0.2,0.9,0
+Z24,mixed,Tsurumi Station,139.6733,35.5081,1.2,0.5,0.5,0.3,0.6,1
+Z25,mixed,Fujisawa Station,139.487,35.3378,1.5,0.4,0.6,0.4,0.6,1
+Z26,residential,Chigasaki,139.404,35.333,1.5,0.3,0.5,0.3,0.8,0
+Z27,residential,Hiratsuka,139.349,35.331,1.5,0.4,0.5,0.3,0.7,0
+Z28,commercial,Kamakura,139.5532,35.3189,1.5,0.3,0.7,0.4,0.5,0
+Z29,residential,Zushi,139.5803,35.295,1.2,0.2,0.4,0.2,0.9,0
+Z30,commercial,Enoshima/Kugenuma,139.49,35.31,1.2,0.2,0.6,0.4,0.5,0
+Z31,hub,Yokosuka Central,139.671,35.278,1.5,0.5,0.5,0.4,0.5,1
+Z32,hub,Yokosuka Port,139.6614,35.3134,1.5,0.5,0.4,0.2,0.4,1
+Z33,residential,Miura/Misaki,139.625,35.16,2.0,0.2,0.3,0.1,0.9,0
+Z34,mixed,Sagamihara Station,139.373,35.5704,1.5,0.5,0.6,0.3,0.6,1
+Z35,mixed,Hashimoto Station,139.3467,35.5959,1.5,0.4,0.5,0.3,0.7,0
+Z36,residential,Sagamiono,139.438,35.517,1.5,0.3,0.5,0.3,0.8,0
+Z37,mixed,Yamato,139.4573,35.4885,1.5,0.4,0.5,0.3,0.7,1
+Z38,residential,Ebina,139.4003,35.4509,1.5,0.3,0.4,0.2,0.9,0
+Z39,residential,Atsugi,139.3607,35.4417,1.5,0.4,0.5,0.3,0.8,0
+Z40,residential,Ayase,139.4415,35.4311,1.5,0.2,0.3,0.1,0.9,0
+Z41,residential,Zama,139.3897,35.4872,1.5,0.3,0.4,0.2,0.9,0
+Z42,mixed,Odawara Station,139.1532,35.2558,1.5,0.5,0.5,0.3,0.6,1
+Z43,residential,Hadano,139.2273,35.371,1.5,0.3,0.4,0.2,0.9,0
+Z44,residential,Isehara,139.314,35.395,1.5,0.3,0.4,0.2,0.9,0
+Z45,hub,Haneda Airport,139.7798,35.5494,2.5,0.5,0.4,0.3,0.1,1
+Z46,hub,Kawasaki Port/Industrial,139.8035,35.482,2.0,0.5,0.3,0.1,0.2,1
+Z47,hub,Kisarazu Port,139.8313,35.3957,2.0,0.4,0.3,0.1,0.3,1
+Z48,residential,Hayama,139.5729,35.2686,1.5,0.2,0.3,0.1,0.9,0
+Z49,mixed,Machida,139.4526,35.5399,1.5,0.4,0.6,0.4,0.6,0
+Z50,residential,Inagi,139.5028,35.6346,1.5,0.3,0.3,0.1,0.9,0
+Z51,mixed,Hakone/Yumoto,139.106,35.234,2.0,0.2,0.5,0.4,0.5,0
+Z52,residential,Minamiashigara,139.11,35.31,1.5,0.2,0.3,0.1,0.9,0
+Z53,residential,Ninomiya,139.256,35.303,1.2,0.2,0.3,0.1,0.9,0
+Z54,residential,Oiso,139.313,35.31,1.2,0.2,0.3,0.1,0.9,0
+ZS01,hub,Shinagawa Station Area,139.7404,35.6309,1.5,0.7,0.5,0.3,0.2,1
+ZP01,residential,Tama New Town,139.4399,35.6246,2.0,0.2,0.3,0.1,0.9,0
+ZP02,residential,Samukawa,139.379,35.369,1.5,0.2,0.3,0.1,0.9,0
