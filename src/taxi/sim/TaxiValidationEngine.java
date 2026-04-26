@@ -232,15 +232,23 @@ public class TaxiValidationEngine {
         long nightTrips = trips.stream()
                 .filter(TaxiTrip::isPassengerIn).filter(TaxiTrip::isNightTrip).count();
 
-        // Fleet metrics
+        // Fleet metrics — 5-type when shift_time, 3-type when legacy.
         long localCount = taxis.stream().filter(t -> t.getTaxiType() == TaxiType.LOCAL).count();
         long citywideCount = taxis.stream().filter(t -> t.getTaxiType() == TaxiType.CITYWIDE).count();
+        long appPreferredCount = taxis.stream().filter(t -> t.getTaxiType() == TaxiType.APP_PREFERRED).count();
         long hubCount = taxis.stream().filter(t -> t.getTaxiType() == TaxiType.HUB).count();
+        long rideHailPrhsCount = taxis.stream().filter(t -> t.getTaxiType() == TaxiType.RIDE_HAIL_PRHS).count();
 
+        // Fleet Operating Rate = 実働率 per MLIT 旅客自動車運送事業等報告規則
+        // 延実働車両数 / 延実在車両数 × 100 (THTA FY2024 = 68.6% for 特別区・武三)
         m.put("Fleet Operating Rate", 100.0 * fleetSize / config.getTaxiTotalRegistered());
         m.put("LOCAL Type Share", 100.0 * localCount / fleetSize);
         m.put("CITYWIDE Type Share", 100.0 * citywideCount / fleetSize);
         m.put("HUB Type Share", 100.0 * hubCount / fleetSize);
+        // B2 / Phase 4 (v7.0): two new fleet-type metrics. Always reported; will be 0
+        // when running legacy engine (which only generates 3 types).
+        m.put("APP_PREFERRED Type Share", 100.0 * appPreferredCount / fleetSize);
+        m.put("RIDE_HAIL_PRHS Type Share", 100.0 * rideHailPrhsCount / fleetSize);
 
         // Trip metrics
         m.put("Avg Passenger Trips per Taxi", (double) passengerTrips / fleetSize);
@@ -251,7 +259,10 @@ public class TaxiValidationEngine {
         m.put("Avg Trip Distance", avgDistance);
         m.put("Total Daily Distance per Taxi", totalDistance / fleetSize);
 
-        // Empty metrics
+        // Empty / occupancy metrics — MLIT 旅客自動車運送事業等報告規則 definitions
+        // 実車率 (loaded distance ratio) = 実車キロ / 走行キロ × 100
+        // 空車率 (empty distance ratio) = 1 - 実車率
+        m.put("Loaded Distance Ratio", totalDistance > 0 ? 100.0 * passengerDistance / totalDistance : 0.0);
         m.put("Empty Running Ratio (distance)", totalDistance > 0 ? 100.0 * emptyDistance / totalDistance : 0.0);
         m.put("Empty Trip Count Ratio", totalTrips > 0 ? 100.0 * emptyTrips / totalTrips : 0.0);
 

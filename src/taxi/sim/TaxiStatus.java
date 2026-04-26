@@ -1,57 +1,54 @@
 package taxi.sim;
 
 /**
- * Enumeration of taxi agent states for behavior modeling
+ * Enumeration of taxi agent states.
  *
- * CURRENT IMPLEMENTATION (V3.1):
- * - Only IDLE state is actively used in the simulation
- * - Other states are reserved for future state machine implementation
+ * <p>The legacy v6.0 engine uses only {@link #IDLE} (all states previously
+ * reserved but unused, deprecated 2026-04-22).
  *
- * This represents the complete state machine for a taxi agent:
+ * <p>The v7.0 shift-time engine (Phase 1+ of the rewrite) introduces five
+ * active states matching the architecture in DESIGN.md §2.3:
  *
- * IDLE           - Taxi is waiting at depot or taxi stand [ACTIVE]
- * SEARCHING      - Actively looking for passengers (cruising) [RESERVED]
- * EN_ROUTE_TO_PICKUP - Heading to pick up assigned passenger [RESERVED]
- * OCCUPIED       - Passenger onboard, traveling to destination [RESERVED]
- * RETURNING_HOME - Shift ending, returning to depot/garage [RESERVED]
- * OFF_DUTY       - Not operating (between shifts, maintenance, etc.) [RESERVED]
+ * <pre>
+ *   OFF_DUTY → DUAL_MODE ↔ AT_STAND → OCCUPIED → DUAL_MODE | AT_STAND
+ *                                  → RETURNING_HOME → OFF_DUTY
+ * </pre>
+ *
+ * <p>DUAL_MODE represents the realistic situation where a moving taxi is
+ * simultaneously available to street-hail customers and listening for app
+ * dispatches. The pickup mode (street vs app) is sampled from the taxi's
+ * type-specific mode-mix at the end of each empty leg.
  */
 public enum TaxiStatus {
-    /**
-     * Taxi is idle, waiting for trip assignment
-     * Typically at: depot, taxi stand, waiting area
-     * STATUS: ACTIVE - currently used in simulation
-     */
+    /** Taxi is idle, waiting for trip assignment. Only state used by the legacy v6.0 engine. */
     IDLE,
 
-    /**
-     * Taxi is actively searching for passengers
-     * Cruising behavior, looking for flag-downs
-     * STATUS: RESERVED - not yet implemented
-     */
-    SEARCHING,
+    /** v7.0: Taxi has not yet started its shift, or has finished and returned home. */
+    OFF_DUTY,
 
     /**
-     * Taxi has been assigned a trip and is traveling to pickup location
-     * STATUS: RESERVED - not yet implemented
+     * v7.0: Taxi is moving (cruising) AND available for both street-hail and app-dispatch
+     * pickups. The next pickup mode is sampled from the taxi's type mode-mix when an
+     * empty leg ends. Aligns with industry observation that contemporary Tokyo taxis
+     * are simultaneously addressable via multiple channels.
      */
-    EN_ROUTE_TO_PICKUP,
+    DUAL_MODE,
 
     /**
-     * Passenger is onboard, taxi is traveling to destination
-     * STATUS: RESERVED - not yet implemented
+     * v7.0: Taxi is parked at a stand (airport / major station / entertainment district),
+     * waiting in FIFO queue for the next passenger. Wait time sampled from
+     * Exp(λ) with stand-type-dependent mean (8 min airport, 12 min station, 6 min
+     * entertainment). RIDE_HAIL_PRHS taxis never enter this state.
      */
+    AT_STAND,
+
+    /** v7.0: Taxi is carrying a passenger from pickup to dropoff. */
     OCCUPIED,
 
     /**
-     * Shift is ending, taxi is returning to home depot/garage
-     * STATUS: RESERVED - not yet implemented
+     * v7.0: Taxi has finished its shift and is returning to home location.
+     * Records a single empty leg from current position to home; no further
+     * trips are generated.
      */
-    RETURNING_HOME,
-
-    /**
-     * Taxi is not in operation (maintenance, between shifts, etc.)
-     * STATUS: RESERVED - not yet implemented
-     */
-    OFF_DUTY
+    RETURNING_HOME
 }
