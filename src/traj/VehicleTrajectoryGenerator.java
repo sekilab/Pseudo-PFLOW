@@ -10,7 +10,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import jp.ac.ut.csis.pflow.geom2.ILonLat;
-import jp.ac.ut.csis.pflow.geom2.TrajectoryUtils;
 import jp.ac.ut.csis.pflow.routing4.logic.AStar;
 import jp.ac.ut.csis.pflow.routing4.logic.linkcost.AStarLinkCost;
 import jp.ac.ut.csis.pflow.routing4.logic.transport.DrmTransport;
@@ -34,16 +33,50 @@ import pseudo.res.Trip;
  * Pipeline:
  *   1. Receives pre-parsed Person+Trip objects and raw trip records
  *   2. Routes each trip via A* on DRM road network
- *   3. Interpolates timestamps via TrajectoryUtils.putTimeStamp()
+ *   3. Interpolates timestamps proportional to cumulative haversine distance
+ *      between waypoints (both lightweight and full-geometry modes)
  *   4. Falls back to 2-point direct trajectory if routing fails
  *   5. Writes waypoint CSVs in parallel batches
+ * <p>
+ * <b>Deferred architectural decision (T7):</b> A* cost uses a single
+ * {@code DrmTransport.VEHICLE} link-cost function for trucks AND taxis. Per-
+ * vehicle cost semantics — toll avoidance, truck weight restrictions, taxi
+ * main-road bias — are not modelled. Revisit when routing fidelity becomes a
+ * research priority; until then, trajectories are best interpreted as generic
+ * motor-vehicle paths rather than mode-specific ones.
  *
  * @param <R> concrete trip record type (TruckTripRecord, TaxiTripRecord, etc.)
  */
 public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
 
-    // Base date for timestamp anchoring: 2020-10-01 00:00:00 JST (same as PFLOW DAY_OF_DATE)
+    /**
+     * Base epoch for trajectory timestamps: 2020-10-01 00:00:00 JST (UTC+9).
+     * {@code Trip.depTime} is an offset in seconds from this base, so it must
+     * lie in {@code [0, 7*86400]} (one week). Out-of-range depTimes would
+     * silently shift output timestamps by days/years — see
+     * {@link #assertDepTimeInRange}.
+     */
     private static final long BASE_DATE_SEC = 1601478000L;
+
+    /** Upper bound on trip depTime (seconds) — one week from BASE_DATE_SEC. */
+    private static final long MAX_DEP_TIME_SEC = 7L * 86_400L;
+
+    /**
+     * Sanity check that a trip's depTime fits the BASE_DATE_SEC reference frame.
+     * Logs a single warning per range violation (not thrown — we continue with
+     * the possibly-skewed timestamp rather than drop trips).
+     */
+    private void assertDepTimeInRange(long depTimeSec, int vehicleId, long tripId) {
+        if (depTimeSec < 0 || depTimeSec > MAX_DEP_TIME_SEC) {
+            if (depTimeWarningsLogged.incrementAndGet() <= 5) {
+                System.err.printf("[TRAJECTORY] depTime out of range: vehicle=%d trip=%d depTime=%ds (expected 0..%d)%n",
+                        vehicleId, tripId, depTimeSec, MAX_DEP_TIME_SEC);
+            }
+        }
+    }
+
+    /** Caps depTime range-check warnings at 5 per run to avoid log flooding. */
+    private final AtomicInteger depTimeWarningsLogged = new AtomicInteger(0);
 
     private final Network road;
     private final Network highwayRoad;         // nullable — highway-only network for long trips
@@ -55,10 +88,12 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
     private final double highwayThresholdKm;   // trips above this use highway network
     private final boolean includeGeometry;     // true = emit intermediate road shape points
 
-    // Counters for summary
+    // Counters for summary — failures split by FallbackReason so dashboards can
+    // distinguish unreachable endpoints from disconnected routes.
     private final AtomicInteger routedTrips = new AtomicInteger(0);
-    private final AtomicInteger failedTrips = new AtomicInteger(0);
-    private final AtomicInteger bypassedTrips = new AtomicInteger(0);
+    private final AtomicInteger noSnapFailures = new AtomicInteger(0);   // FallbackReason.NO_SNAP
+    private final AtomicInteger noRouteFailures = new AtomicInteger(0);  // FallbackReason.NO_ROUTE
+    private final AtomicInteger bypassedTrips = new AtomicInteger(0);    // FallbackReason.SHORT_TRIP_BYPASS
     private final AtomicInteger highwayRoutedTrips = new AtomicInteger(0);
     private final AtomicLong totalWaypoints = new AtomicLong(0);
 
@@ -149,13 +184,18 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
         try {
             es.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Thread.currentThread().interrupt();
+            System.err.println("[TRAJ] Thread interrupted: " + e.getMessage());
         }
 
         // Print summary
         int hwRouted = highwayRoutedTrips.get();
-        System.out.printf("[TRAJECTORY] Complete: %,d routed (%,d highway), %,d failed, %,d bypassed, %,d total waypoints%n",
-                routedTrips.get(), hwRouted, failedTrips.get(), bypassedTrips.get(), totalWaypoints.get());
+        int noSnap = noSnapFailures.get();
+        int noRoute = noRouteFailures.get();
+        System.out.printf("[TRAJECTORY] Complete: %,d routed (%,d highway), %,d failed (%,d no-snap + %,d no-route), %,d bypassed, %,d total waypoints%n",
+                routedTrips.get(), hwRouted,
+                noSnap + noRoute, noSnap, noRoute,
+                bypassedTrips.get(), totalWaypoints.get());
         if (cache != null) {
             System.out.println("[CACHE-FULL] " + cache.getStats());
         }
@@ -171,6 +211,12 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
      * In lightweight mode, emits one waypoint per network node (~150m apart).
      * In full geometry mode, emits intermediate road shape points from each link's
      * stored WKT geometry, producing road-following curves (~10-30m apart).
+     * <p>
+     * Both modes interpolate timestamps proportional to cumulative haversine
+     * distance. The pflowlib {@code TrajectoryUtils.putTimeStamp} helper,
+     * previously used in lightweight mode, produces node-index-uniform
+     * timestamps which yield unrealistic velocity profiles on routes mixing
+     * long expressway links with short local links.
      *
      * @return number of waypoints written
      */
@@ -178,6 +224,7 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
                            ILonLat origin, ILonLat dest) throws Exception {
         List<Node> nodes = route.listNodes();
         List<Link> links = route.listLinks();
+        assertDepTimeInRange(trip.getDepTime(), rec.getVehicleId(), rec.getTripId());
         long startTimeSec = BASE_DATE_SEC + trip.getDepTime();
         long endTimeSec = startTimeSec + (long) route.getCost();
 
@@ -185,33 +232,41 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
             return writeRouteWithGeometry(bw, rec, links, origin, dest, startTimeSec, endTimeSec);
         }
 
-        // Lightweight mode: one waypoint per network node
-        Map<Node, Date> timeMap = TrajectoryUtils.putTimeStamp(
-                nodes,
-                new Date(startTimeSec * 1000),
-                new Date(endTimeSec * 1000)
-        );
-
-        for (int i = 0; i < nodes.size(); i++) {
+        // Lightweight mode: one waypoint per network node, timestamped by
+        // cumulative haversine distance (mirrors writeRouteWithGeometry).
+        int n = nodes.size();
+        double[] lons = new double[n];
+        double[] lats = new double[n];
+        double[] cumDists = new double[n];
+        double cumDist = 0.0;
+        for (int i = 0; i < n; i++) {
             ILonLat node = nodes.get(i);
-            Date date = timeMap.get(node);
-
-            double lon = node.getLon();
-            double lat = node.getLat();
             if (i == 0) {
-                lon = origin.getLon();
-                lat = origin.getLat();
-            } else if (i == nodes.size() - 1) {
-                lon = dest.getLon();
-                lat = dest.getLat();
+                lons[0] = origin.getLon();
+                lats[0] = origin.getLat();
+            } else if (i == n - 1) {
+                lons[i] = dest.getLon();
+                lats[i] = dest.getLat();
+            } else {
+                lons[i] = node.getLon();
+                lats[i] = node.getLat();
             }
-
-            String linkId = (i > 0 && i <= links.size()) ? links.get(i - 1).getLinkID() : "";
-            long unixMs = date != null ? date.getTime() : 0;
-
-            writer.writeWaypoint(bw, rec, unixMs, lon, lat, linkId);
+            if (i > 0) {
+                cumDist += haversineM(lats[i - 1], lons[i - 1], lats[i], lons[i]);
+            }
+            cumDists[i] = cumDist;
         }
-        return nodes.size();
+
+        double totalDist = cumDist > 0 ? cumDist : 1.0;
+        long durationMs = (endTimeSec - startTimeSec) * 1000;
+        long startMs = startTimeSec * 1000;
+
+        for (int i = 0; i < n; i++) {
+            String linkId = (i > 0 && i <= links.size()) ? links.get(i - 1).getLinkID() : "";
+            long unixMs = startMs + (long)(durationMs * cumDists[i] / totalDist);
+            writer.writeWaypoint(bw, rec, unixMs, lons[i], lats[i], linkId, false);
+        }
+        return n;
     }
 
     /**
@@ -254,9 +309,22 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
             }
         }
 
-        // Override last point with exact destination
-        if (!points.isEmpty()) {
+        // Override last point with exact destination, and recompute the final
+        // segment's cumulative distance to match — otherwise cumDist refers to
+        // the original last-node position and the endpoint appears both
+        // spatially offset (visible kinks on QGIS) and temporally stretched.
+        if (points.size() >= 2) {
+            double[] prev = points.get(points.size() - 2);
             double[] last = points.get(points.size() - 1);
+            double origSegmentDist = last[2] - prev[2];
+            last[0] = dest.getLon();
+            last[1] = dest.getLat();
+            double newSegmentDist = haversineM(prev[1], prev[0], last[1], last[0]);
+            last[2] = prev[2] + newSegmentDist;
+            cumDist = cumDist - origSegmentDist + newSegmentDist;
+        } else if (points.size() == 1) {
+            // Degenerate route (origin == dest): just override coords.
+            double[] last = points.get(0);
             last[0] = dest.getLon();
             last[1] = dest.getLat();
         }
@@ -269,7 +337,7 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
         for (int i = 0; i < points.size(); i++) {
             double[] pt = points.get(i);
             long unixMs = startMs + (long)(durationMs * pt[2] / totalDist);
-            writer.writeWaypoint(bw, rec, unixMs, pt[0], pt[1], linkIds.get(i));
+            writer.writeWaypoint(bw, rec, unixMs, pt[0], pt[1], linkIds.get(i), false);
         }
         return points.size();
     }
@@ -286,18 +354,21 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
 
     /**
      * Write a 2-point direct trajectory (fallback when routing fails or is bypassed).
+     * Both waypoints are flagged {@code is_fallback=1} so downstream consumers can
+     * filter fallback trips without parsing link_id sentinels.
      */
     private void writeDirect(BufferedWriter bw, R rec, Trip trip,
                              ILonLat origin, ILonLat dest) throws Exception {
+        assertDepTimeInRange(trip.getDepTime(), rec.getVehicleId(), rec.getTripId());
         long startTimeSec = BASE_DATE_SEC + trip.getDepTime();
         double distKm = rec.getDistanceKm() > 0 ? rec.getDistanceKm() : 10.0;
         long travelSec = (long) (distKm / fallbackSpeedKmh * 3600);
         long endTimeSec = startTimeSec + travelSec;
 
         writer.writeWaypoint(bw, rec, startTimeSec * 1000,
-                origin.getLon(), origin.getLat(), "DIRECT");
+                origin.getLon(), origin.getLat(), "DIRECT", true);
         writer.writeWaypoint(bw, rec, endTimeSec * 1000,
-                dest.getLon(), dest.getLat(), "DIRECT");
+                dest.getLon(), dest.getLat(), "DIRECT", true);
     }
 
     /**
@@ -321,8 +392,9 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
             // Separate A* instance for highway network (thread-local, stateful)
             AStar hwRouting = (highwayRoad != null) ? new AStar(new AStarLinkCost(DrmTransport.VEHICLE)) : null;
             int localRouted = 0;
-            int localFailed = 0;
-            int localBypassed = 0;
+            int localNoSnap = 0;      // FallbackReason.NO_SNAP
+            int localNoRoute = 0;     // FallbackReason.NO_ROUTE
+            int localBypassed = 0;    // FallbackReason.SHORT_TRIP_BYPASS
             int localHwRouted = 0;
             long localWaypoints = 0;
 
@@ -359,13 +431,15 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
                                     dest.getLon(), dest.getLat());
 
                             if (srcNode == null || dstNode == null) {
+                                // FallbackReason.NO_SNAP: endpoint outside network coverage.
                                 writeDirect(bw, rec, trip, origin, dest);
                                 localWaypoints += 2;
-                                localFailed++;
+                                localNoSnap++;
                                 continue;
                             }
 
                             if (activeCache.shouldBypass(srcNode, dstNode, distKm)) {
+                                // FallbackReason.SHORT_TRIP_BYPASS: intentional — trip below threshold.
                                 writeDirect(bw, rec, trip, origin, dest);
                                 localWaypoints += 2;
                                 localBypassed++;
@@ -378,9 +452,10 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
                                 localRouted++;
                                 if (useHighway) localHwRouted++;
                             } else {
+                                // FallbackReason.NO_ROUTE: A* returned null/empty on cached path.
                                 writeDirect(bw, rec, trip, origin, dest);
                                 localWaypoints += 2;
-                                localFailed++;
+                                localNoRoute++;
                             }
                         } else {
                             // Non-cached path (backward compatible)
@@ -392,9 +467,11 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
                                 localWaypoints += writeRoute(bw, rec, trip, route, origin, dest);
                                 localRouted++;
                             } else {
+                                // FallbackReason.NO_ROUTE: includes both nearest-node-miss and
+                                // disconnected-path cases — the uncached path doesn't distinguish.
                                 writeDirect(bw, rec, trip, origin, dest);
                                 localWaypoints += 2;
-                                localFailed++;
+                                localNoRoute++;
                             }
                         }
                     }
@@ -405,12 +482,15 @@ public class VehicleTrajectoryGenerator<R extends VehicleTripRecord> {
             }
 
             routedTrips.addAndGet(localRouted);
-            failedTrips.addAndGet(localFailed);
+            noSnapFailures.addAndGet(localNoSnap);
+            noRouteFailures.addAndGet(localNoRoute);
             bypassedTrips.addAndGet(localBypassed);
             highwayRoutedTrips.addAndGet(localHwRouted);
             totalWaypoints.addAndGet(localWaypoints);
-            System.out.printf("[TRAJECTORY] Batch %d complete: %,d routed (%,d highway), %,d failed, %,d bypassed%n",
-                    batchId, localRouted, localHwRouted, localFailed, localBypassed);
+            System.out.printf("[TRAJECTORY] Batch %d complete: %,d routed (%,d highway), %,d failed (%,d no-snap + %,d no-route), %,d bypassed%n",
+                    batchId, localRouted, localHwRouted,
+                    localNoSnap + localNoRoute, localNoSnap, localNoRoute,
+                    localBypassed);
             return 0;
         }
     }

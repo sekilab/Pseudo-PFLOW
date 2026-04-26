@@ -4,10 +4,12 @@ import truck.sim.spatial.GeoValidator;
 import truck.sim.spatial.PointGenerator;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static truck.sim.TruckSimulationConstants.*;
 
@@ -35,11 +37,26 @@ public class DestinationSelector {
     private final MetropolitanConfig metroConfig;
 
     // Diagnostic counters for delivery tour tier usage
-    private final java.util.concurrent.atomic.AtomicInteger deliveryTier1Hits = new java.util.concurrent.atomic.AtomicInteger();
-    private final java.util.concurrent.atomic.AtomicInteger deliveryTier2Hits = new java.util.concurrent.atomic.AtomicInteger();
-    private final java.util.concurrent.atomic.AtomicInteger deliveryTier3Hits = new java.util.concurrent.atomic.AtomicInteger();
-    private final java.util.concurrent.atomic.AtomicInteger deliveryFallbackHits = new java.util.concurrent.atomic.AtomicInteger();
-    private final java.util.concurrent.atomic.AtomicInteger deliveryTotalCalls = new java.util.concurrent.atomic.AtomicInteger();
+    private final AtomicInteger deliveryTier1Hits = new AtomicInteger();
+    private final AtomicInteger deliveryTier2Hits = new AtomicInteger();
+    private final AtomicInteger deliveryTier3Hits = new AtomicInteger();
+    private final AtomicInteger deliveryFallbackHits = new AtomicInteger();
+    private final AtomicInteger deliveryTotalCalls = new AtomicInteger();
+
+    // TR1: Per-truck-type POI selection observability.
+    // truckTypePoiCalls     -> attempts to use selectPOIByTruckType (truck-type-aware)
+    // truckTypePoiFallbacks -> count of those attempts that fell through to commodity-only
+    //                          selectPOIForTrip because selectPOIByTruckType returned null.
+    // High fallback ratio (>50%) indicates the truck-type routing model is effectively
+    // ignored for that type and the POI catalogue for that type needs attention.
+    private final Map<TruckType, AtomicInteger> truckTypePoiCalls = new EnumMap<>(TruckType.class);
+    private final Map<TruckType, AtomicInteger> truckTypePoiFallbacks = new EnumMap<>(TruckType.class);
+    {
+        for (TruckType t : TruckType.values()) {
+            truckTypePoiCalls.put(t, new AtomicInteger());
+            truckTypePoiFallbacks.put(t, new AtomicInteger());
+        }
+    }
 
     public DestinationSelector(TruckConfig config,
                                ZoneManager zoneManager, GeoValidator geoValidator,
@@ -227,6 +244,7 @@ public class DestinationSelector {
             // LONG_HAUL -> logistics/industrial/port POIs (B2B)
             // DELIVERY -> retail/wholesale POIs (last-mile), null for residential
             // MIXED -> all types, weighted by destTypeKey
+            truckTypePoiCalls.get(truckType).incrementAndGet();
             PointOfInterest targetPOI = poiManager.selectPOIByTruckType(
                 truckType, selectedZoneId, destTypeKey, commodityType);
 
@@ -237,8 +255,12 @@ public class DestinationSelector {
                 return DestinationResult.withZone(coords, selectedZoneId);
             }
 
-            // Fallback: commodity-only POI selection (legacy path)
+            // Fallback: commodity-only POI selection (legacy path).
+            // Wiki [[truck-type-specific-routing]]:70-73 documents this as intentional
+            // soft fallback. The counter here surfaces the rate so the truck-type POI
+            // catalogue can be tuned if the fallback ratio is high for a given type.
             if (targetPOI == null) {
+                truckTypePoiFallbacks.get(truckType).incrementAndGet();
                 int timePeriod = zoneManager.getTimePeriod(currentTime);
                 targetPOI = poiManager.selectPOIForTrip(
                     truck, selectedZoneId, commodityType, timePeriod);
@@ -621,5 +643,41 @@ public class DestinationSelector {
             deliveryTier3Hits.get(), 100.0 * deliveryTier3Hits.get() / total);
         System.out.printf("[DELIVERY-DIAG]   Fallback (zone center): %d (%.1f%%)%n",
             deliveryFallbackHits.get(), 100.0 * deliveryFallbackHits.get() / total);
+    }
+
+    // TR1: Per-truck-type POI fallback telemetry.
+    // A "fallback" = selectPOIByTruckType returned null, so selectPOIForTrip (commodity-only)
+    // was used instead. Exposed for dashboard.csv emission in TruckSimulation.
+
+    public int getTruckTypePoiCalls(TruckType type) {
+        AtomicInteger c = truckTypePoiCalls.get(type);
+        return c == null ? 0 : c.get();
+    }
+
+    public int getTruckTypePoiFallbacks(TruckType type) {
+        AtomicInteger c = truckTypePoiFallbacks.get(type);
+        return c == null ? 0 : c.get();
+    }
+
+    /** Print truck-type POI fallback diagnostics. */
+    public void printTruckTypePoiDiagnostics() {
+        int totalCalls = 0;
+        int totalFallbacks = 0;
+        for (TruckType t : TruckType.values()) {
+            totalCalls += getTruckTypePoiCalls(t);
+            totalFallbacks += getTruckTypePoiFallbacks(t);
+        }
+        if (totalCalls == 0) return;
+        System.out.printf("[TRUCK-TYPE-POI] Total calls: %,d, fallbacks: %,d (%.1f%%)%n",
+            totalCalls, totalFallbacks, 100.0 * totalFallbacks / totalCalls);
+        for (TruckType t : TruckType.values()) {
+            int calls = getTruckTypePoiCalls(t);
+            int fallbacks = getTruckTypePoiFallbacks(t);
+            if (calls == 0) continue;
+            double rate = 100.0 * fallbacks / calls;
+            String flag = rate > 50.0 ? " [HIGH]" : "";
+            System.out.printf("[TRUCK-TYPE-POI]   %-16s calls: %,9d  fallbacks: %,9d (%.1f%%)%s%n",
+                t, calls, fallbacks, rate, flag);
+        }
     }
 }

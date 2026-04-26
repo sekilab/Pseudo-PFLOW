@@ -1,0 +1,18 @@
+metric_name,category,survey_value,unit,tolerance_pct,source,notes,priority
+Fleet Operating Rate,FLEET,66.0,percent,5,THTA FY2023 [#1] p.13 [資料5-1],実働率 annual avg 特別区・武三 FY2023 (令和5年度); pre-recovery,CRITICAL
+Avg Passenger Trips per Taxi,TRIPS,26.2,trips/taxi,10,THTA FY2023 [#1] p.13,運送回数 1日1車当り FY2023 (was 25.3 in FY2024 — slight decline),CRITICAL
+Avg Trip Distance,DISTANCE,4.5,km,15,THTA FY2023 [#1] p.13,1車1回当り 実車㌔ FY2023; 4.6 in FY2024,HIGH
+Total Daily Distance per Taxi,DISTANCE,244.1,km/taxi,10,THTA FY2023 [#1] p.13,走行キロ/active-taxi/day FY2023; 243.7 in FY2024,CRITICAL
+Loaded Distance Ratio,EMPTY,47.9,percent,5,THTA FY2023 [#1] p.13,実車率 FY2023 = 47.9%; FY2024 = 47.5%,CRITICAL
+Empty Running Ratio (distance),EMPTY,52.1,percent,5,Derived THTA FY2023 [#1],1 - 実車率 47.9% = 52.1%,CRITICAL
+Total Daily Revenue per Taxi,REVENUE,56076,yen/taxi,15,THTA FY2023 [#1] p.13,日車営収 税抜 FY2023; 56139 in FY2024,CRITICAL
+Avg Fare,REVENUE,2140,yen,25,Derived THTA FY2023 [#1],日車営収 ¥56076 ÷ 26.2 trips ≈ ¥2140; pre-tax,HIGH
+LOCAL Type Share,FLEET,65.0,percent,15,Config heuristic,Same as FY2024 (no year-specific data),MEDIUM
+CITYWIDE Type Share,FLEET,25.0,percent,15,Config heuristic,Same as FY2024,MEDIUM
+HUB Type Share,FLEET,10.0,percent,15,Config heuristic,Same as FY2024,MEDIUM
+Trip Distance Min Check,DISTANCE,0.5,km,50,Config,Same as FY2024,LOW
+Trip Distance Max Check,DISTANCE,15.0,km,50,Config,Same as FY2024,LOW
+Empty Trip Count Ratio,EMPTY,48.0,percent,15,Derived,Same as FY2024,HIGH
+Night Trip Ratio,TEMPORAL,25.0,percent,25,THTA FY2023,22:00-05:00 trips as % of total,HIGH
+Nearby Trip Ratio,SPATIAL,80.0,percent,20,Config heuristic,Same as FY2024,MEDIUM
+Trips Within City Bounds,SPATIAL,99.0,percent,2,Validation,Same as FY2024,HIGH

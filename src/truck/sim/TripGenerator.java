@@ -152,6 +152,10 @@ public class TripGenerator {
                                       String originZoneId) {
         double cargoWeight = zoneCargoModel.sampleWeight(originZoneId, vehicleSize);
 
+        // TR3 verified (2026-04-22): LoadingConstraint IS enforced here, every trip,
+        // via two caps below. Invariant at return: 0.1 ≤ cargoWeight ≤ vehicleCapacity
+        // and, for CAPACITY-constrained trips, cargoWeight ≤ vehicleCapacity × loadingRate.
+
         // Always respect vehicle capacity (physical limit)
         cargoWeight = Math.min(cargoWeight, vehicleCapacity);
 

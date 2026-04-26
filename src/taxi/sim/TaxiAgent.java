@@ -15,25 +15,11 @@ import java.util.List;
  *
  * VALIDATION & CALIBRATION NOTES:
  * --------------------------------
- * TODO: Daily distance validation
- * - Target: Average Tokyo taxi runs 200-300 km per day (verify with actual survey data)
- * - Current implementation generates trips that may exceed this
- * - Need to find: Official Tokyo taxi operation statistics
- * - Data sources to check:
- *   1. Tokyo Metropolitan Government taxi operation reports
- *   2. Japan Taxi Association annual statistics
- *   3. Ministry of Land, Infrastructure, Transport and Tourism (MLIT) data
+ * Known limitation: daily cumulative distance not validated. See Shi KR3.
  *
- * TODO: Initial state and operating hours
- * - Should taxis start at depot/garage at shift start?
- * - Define shift patterns: day shift (08:00-20:00), night shift (20:00-08:00)
- * - Late-night taxis (22:00-05:00) have +20% fare
- * - Consider multi-shift taxis vs single-shift operations
+ * Shift start/end managed by TaxiSimulation.initializeFleet()
  *
- * TODO: Waiting areas and hotspots
- * - Major taxi stands: Tokyo Station, Shinjuku Station, Shibuya Station, airports
- * - Should idle taxis return to nearest hotspot after dropoff?
- * - Implement zone-based taxi waiting behavior
+ * Hotspot zone logic implemented in TaxiSimulation. Waiting area queueing is future work.
  *
  * V3.0 ENHANCEMENT:
  * - Night hours check now uses TaxiConfig
@@ -59,7 +45,11 @@ public class TaxiAgent {
     private long shiftStartTime;  // in seconds since midnight
     private long shiftEndTime;    // in seconds since midnight
 
-    // Trip and status tracking
+    // Trip and status tracking.
+    // NOTE: matching/dispatch and passenger-demand modelling are out of scope
+    // for this dataset-generation release — currentStatus therefore never
+    // leaves IDLE. TaxiStatus was shrunk to a single value in 2026-04; reinstate
+    // states here if a future release adds a live state machine.
     private List<TaxiTrip> assignedTrips;
     private TaxiStatus currentStatus;
 
@@ -67,11 +57,7 @@ public class TaxiAgent {
     private double totalDistanceKm;
     private double totalRevenueYen;
 
-    // Trajectory (for spatiotemporal analysis)
-    // TODO: Feature not implemented - trajectory tracking disabled
-    // Uncomment when implementing spatiotemporal analysis
-    // @Deprecated
-    // private List<TrajectoryPoint> trajectory;
+    // Trajectory tracking handled by traj.TrajectoryMain (separate phase)
 
     /**
      * Constructor for TaxiAgent
@@ -96,14 +82,10 @@ public class TaxiAgent {
         this.assignedTrips = new ArrayList<>();
         this.currentStatus = TaxiStatus.IDLE;
         this.familiarZoneIds = new ArrayList<>();  // V4.0: Initialize familiar zones list
-        // this.trajectory = new ArrayList<>();  // Trajectory feature disabled
 
         this.totalDistanceKm = 0.0;
         this.totalRevenueYen = 0.0;
-
-        // TODO: Initialize taxi at home depot at shift start
-        // Add initial trajectory point at home location at shift start time
-        // this.addTrajectoryPoint(homeLon, homeLat, shiftStart);
+        // Home depot initialization handled by FleetManager
     }
 
     /**
@@ -115,19 +97,6 @@ public class TaxiAgent {
         // Update statistics
         totalDistanceKm += trip.getDistanceKm();
         totalRevenueYen += trip.getFareYen();
-    }
-
-    /**
-     * Add a point to the taxi's trajectory
-     * @param lon Longitude
-     * @param lat Latitude
-     * @param timestamp Time in seconds since midnight
-     * @deprecated Trajectory feature not implemented - method disabled
-     */
-    @Deprecated
-    public void addTrajectoryPoint(double lon, double lat, long timestamp) {
-        // trajectory.add(new TrajectoryPoint(lon, lat, timestamp));
-        // Feature disabled - uncomment when implementing spatiotemporal analysis
     }
 
     // ==================== Getters and Setters ====================
@@ -197,41 +166,4 @@ public class TaxiAgent {
         return totalRevenueYen;
     }
 
-    /**
-     * @deprecated Trajectory feature not implemented
-     */
-    @Deprecated
-    public List<TrajectoryPoint> getTrajectory() {
-        // return trajectory;
-        return new ArrayList<>();  // Return empty list when feature is disabled
-    }
-
-    /**
-     * Inner class representing a single point in the taxi's trajectory
-     * @deprecated Trajectory feature not implemented
-     */
-    @Deprecated
-    public static class TrajectoryPoint {
-        private final double longitude;
-        private final double latitude;
-        private final long timestamp;  // seconds since midnight
-
-        public TrajectoryPoint(double lon, double lat, long time) {
-            this.longitude = lon;
-            this.latitude = lat;
-            this.timestamp = time;
-        }
-
-        public double getLongitude() {
-            return longitude;
-        }
-
-        public double getLatitude() {
-            return latitude;
-        }
-
-        public long getTimestamp() {
-            return timestamp;
-        }
-    }
 }

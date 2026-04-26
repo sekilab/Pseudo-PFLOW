@@ -1,0 +1,18 @@
+metric_name,category,survey_value,unit,tolerance_pct,source,notes,priority
+Fleet Operating Rate,FLEET,58.3,percent,5,MLIT 近畿運輸局 R6 [#mlit-kinki],実働率 法人 大阪府全体 FY2024 (R6); 法人 14265 + 個人 2278 = 16543 total; rank 11 nationally,CRITICAL
+Avg Passenger Trips per Taxi,TRIPS,18.5,trips/taxi,10,MLIT 近畿運輸局 R6 [#mlit-kinki],運送回数 1日1車当り (法人) 大阪府 FY2024; lower than Tokyo's 25.3 due to less dense demand,CRITICAL
+Avg Trip Distance,DISTANCE,4.5,km,15,Derived MLIT 近畿運輸局 R6,1車1回 実車㌔ ≈ 82.5km/day ÷ 18.5 trips = 4.5 km; similar to Tokyo,HIGH
+Total Daily Distance per Taxi,DISTANCE,181.7,km/taxi,10,MLIT 近畿運輸局 R6 [#mlit-kinki],走行キロ 1日1車 (法人) 大阪府 FY2024; 26% lower than Tokyo (244.1),CRITICAL
+Loaded Distance Ratio,EMPTY,45.4,percent,5,MLIT 近畿運輸局 R6 [#mlit-kinki],実車率 (法人) 大阪府 FY2024; rank 5 nationally; lower than Tokyo's 47.5%,CRITICAL
+Empty Running Ratio (distance),EMPTY,54.6,percent,5,Derived MLIT 近畿運輸局 R6,1 - 実車率 45.4% = 54.6%,CRITICAL
+Total Daily Revenue per Taxi,REVENUE,38936,yen/taxi,15,MLIT 近畿運輸局 R6 [#mlit-kinki],日車営収 (法人) 大阪府 FY2024; 31% lower than Tokyo's ¥56139,CRITICAL
+Avg Fare,REVENUE,2104,yen,25,Derived MLIT 近畿運輸局 R6,¥38936 ÷ 18.5 trips ≈ ¥2104; pre-tax,HIGH
+LOCAL Type Share,FLEET,65.0,percent,15,Config heuristic,Same as Tokyo (no city-specific data),MEDIUM
+CITYWIDE Type Share,FLEET,25.0,percent,15,Config heuristic,Same as Tokyo,MEDIUM
+HUB Type Share,FLEET,10.0,percent,15,Config heuristic,Same as Tokyo,MEDIUM
+Trip Distance Min Check,DISTANCE,0.5,km,50,Config,Same as Tokyo,LOW
+Trip Distance Max Check,DISTANCE,15.0,km,50,Config,Same as Tokyo,LOW
+Empty Trip Count Ratio,EMPTY,52.0,percent,15,Derived,Approx; lower 実車率 implies more empty trips than Tokyo's 48%,HIGH
+Night Trip Ratio,TEMPORAL,28.0,percent,25,Industry estimate,Osaka's nightlife economy makes night ratio slightly higher than Tokyo,HIGH
+Nearby Trip Ratio,SPATIAL,80.0,percent,20,Config heuristic,Same as Tokyo,MEDIUM
+Trips Within City Bounds,SPATIAL,99.0,percent,2,Validation,Same as Tokyo,HIGH

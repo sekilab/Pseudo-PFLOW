@@ -421,9 +421,10 @@ public class POIManager {
             return null;
         }
 
-        // Select weighted random POI
-        // TODO: Weight by O-D flows and time-dependent attractiveness
-        // For now: simple random selection
+        // NOTE: POI selection within a zone is currently uniform random.
+        // Future enhancement: weight by O-D flows and time-dependent attractiveness.
+        // This is tracked as part of Shi's KR2 evaluation (demand-supply alignment).
+        // See: docs/code_audit_plan.md Phase 4.1
         return landPOIs.get(ThreadLocalRandom.current().nextInt(landPOIs.size()));
     }
 

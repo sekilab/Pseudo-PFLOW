@@ -39,6 +39,9 @@ public class TruckSimulation {
     // Default config file path
     private static final String DEFAULT_CONFIG_FILE = "config/truck/truck_config.properties";
 
+    /** Number of seconds in one hour, used for shift-time feasibility checks. */
+    private static final int SECONDS_PER_HOUR = 3600;
+
     // Core data structures
     private List<TruckAgent> truckFleet;
     private List<TruckTrip> allTrips;
@@ -311,7 +314,7 @@ public class TruckSimulation {
                 updateTruckState(truck, currentTime, lastDropoffLon, lastDropoffLat);
             }
 
-            if (!truck.hasTimeInShift(3600)) {
+            if (!truck.hasTimeInShift(SECONDS_PER_HOUR)) {
                 break;
             }
 
@@ -896,6 +899,7 @@ public class TruckSimulation {
             System.out.println("  Total zones: " + deliveryZones.size() + " (intra + inter combined)");
         }
         destinationSelector.printDeliveryTourDiagnostics();
+        destinationSelector.printTruckTypePoiDiagnostics();
     }
 
     /**
@@ -960,6 +964,12 @@ public class TruckSimulation {
         int deliveryTypeTrips = 0, longHaulTypeTrips = 0, mixedTypeTrips = 0;
         double deliveryTypeDist = 0, longHaulTypeDist = 0, mixedTypeDist = 0;
         double deliveryTypeCargo = 0, longHaulTypeCargo = 0, mixedTypeCargo = 0;
+        // TR2: DELIVERY familiar-area violations. The familiar radius is a soft constraint
+        // (exp decay + 0.01 multiplier elsewhere) so DELIVERY trucks can still produce
+        // long-distance trips. These counters surface the escape rate without changing
+        // the generator — a sustained high rate means the soft constraint isn't biting.
+        int deliveryOutOfFamiliarCount = 0;    // > 35 km (nominal radius)
+        int deliverySeverelyOutOfCount = 0;    // > 50 km (hard threshold per plan)
 
         // Build truck lookup for type resolution
         Map<Integer, TruckAgent> truckMap = new HashMap<>();
@@ -982,6 +992,9 @@ public class TruckSimulation {
             if (tt == TruckType.DELIVERY) {
                 deliveryTypeTrips++; deliveryTypeDist += trip.getDistanceKm();
                 if (trip.isCargoLoaded()) deliveryTypeCargo += trip.getCargoWeightTons();
+                double d = trip.getDistanceKm();
+                if (d > 35.0) deliveryOutOfFamiliarCount++;
+                if (d > 50.0) deliverySeverelyOutOfCount++;
             } else if (tt == TruckType.LONG_HAUL) {
                 longHaulTypeTrips++; longHaulTypeDist += trip.getDistanceKm();
                 if (trip.isCargoLoaded()) longHaulTypeCargo += trip.getCargoWeightTons();
@@ -1014,6 +1027,29 @@ public class TruckSimulation {
         metrics.put("TRUCK_TYPE.mixed_distance_km", mixedTypeDist);
         metrics.put("TRUCK_TYPE.mixed_avg_dist_km", mixedTypeTrips > 0 ? mixedTypeDist / mixedTypeTrips : 0);
         metrics.put("TRUCK_TYPE.mixed_cargo_tons", mixedTypeCargo);
+
+        // TR2: DELIVERY familiar-area escape rates.
+        double outOfFamiliarRate = deliveryTypeTrips > 0
+                ? (double) deliveryOutOfFamiliarCount / deliveryTypeTrips : 0.0;
+        double severelyOutOfRate = deliveryTypeTrips > 0
+                ? (double) deliverySeverelyOutOfCount / deliveryTypeTrips : 0.0;
+        metrics.put("DELIVERY_FAMILIAR.out_of_familiar_trips", (double) deliveryOutOfFamiliarCount);
+        metrics.put("DELIVERY_FAMILIAR.out_of_familiar_rate", outOfFamiliarRate);
+        metrics.put("DELIVERY_FAMILIAR.severely_out_trips", (double) deliverySeverelyOutOfCount);
+        metrics.put("DELIVERY_FAMILIAR.severely_out_rate", severelyOutOfRate);
+
+        // TR1: Truck-type POI fallback rates. High rate (>50%) means the truck-type
+        // POI catalogue for that type is insufficient and selectPOIByTruckType is
+        // effectively bypassed in favour of commodity-only selection.
+        for (TruckType tt : TruckType.values()) {
+            int calls = destinationSelector.getTruckTypePoiCalls(tt);
+            int fallbacks = destinationSelector.getTruckTypePoiFallbacks(tt);
+            double rate = calls > 0 ? (double) fallbacks / calls : 0.0;
+            String key = tt.name().toLowerCase();
+            metrics.put("POI_FALLBACK." + key + "_calls", (double) calls);
+            metrics.put("POI_FALLBACK." + key + "_fallbacks", (double) fallbacks);
+            metrics.put("POI_FALLBACK." + key + "_rate", rate);
+        }
 
         // Validation reference targets
         TruckConfig cfg = TruckConfig.getInstance();

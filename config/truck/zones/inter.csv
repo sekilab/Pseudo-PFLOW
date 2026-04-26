@@ -1,18 +1,14 @@
 zone_id,name,center_lon,center_lat,radius_km,warehouses_weight,retail_weight,construction_weight,residential_weight
-# Kanagawa Far Coast - MFS Zones 22-24 (56-73km, beyond 50km limit),,,,,,,
 MFS22,Hiratsuka/Oiso/Ninomiya,139.3300,35.3300,7.0,0.4,0.4,0.3,0.4
 MFS23,Odawara/Manazuru/Yugawara/Hakone,139.1500,35.2500,10.0,0.3,0.4,0.2,0.4
 MFS24,Minami-Ashigara/Nakai/Oi/Matsuda,139.1000,35.3200,8.0,0.2,0.3,0.2,0.3
-# Saitama North - MFS Zones 34-37 (51-81km, beyond 50km limit),,,,,,,
 MFS34,Kuki/Kazo/Hanyu/Gyoda,139.6500,36.1300,8.0,0.3,0.4,0.2,0.4
 MFS35,Kumagaya/Fukaya/Ogawa/Yorii,139.3900,36.1500,10.0,0.4,0.4,0.3,0.4
 MFS36,Honjo/Kamikawa/Kamisato,139.1900,36.2400,7.0,0.3,0.3,0.2,0.3
 MFS37,Chichibu/Yokoze/Minano/Nagatoro,139.0800,36.0000,12.0,0.2,0.3,0.2,0.3
-# Chiba East/South - MFS Zones 45-47 (56-95km, beyond 50km limit),,,,,,,
-MFS45,Katsuura/Otaki/Tateyama/Kamogawa,140.25,35.35,15.0,0.3,0.3,0.2,0.3
+MFS45,Katsuura/Otaki/Tateyama/Kamogawa,140.2500,35.3500,15.0,0.3,0.3,0.2,0.3
 MFS46,Choshi/Asahi/Sosa/Katori,140.8200,35.7300,12.0,0.3,0.3,0.2,0.3
-MFS47,Togane/Mobara/Sanmu/Oamishirasato,140.29,35.6,10.0,0.3,0.4,0.2,0.4
-# Ibaraki - MFS Zones 48-56 (40-90km from Tokyo),,,,,,,,
+MFS47,Togane/Mobara/Sanmu/Oamishirasato,140.2900,35.6000,10.0,0.3,0.4,0.2,0.4
 MFS48,Tsuchiura/Ishioka/Omitama/Kasumigaura,140.2000,36.0700,10.0,0.4,0.4,0.3,0.4
 MFS49,Koga/Shimotsuma/Yachiyo/Goka,139.9500,36.1800,8.0,0.3,0.3,0.2,0.3
 MFS50,Tsukuba City,140.1100,36.0800,8.0,0.5,0.5,0.3,0.5
@@ -22,21 +18,15 @@ MFS53,Inashiki/Miho/Kawachi,140.3200,35.9500,7.0,0.2,0.3,0.2,0.3
 MFS54,Kashima/Kamisu/Namegata/Itako,140.6400,35.9700,12.0,0.5,0.4,0.4,0.3
 MFS55,Mito/Hitachi/Kasama/Hitachinaka,140.4700,36.3800,15.0,0.5,0.5,0.3,0.5
 MFS56,Yuki/Chikusei/Sakuragawa,139.8700,36.3000,8.0,0.3,0.3,0.2,0.3
-# Gunma - MFS Zones 57-58, 65-66 (60-100km from Tokyo),,,,,,,
 MFS57,Maebashi/Takasaki/Isesaki/Shibukawa,139.0600,36.3900,12.0,0.5,0.5,0.3,0.5
 MFS58,Kiryu/Ota/Tatebayashi/Midori,139.3700,36.3100,10.0,0.4,0.4,0.3,0.4
 MFS65,Gunma North,138.9500,36.7000,15.0,0.3,0.3,0.2,0.3
 MFS66,Gunma Other (Ueno/Kanna/Nanmoku),138.8000,36.1500,10.0,0.2,0.2,0.1,0.2
-# Tochigi - MFS Zones 59-61, 64 (70-110km from Tokyo),,,,,,,
 MFS59,Utsunomiya/Kanuma/Moka/Kaminokawa,139.8800,36.5600,12.0,0.5,0.5,0.3,0.5
 MFS60,Tochigi/Oyama/Shimotsuke/Nogi,139.7300,36.3800,8.0,0.4,0.4,0.3,0.4
 MFS61,Ashikaga/Sano,139.4500,36.3400,7.0,0.4,0.4,0.3,0.4
 MFS64,Tochigi North,139.8000,36.8500,12.0,0.3,0.3,0.2,0.3
-# Tokyo Islands - MFS Zone 62 (150+km from Tokyo) — EXCLUDED from routing (no road access),,,,,,,,
-# MFS62,Tokyo Islands (Izu/Ogasawara),139.2833,34.7500,50.0,0.1,0.2,0.1,0.3
-# Ibaraki North - MFS Zone 63 (120+km from Tokyo),,,,,,,,
 MFS63,Ibaraki North,140.4500,36.7000,15.0,0.3,0.3,0.2,0.3
-# Long-haul Inter-Regional - MFS Zones 67-71 (200-800km from Tokyo),,,,,,,,
 MFS67,Hokkaido & Tohoku,140.7400,38.2700,150.0,0.5,0.4,0.3,0.6
 MFS68,Hokuriku,137.674553,36.948566,80.0,0.4,0.4,0.3,0.5
 MFS69,Yamanashi & Nagano,138.5000,36.0000,60.0,0.3,0.4,0.2,0.5
