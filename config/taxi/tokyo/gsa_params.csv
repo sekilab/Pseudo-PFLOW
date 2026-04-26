@@ -1,0 +1,13 @@
+parameter_name,default,min,max,config_key
+APP_PREFERRED share,0.20,0.20,0.60,taxi.type.app_preferred.share
+LOCAL street share,0.70,0.50,0.85,taxi.type.local.mode.street
+APP_PREFERRED app share,0.75,0.50,0.95,taxi.type.app_preferred.mode.app
+HUB stand share,0.60,0.40,0.80,taxi.type.hub.mode.stand
+AT_STAND mean wait airport,8,4,16,taxi.stand.wait.airport.mean.minutes
+AT_STAND mean wait station,12,6,24,taxi.stand.wait.station.mean.minutes
+Empty leg sigma,0.7,0.3,1.2,trip.distance.empty.sigma
+Loaded leg sigma,0.6,0.3,1.0,trip.distance.loaded.sigma
+Attractiveness beta1 jobs,1.0,0.5,1.5,attractiveness.beta1.jobs
+Attractiveness beta2 shops,0.8,0.4,1.2,attractiveness.beta2.shops
+Attractiveness beta3 nightlife,0.6,0.3,1.0,attractiveness.beta3.nightlife
+Attractiveness beta4 residential,0.5,0.2,0.8,attractiveness.beta4.residential
