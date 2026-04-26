@@ -1,5 +1,6 @@
 package taxi.sim;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
@@ -79,6 +80,11 @@ class ShiftSimulator {
     private static final double EMPTY_MIN_ROAD_KM = 0.3;
     private static final double EMPTY_MAX_ROAD_KM = 12.0;
 
+    // B3 / Phase 6: pre-parsed PRHS windows filtered to today's day-of-week.
+    // Empty list ⇒ no PRHS operating today (Sun in R8 contraction, etc.) ⇒ all
+    // RIDE_HAIL_PRHS taxis stay OFF_DUTY for the day.
+    private final List<PrhsWindow> prhsWindowsToday;
+
     ShiftSimulator(TaxiConfig config, TaxiSimulation host,
                    ModeMixResolver modeMix, Random random) {
         this.config = config;
@@ -90,6 +96,26 @@ class ShiftSimulator {
         this.emptySigma = config.getTripDistanceEmptySigma();
         this.emptyMu = Math.log(config.getTripDistanceEmptyMeanKm())
                        - 0.5 * emptySigma * emptySigma;
+        // B3 / Phase 6: pre-parse PRHS windows for today's day-of-week.
+        this.prhsWindowsToday = parsePrhsWindowsForToday(config);
+        if (config.getPrhsWindowCount() > 0) {
+            System.out.println("[PRHS] Day=" + config.getSimDayOfWeek()
+                + ", active windows: " + (prhsWindowsToday.isEmpty()
+                    ? "(none today)"
+                    : prhsWindowsToday.toString()));
+        }
+    }
+
+    private static List<PrhsWindow> parsePrhsWindowsForToday(TaxiConfig config) {
+        try {
+            PrhsWindow.Day day = PrhsWindow.Day.parse(config.getSimDayOfWeek());
+            return Collections.unmodifiableList(
+                PrhsWindow.parseAndFilter(config.getPrhsWindowSpecs(), day));
+        } catch (Exception e) {
+            System.out.println("[PRHS] WARN: failed to parse windows: " + e.getMessage()
+                + " — PRHS taxis will run unrestricted.");
+            return Collections.emptyList();
+        }
     }
 
     /**
@@ -110,15 +136,48 @@ class ShiftSimulator {
         final TaxiType type = taxi.getTaxiType();
         final long shiftEnd = taxi.getShiftEndTime();
         final double emptyTripThresholdKm = config.getEmptyTripThresholdKm();
+        final boolean isPrhs = (type == TaxiType.RIDE_HAIL_PRHS);
 
         long currentTime = taxi.getShiftStartTime();
         double curLon = taxi.getHomeLongitude();
         double curLat = taxi.getHomeLatitude();
 
+        // B3 / Phase 6: PRHS taxis can only operate inside MLIT-permitted windows
+        // for today's day-of-week. If no window is active today, the taxi stays
+        // OFF_DUTY (zero trips).
+        if (isPrhs && prhsWindowsToday.isEmpty()) {
+            return;  // PRHS not permitted today (e.g. Sun in R8 contraction)
+        }
+
         // Loop until shift end. Each iteration emits one OCCUPIED trip (and
         // possibly a preceding empty trip). The loop exits when an empty +
-        // loaded cycle would push past shiftEnd.
+        // loaded cycle would push past shiftEnd. PRHS taxis additionally
+        // skip-forward to the next window if currently outside one.
         while (currentTime < shiftEnd) {
+
+            // B3 / Phase 6: PRHS window gate — advance to next valid window
+            // if currently outside, or end the shift if no future window today.
+            if (isPrhs) {
+                PrhsWindow window = PrhsWindow.findCurrentOrNext(prhsWindowsToday, currentTime);
+                if (window == null) {
+                    break;  // no future window today
+                }
+                if (currentTime < window.startSeconds) {
+                    currentTime = window.startSeconds;  // skip to window start
+                    if (currentTime >= shiftEnd) break;
+                }
+                // Cap shift end to window end so cycle math respects regulation.
+                // (Note: this trims the effective shift; multiple windows in a
+                // single shift are handled by re-entering this gate after the
+                // current window ends.)
+                long effectiveEnd = Math.min(shiftEnd, window.endSeconds);
+                if (currentTime >= effectiveEnd) {
+                    // Window has expired — try next iteration to pick next window.
+                    currentTime = window.endSeconds;
+                    continue;
+                }
+            }
+
             // --- 1. Decide AT_STAND vs DUAL_MODE for this cycle ---
             boolean rollStand = random.nextDouble() < modeMix.standShare(type);
             // RIDE_HAIL_PRHS: regulatorily forbidden from stand; force DUAL_MODE.
@@ -157,7 +216,18 @@ class ShiftSimulator {
                 emitEmptyTrip(taxi, curLon, curLat, pickupLon, pickupLat, currentTime, emptyTravelTime);
             }
             currentTime += emptyTravelTime;
-            // (B3 / Phase 5: Exp(λ) AT_STAND wait will be inserted here when atStand.)
+
+            // B3 / Phase 5: AT_STAND queue — sample Exp(λ) wait, accumulate
+            // against shift_remaining. Wait time depends on stand classification
+            // (airport / major-station / entertainment) per DESIGN.md §2.8.
+            if (atStand) {
+                long waitSeconds = sampleStandWaitSeconds(standZone);
+                currentTime += waitSeconds;
+                if (currentTime >= shiftEnd) {
+                    break;  // shift ended during stand wait
+                }
+            }
+
             curLon = pickupLon;
             curLat = pickupLat;
 
@@ -178,6 +248,20 @@ class ShiftSimulator {
             if (dropoffTime > shiftEnd) {
                 // Wouldn't finish in time — end shift cleanly.
                 break;
+            }
+            // B3 / Phase 6: PRHS strict interpretation — trip must complete
+            // within the regulatory window. Skip if it would overrun.
+            if (isPrhs) {
+                PrhsWindow w = PrhsWindow.findCurrentOrNext(prhsWindowsToday, currentTime);
+                if (w == null || dropoffTime > w.endSeconds) {
+                    // Either no window remains, or dropoff would land past
+                    // window end. Advance to next window (if any) and retry.
+                    if (w != null && dropoffTime > w.endSeconds) {
+                        currentTime = w.endSeconds;
+                        continue;
+                    }
+                    break;
+                }
             }
 
             TaxiTrip passengerTrip = new TaxiTrip(host.nextTripId(),
@@ -282,6 +366,51 @@ class ShiftSimulator {
             if (r <= cumulative) return zones.get(i);
         }
         return zones.get(zones.size() - 1);
+    }
+
+    /**
+     * B3 / Phase 5 (DESIGN.md §2.8): Sample exponential AT_STAND wait time.
+     *
+     * <p>Mean wait depends on stand classification:
+     * <ul>
+     *   <li>Airport (Haneda, Narita) — 8 min default (queue throughput)
+     *   <li>Major station (Tokyo, Shinjuku, etc.) — 12 min default
+     *   <li>Entertainment (Roppongi) — 6 min default
+     * </ul>
+     *
+     * <p>Classification heuristic: name contains "Airport"/"空港" → airport;
+     * name contains "Station"/"駅" → station; else → entertainment. The
+     * heuristic is intentional — DESIGN.md §2.8 documents these mean values
+     * as "documented assumptions", subject to GSA in B5.
+     *
+     * <p>Exponential sampling: {@code -mean × ln(U)} where U ~ Uniform(0,1).
+     *
+     * @return wait in seconds; 0 if the type-stand share or zone is
+     *         degenerate (defensive — caller already gated on atStand)
+     */
+    private long sampleStandWaitSeconds(DestinationZone zone) {
+        double meanMinutes = standMeanMinutesFor(zone);
+        if (meanMinutes <= 0) return 0;
+        // Avoid log(0) by sampling from (0, 1] instead of [0, 1).
+        double u = 1.0 - random.nextDouble();
+        double waitMinutes = -meanMinutes * Math.log(u);
+        return (long)(waitMinutes * 60.0);
+    }
+
+    /** Classify a hub zone by name and look up the configured Exp mean (minutes). */
+    private double standMeanMinutesFor(DestinationZone zone) {
+        if (zone == null) return 0;
+        String name = zone.getName() == null ? "" : zone.getName();
+        // Airport: name contains "Airport" or "空港"
+        if (name.contains("Airport") || name.contains("airport") || name.contains("空港")) {
+            return config.getTaxiStandWaitAirportMeanMinutes();
+        }
+        // Major station: name contains "Station" or "駅"
+        if (name.contains("Station") || name.contains("station") || name.contains("駅")) {
+            return config.getTaxiStandWaitStationMeanMinutes();
+        }
+        // Else: entertainment / other (Roppongi etc.)
+        return config.getTaxiStandWaitEntertainmentMeanMinutes();
     }
 
     /** Construct + record an empty trip and update its taxi's assigned list. */

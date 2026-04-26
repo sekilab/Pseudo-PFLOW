@@ -277,6 +277,13 @@ public class TaxiConfig {
      */
     private final java.util.List<String> prhsWindowSpecs = new java.util.ArrayList<>();
 
+    /**
+     * Day of the week this simulation represents (Mon/Tue/.../Sun). Used by
+     * PRHS window filtering — only windows whose day-spec matches are active
+     * for this run. For paper §6.4, average results across 7 daily runs.
+     */
+    private String simDayOfWeek = "Mon";
+
     // ═══ Zone Clustering (V4.0) ═══
     /** Minimum number of familiar zones assigned to LOCAL taxis. */
     private int zoneClusterMinZones = 3;
@@ -626,6 +633,7 @@ public class TaxiConfig {
                 prhsWindowSpecs.add(spec);
             }
         }
+        simDayOfWeek = props.getProperty("sim.day.of.week", simDayOfWeek);
 
         // V4.0: Zone clustering parameters
         zoneClusterMinZones = getInt(props, "zone.cluster.min.zones", zoneClusterMinZones);
@@ -953,6 +961,8 @@ public class TaxiConfig {
     public int getPrhsWindowCount() { return prhsWindowCount; }
     /** Raw PRHS window spec strings (e.g. "07:00-10:00,Mon-Fri"). Parsed at runtime. */
     public java.util.List<String> getPrhsWindowSpecs() { return java.util.Collections.unmodifiableList(prhsWindowSpecs); }
+    /** Day of week the simulation represents (Mon/Tue/.../Sun). For PRHS window filtering. */
+    public String getSimDayOfWeek() { return simDayOfWeek; }
 
     // V4.0: Zone clustering getters
     public int getZoneClusterMinZones() { return zoneClusterMinZones; }
