@@ -109,14 +109,10 @@ public class TaxiConfig {
      */
     private double emptyTripThresholdKm = 0.05;
 
-    // ═══ Simulation Engine (v6.1, Phase 0 of shift-time rewrite) ═══
-    /**
-     * Trip-generation engine selector.
-     * "legacy"     = trip-count-driven loop with rejection-resampling (v6.0)
-     * "shift_time" = shift-time-driven loop with DUAL_MODE (v7.0, Phase 1-7 build)
-     * During Phase 1-7 of DESIGN.md, both engines coexist via this flag.
-     */
-    private String simulationEngine = "legacy";
+    // (Simulation engine flag removed in B4 / Phase 7 — shift_time is now the
+    // only engine. The legacy v6.x trip-count-driven loop and its rejection-
+    // resampling helpers were deleted from TaxiSimulation.java. Pre-B4 .bak
+    // files in src/taxi/sim/*.legacy.bak preserve the rollback path.)
 
     // ═══ Shift Configuration ═══
     /** Minimum shift duration in hours. */
@@ -389,8 +385,9 @@ public class TaxiConfig {
             System.out.println("=== Loading Configuration ===");
 
             // Load all parameters with defaults
-            simulationEngine = props.getProperty("taxi.simulation.engine", simulationEngine).trim();
-            System.out.println("  Simulation engine: " + simulationEngine);
+            // (B4 / Phase 7: simulation engine flag removed; v7.0 shift_time is
+            // the only engine. Any taxi.simulation.engine= line in a .properties
+            // file is silently ignored.)
             loadDirectories(props);
             loadFleetConfig(props);
             loadTripConfig(props);
@@ -467,15 +464,11 @@ public class TaxiConfig {
         tripDistanceEmptyMeanKm = getDouble(props, "trip.distance.empty.mean.km", tripDistanceEmptyMeanKm);
         tripDistanceEmptySigma = getDouble(props, "trip.distance.empty.sigma", tripDistanceEmptySigma);
         projectionRadiusKm = getDouble(props, "spatial.projection.radius.km", projectionRadiusKm);
-        System.out.println("  Trip distance: " + tripDistanceAverage + " km average");
-        System.out.println("  Trip generation MAX_ATTEMPTS: " + tripGenerationMaxAttempts);
-        if ("shift_time".equalsIgnoreCase(simulationEngine)) {
-            System.out.println("  [v7.0] Loaded leg log-normal: mean=" + tripDistanceAverage
-                + " km, sigma=" + tripDistanceLoadedSigma + ", bounds=[" + tripDistanceMin + ", " + tripDistanceMax + "] km");
-            System.out.println("  [v7.0] Empty leg log-normal:  mean=" + tripDistanceEmptyMeanKm
-                + " km, sigma=" + tripDistanceEmptySigma + " (Phase 4+)");
-            System.out.println("  [v7.0] Projection radius: " + projectionRadiusKm + " km (spiral-grid scan)");
-        }
+        System.out.println("  Trip distance (loaded leg lognormal): mean=" + tripDistanceAverage
+            + " km, sigma=" + tripDistanceLoadedSigma + ", bounds=[" + tripDistanceMin + ", " + tripDistanceMax + "] km");
+        System.out.println("  Empty leg lognormal: mean=" + tripDistanceEmptyMeanKm
+            + " km, sigma=" + tripDistanceEmptySigma);
+        System.out.println("  Projection radius: " + projectionRadiusKm + " km (spiral-grid scan)");
     }
 
     private void loadNearbyTripLogic(Properties props) {
@@ -641,24 +634,16 @@ public class TaxiConfig {
         zoneClusterMinDistanceKm = getDouble(props, "zone.cluster.min.distance.km", zoneClusterMinDistanceKm);
         zoneClusterMaxDistanceKm = getDouble(props, "zone.cluster.max.distance.km", zoneClusterMaxDistanceKm);
 
-        if ("shift_time".equalsIgnoreCase(simulationEngine)) {
-            // v7.0 5-type display
-            System.out.println("  [v7.0] Taxi types: LOCAL=" + (taxiTypeLocalShare * 100)
-                + "%, CITYWIDE=" + (taxiTypeCitywideShare * 100)
-                + "%, APP_PREFERRED=" + (taxiTypeAppPreferredShare * 100)
-                + "%, HUB=" + (taxiTypeHubShare * 100)
-                + "%, RIDE_HAIL_PRHS=" + (taxiTypeRideHailPrhsShare * 100) + "%");
-            System.out.println("  [v7.0] Stand wait (Exp mean min): airport=" + taxiStandWaitAirportMeanMinutes
-                + ", station=" + taxiStandWaitStationMeanMinutes
-                + ", entertainment=" + taxiStandWaitEntertainmentMeanMinutes);
-            System.out.println("  [v7.0] PRHS windows: " + prhsWindowCount + " configured" + (prhsWindowCount > 0 ? " " + prhsWindowSpecs : ""));
-        } else {
-            // legacy 3-type display
-            System.out.println("  Taxi types: LOCAL=" + (taxiTypeLocalProb * 100) + "%, " +
-                "CITYWIDE=" + (taxiTypeCitywideProb * 100) + "%, " +
-                "HUB=" + (taxiTypeHubProb * 100) + "%");
-        }
-        System.out.println("  Local familiar radius (legacy): " + localFamiliarRadiusKm + " km");
+        System.out.println("  Taxi types: LOCAL=" + (taxiTypeLocalShare * 100)
+            + "%, CITYWIDE=" + (taxiTypeCitywideShare * 100)
+            + "%, APP_PREFERRED=" + (taxiTypeAppPreferredShare * 100)
+            + "%, HUB=" + (taxiTypeHubShare * 100)
+            + "%, RIDE_HAIL_PRHS=" + (taxiTypeRideHailPrhsShare * 100) + "%");
+        System.out.println("  Stand wait (Exp mean min): airport=" + taxiStandWaitAirportMeanMinutes
+            + ", station=" + taxiStandWaitStationMeanMinutes
+            + ", entertainment=" + taxiStandWaitEntertainmentMeanMinutes);
+        System.out.println("  PRHS windows: " + prhsWindowCount + " configured" + (prhsWindowCount > 0 ? " " + prhsWindowSpecs : ""));
+        System.out.println("  Local familiar radius: " + localFamiliarRadiusKm + " km");
         System.out.println("  Zone clustering: " + zoneClusterMinZones + "-" + zoneClusterMaxZones +
             " zones within " + zoneClusterMinDistanceKm + "-" + zoneClusterMaxDistanceKm + " km");
     }
@@ -812,15 +797,9 @@ public class TaxiConfig {
 
     // ===== GETTERS =====
 
-    /**
-     * Returns the trip-generation engine selector.
-     * "legacy" or "shift_time". Phase 1-7 of DESIGN.md transitions
-     * the default from "legacy" to "shift_time" while keeping both code paths.
-     */
-    public String getSimulationEngine() { return simulationEngine; }
-
-    /** True iff the v7.0 shift-time engine is selected. */
-    public boolean isShiftTimeEngine() { return "shift_time".equalsIgnoreCase(simulationEngine); }
+    // (B4 / Phase 7: getSimulationEngine() and isShiftTimeEngine() removed —
+    // shift_time is now the only engine. v6.x .properties files setting
+    // taxi.simulation.engine=... are silently ignored by the loader.)
 
     public String getInputDirectory() { return inputDirectory; }
     public String getOutputDirectory() { return outputDirectory; }
