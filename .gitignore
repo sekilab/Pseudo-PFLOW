@@ -80,6 +80,8 @@ __pycache__/
 # Run scripts live in ../scripts/ and are tracked there
 compile_local.*
 *.ps1
+*.sh
+*.bat
 
 # ----- Config test variants (local experiments) -----
 *.properties.test_*
