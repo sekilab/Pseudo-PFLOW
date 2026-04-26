@@ -91,6 +91,11 @@ public class TaxiSimulation {
     /** B2: ModeMixResolver instance, lazily constructed when shift_time engine activates. */
     private ModeMixResolver modeMixResolver;
 
+    /** B7: per-cycle diagnostic CSV writer (no-op when disabled). */
+    private DiagnosticWriter diagnosticWriter;
+    /** B7: pre-computed stratified sample of taxi IDs for diagnostic emit. */
+    private java.util.Set<Integer> diagnosticSampleIds;
+
     // ==================== LEGACY HOTSPOT SYSTEM (REMOVED IN V4.0) ====================
     //
     // The hardcoded hotspot system has been replaced by zone-based transport hubs.
@@ -791,7 +796,15 @@ public class TaxiSimulation {
         // Pickup mode: per-type ratios (LOCAL/CITYWIDE/APP_PREFERRED/HUB/PRHS).
         // PRHS taxis additionally gated by MLIT regulatory windows (B3/Phase 6).
         modeMixResolver = new ModeMixResolver(config, random);
-        ShiftSimulator shiftSim = new ShiftSimulator(config, this, modeMixResolver, random);
+
+        // B7: instantiate diagnostic writer + build stratified sample-id set.
+        // Both passed to ShiftSimulator. When diagnostics disabled, writer is
+        // a no-op singleton and sampleIds is empty — overhead is negligible.
+        diagnosticWriter = new DiagnosticWriter(config);
+        diagnosticSampleIds = buildDiagnosticSampleSet();
+
+        ShiftSimulator shiftSim = new ShiftSimulator(config, this, modeMixResolver,
+            random, diagnosticWriter, diagnosticSampleIds);
 
         for (TaxiAgent taxi : taxiFleet) {
             shiftSim.simulateShift(taxi);
@@ -886,6 +899,45 @@ public class TaxiSimulation {
     void recordPickupMode(TaxiType type, ModeMixResolver.PickupMode mode) {
         int[] counters = modeMixCounters.computeIfAbsent(type, k -> new int[3]);
         counters[mode.ordinal()]++;
+    }
+
+    /**
+     * B7 / Phase 7.1 — Build a stratified sample of taxi IDs for diagnostic emit.
+     *
+     * <p>For each {@link TaxiType}, sample
+     * {@code max(diagnosticsSampleMinimumPerType, fleetSize × fraction)} IDs.
+     * This guarantees rare types (RIDE_HAIL_PRHS at 0.5%) get at least the
+     * minimum-per-type coverage, even though their natural fraction would yield
+     * fewer than the floor. Returns an empty set when diagnostics are disabled
+     * — keeps the {@code diagnosticSampleIds.contains(id)} check in
+     * {@link ShiftSimulator} a fast no-op.
+     */
+    private java.util.Set<Integer> buildDiagnosticSampleSet() {
+        java.util.Set<Integer> sampled = new java.util.HashSet<>();
+        if (!config.isDiagnosticsEnabled()) return sampled;
+
+        // Group taxiFleet by type
+        java.util.EnumMap<TaxiType, java.util.List<Integer>> byType =
+            new java.util.EnumMap<>(TaxiType.class);
+        for (TaxiAgent t : taxiFleet) {
+            byType.computeIfAbsent(t.getTaxiType(), k -> new java.util.ArrayList<>())
+                  .add(t.getTaxiId());
+        }
+
+        double fraction = config.getDiagnosticsSampleFraction();
+        int minPerType = config.getDiagnosticsSampleMinimumPerType();
+        Random sampleRng = new Random(config.getRandomSeed() + 7777L);  // independent RNG
+
+        for (java.util.Map.Entry<TaxiType, java.util.List<Integer>> e : byType.entrySet()) {
+            java.util.List<Integer> ids = e.getValue();
+            int target = Math.max(minPerType, (int)(ids.size() * fraction));
+            target = Math.min(target, ids.size());  // cap at type fleet size
+            // Reservoir-style: shuffle a copy and take first `target`
+            java.util.Collections.shuffle(ids, sampleRng);
+            for (int i = 0; i < target; i++) sampled.add(ids.get(i));
+            System.out.println("  [B7] " + e.getKey() + ": sampled " + target + "/" + ids.size());
+        }
+        return sampled;
     }
 
     /**
@@ -1100,13 +1152,25 @@ public class TaxiSimulation {
     double[] sampleLogNormalLoadedLeg(double pickupLon, double pickupLat) {
         // Sample log-normal ROAD distance (road-km, matching THTA's reporting unit)
         // with -sigma^2/2 correction so arithmetic mean of the unbounded sample
-        // equals config.getTripDistanceAverage() = 4.6 km. Bound clipping below
-        // adds a small (~1-2%) upward bias at sigma=0.6.
+        // equals config.getTripDistanceAverage() = 4.6 km.
+        //
+        // B7.5: reject-and-redraw within [trip.distance.min, trip.distance.max]
+        // instead of clamping. Eliminates the at-floor spike artifact (Trip
+        // Distance Min Check observed 0.07 km below 0.5 km floor pre-fix).
+        // Attempt budget 100; fall back to clamp on exhaustion (rare).
         final double sigma = config.getTripDistanceLoadedSigma();
         final double mu = Math.log(config.getTripDistanceAverage()) - 0.5 * sigma * sigma;
-        double roadKm = Math.exp(mu + sigma * random.nextGaussian());
-        roadKm = Math.max(config.getTripDistanceMin(),
-                Math.min(config.getTripDistanceMax(), roadKm));
+        final double minRoad = config.getTripDistanceMin();
+        final double maxRoad = config.getTripDistanceMax();
+        double roadKm;
+        int attempts = 0;
+        do {
+            roadKm = Math.exp(mu + sigma * random.nextGaussian());
+            attempts++;
+        } while ((roadKm < minRoad || roadKm > maxRoad) && attempts < 100);
+        if (roadKm < minRoad || roadKm > maxRoad) {
+            roadKm = Math.max(minRoad, Math.min(maxRoad, roadKm));
+        }
 
         // CRITICAL: TaxiTrip.distanceKm() stores trip distance as Haversine ×
         // Manhattan factor (1.4 for Tokyo). To produce a stored road-km of
@@ -1126,11 +1190,26 @@ public class TaxiSimulation {
         final double dropLat = pickupLat + dLat;
 
         // Validate; project to nearest valid cell if invalid.
+        double[] result;
         if (geoValidator != null && !geoValidator.isValidLocation(dropLon, dropLat)) {
-            return projectToNearestValidCell(dropLon, dropLat,
+            result = projectToNearestValidCell(dropLon, dropLat,
                 config.getProjectionRadiusKm());  // may return null → caller falls back
+            if (result == null) return null;
+        } else {
+            result = new double[]{dropLon, dropLat};
         }
-        return new double[]{dropLon, dropLat};
+
+        // B7.5: post-projection floor check. Projection can shorten the road
+        // distance below the configured minimum (the spiral lands within 500 m
+        // of the original target, which may be CLOSER to pickup than the
+        // sample). If the final road distance falls below trip.distance.min,
+        // reject this sample so the caller re-tries (continue cycle from
+        // current position; cheap retry budget per cycle).
+        double finalRoadKm = TaxiTrip.distanceKm(pickupLon, pickupLat, result[0], result[1]);
+        if (finalRoadKm < minRoad) {
+            return null;
+        }
+        return result;
     }
 
     /**
@@ -1360,6 +1439,15 @@ public class TaxiSimulation {
         // Write unified dashboard.csv to run directory
         String runDir = exporter.getRunDirectory();
         writeDashboard(runDir);
+
+        // B7: flush diagnostic CSV (no-op if disabled)
+        if (diagnosticWriter != null) {
+            try {
+                diagnosticWriter.flush(runDir);
+            } catch (java.io.IOException e) {
+                System.err.println("[B7] WARN: failed to flush diagnostic.csv: " + e.getMessage());
+            }
+        }
 
         // Validation against baseline metrics
         String baselinePath = "config/taxi/validation/taxi_baseline_" +

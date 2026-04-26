@@ -280,6 +280,20 @@ public class TaxiConfig {
      */
     private String simDayOfWeek = "Mon";
 
+    // ═══ B7 / Diagnostic Instrumentation (default off) ═══
+    /** When true, ShiftSimulator writes per-cycle records to <run_dir>/diagnostic.csv. */
+    private boolean diagnosticsEnabled = false;
+    /** Stratified sampling fraction for diagnostic emit (default 10% per type). */
+    private double diagnosticsSampleFraction = 0.10;
+    /** Minimum sampled taxis per TaxiType, ensuring rare types get coverage. */
+    private int diagnosticsSampleMinimumPerType = 50;
+
+    // ═══ B7.3 / Shift-time engine cycle overhead (THTA-aligned) ═══
+    /** Per-cycle pickup wait time (seconds) for shift_time engine. Default 30s. */
+    private int shiftPickupTimeSeconds = 30;
+    /** Per-cycle post-dropoff break (seconds) for shift_time engine. Default 30s. */
+    private int shiftBreakTimeSeconds = 30;
+
     // ═══ Zone Clustering (V4.0) ═══
     /** Minimum number of familiar zones assigned to LOCAL taxis. */
     private int zoneClusterMinZones = 3;
@@ -628,6 +642,21 @@ public class TaxiConfig {
         }
         simDayOfWeek = props.getProperty("sim.day.of.week", simDayOfWeek);
 
+        // B7: diagnostic instrumentation flags (default off)
+        diagnosticsEnabled = getBoolean(props, "taxi.diagnostics.enabled", diagnosticsEnabled);
+        diagnosticsSampleFraction = getDouble(props, "taxi.diagnostics.sample.fraction", diagnosticsSampleFraction);
+        diagnosticsSampleMinimumPerType = getInt(props, "taxi.diagnostics.sample.minimum.per.type", diagnosticsSampleMinimumPerType);
+        if (diagnosticsEnabled) {
+            System.out.println("  [B7 diagnostics] ENABLED — sample fraction=" + diagnosticsSampleFraction
+                + ", min per type=" + diagnosticsSampleMinimumPerType);
+        }
+
+        // B7.3: shift_time-engine cycle overhead (THTA-aligned)
+        shiftPickupTimeSeconds = getInt(props, "taxi.shift.pickup.time.seconds", shiftPickupTimeSeconds);
+        shiftBreakTimeSeconds = getInt(props, "taxi.shift.break.time.seconds", shiftBreakTimeSeconds);
+        System.out.println("  [v7.0 cycle overhead] pickup=" + shiftPickupTimeSeconds
+            + "s, break=" + shiftBreakTimeSeconds + "s (legacy was 300+600 = 15 min)");
+
         // V4.0: Zone clustering parameters
         zoneClusterMinZones = getInt(props, "zone.cluster.min.zones", zoneClusterMinZones);
         zoneClusterMaxZones = getInt(props, "zone.cluster.max.zones", zoneClusterMaxZones);
@@ -942,6 +971,17 @@ public class TaxiConfig {
     public java.util.List<String> getPrhsWindowSpecs() { return java.util.Collections.unmodifiableList(prhsWindowSpecs); }
     /** Day of week the simulation represents (Mon/Tue/.../Sun). For PRHS window filtering. */
     public String getSimDayOfWeek() { return simDayOfWeek; }
+
+    // B7 diagnostic getters
+    public boolean isDiagnosticsEnabled() { return diagnosticsEnabled; }
+    public double getDiagnosticsSampleFraction() { return diagnosticsSampleFraction; }
+    public int getDiagnosticsSampleMinimumPerType() { return diagnosticsSampleMinimumPerType; }
+
+    // B7.3 shift-time cycle overhead getters
+    /** Per-cycle pickup wait (seconds) for shift_time engine. Default 30s. */
+    public int getShiftPickupTimeSeconds() { return shiftPickupTimeSeconds; }
+    /** Per-cycle post-dropoff break (seconds) for shift_time engine. Default 30s. */
+    public int getShiftBreakTimeSeconds() { return shiftBreakTimeSeconds; }
 
     // V4.0: Zone clustering getters
     public int getZoneClusterMinZones() { return zoneClusterMinZones; }

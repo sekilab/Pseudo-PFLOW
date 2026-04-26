@@ -70,6 +70,10 @@ class ShiftSimulator {
     private final TaxiSimulation host;
     private final ModeMixResolver modeMix;
     private final Random random;
+    /** B7: per-cycle diagnostic recorder (no-op when disabled). */
+    private final DiagnosticWriter diagnostics;
+    /** B7: pre-computed sampled taxi-id set for stratified diagnostic emit. */
+    private final java.util.Set<Integer> diagnosticSampleIds;
 
     // Manhattan factor cached once per simulator (config getter is hot).
     private final double manhattanFactor;
@@ -86,11 +90,15 @@ class ShiftSimulator {
     private final List<PrhsWindow> prhsWindowsToday;
 
     ShiftSimulator(TaxiConfig config, TaxiSimulation host,
-                   ModeMixResolver modeMix, Random random) {
+                   ModeMixResolver modeMix, Random random,
+                   DiagnosticWriter diagnostics,
+                   java.util.Set<Integer> diagnosticSampleIds) {
         this.config = config;
         this.host = host;
         this.modeMix = modeMix;
         this.random = random;
+        this.diagnostics = diagnostics;
+        this.diagnosticSampleIds = diagnosticSampleIds;
         this.manhattanFactor = config.getManhattanFactor();
         // Lognormal mu corrected so E[exp(N(mu,sigma^2))] = empty.mean.km.
         this.emptySigma = config.getTripDistanceEmptySigma();
@@ -138,14 +146,24 @@ class ShiftSimulator {
         final double emptyTripThresholdKm = config.getEmptyTripThresholdKm();
         final boolean isPrhs = (type == TaxiType.RIDE_HAIL_PRHS);
 
-        long currentTime = taxi.getShiftStartTime();
+        final long shiftStart = taxi.getShiftStartTime();
+        long currentTime = shiftStart;
         double curLon = taxi.getHomeLongitude();
         double curLat = taxi.getHomeLatitude();
+
+        // B7: cycle counter for diagnostic emit and end-of-shift marker.
+        int cycleIdx = 0;
+        boolean shiftEndEmitted = false;  // sentinel to avoid duplicate SHIFT_END_MARKER
+        final boolean diagnose = diagnostics != null && diagnostics.isEnabled()
+            && diagnosticSampleIds != null && diagnosticSampleIds.contains(taxi.getTaxiId());
 
         // B3 / Phase 6: PRHS taxis can only operate inside MLIT-permitted windows
         // for today's day-of-week. If no window is active today, the taxi stays
         // OFF_DUTY (zero trips).
         if (isPrhs && prhsWindowsToday.isEmpty()) {
+            if (diagnose) {
+                diagnostics.emitShiftEnd(taxi, 0, 0, DiagnosticWriter.EndReason.PRHS_NO_WINDOW);
+            }
             return;  // PRHS not permitted today (e.g. Sun in R8 contraction)
         }
 
@@ -160,16 +178,25 @@ class ShiftSimulator {
             if (isPrhs) {
                 PrhsWindow window = PrhsWindow.findCurrentOrNext(prhsWindowsToday, currentTime);
                 if (window == null) {
+                    if (diagnose) {
+                        diagnostics.emitShiftEnd(taxi, cycleIdx,
+                            currentTime - shiftStart, DiagnosticWriter.EndReason.PRHS_NO_WINDOW);
+                        shiftEndEmitted = true;
+                    }
                     break;  // no future window today
                 }
                 if (currentTime < window.startSeconds) {
                     currentTime = window.startSeconds;  // skip to window start
-                    if (currentTime >= shiftEnd) break;
+                    if (currentTime >= shiftEnd) {
+                        if (diagnose) {
+                            diagnostics.emitShiftEnd(taxi, cycleIdx,
+                                currentTime - shiftStart, DiagnosticWriter.EndReason.SHIFT_END_NORMAL);
+                            shiftEndEmitted = true;
+                        }
+                        break;
+                    }
                 }
                 // Cap shift end to window end so cycle math respects regulation.
-                // (Note: this trims the effective shift; multiple windows in a
-                // single shift are handled by re-entering this gate after the
-                // current window ends.)
                 long effectiveEnd = Math.min(shiftEnd, window.endSeconds);
                 if (currentTime >= effectiveEnd) {
                     // Window has expired — try next iteration to pick next window.
@@ -216,6 +243,12 @@ class ShiftSimulator {
                 emitEmptyTrip(taxi, curLon, curLat, pickupLon, pickupLat, currentTime, emptyTravelTime);
             }
             currentTime += emptyTravelTime;
+            // B7: per-cycle EMPTY_LEG record (always recorded, even sub-threshold).
+            if (diagnose) {
+                diagnostics.emitLeg(taxi, cycleIdx, DiagnosticWriter.LegType.EMPTY_LEG,
+                    emptyRoadKm, emptyTravelTime,
+                    currentTime - shiftStart, shiftEnd - currentTime);
+            }
 
             // B3 / Phase 5: AT_STAND queue — sample Exp(λ) wait, accumulate
             // against shift_remaining. Wait time depends on stand classification
@@ -223,7 +256,17 @@ class ShiftSimulator {
             if (atStand) {
                 long waitSeconds = sampleStandWaitSeconds(standZone);
                 currentTime += waitSeconds;
+                if (diagnose) {
+                    diagnostics.emitLeg(taxi, cycleIdx, DiagnosticWriter.LegType.AT_STAND_WAIT,
+                        0.0, waitSeconds,
+                        currentTime - shiftStart, Math.max(0, shiftEnd - currentTime));
+                }
                 if (currentTime >= shiftEnd) {
+                    if (diagnose) {
+                        diagnostics.emitShiftEnd(taxi, cycleIdx,
+                            currentTime - shiftStart, DiagnosticWriter.EndReason.SHIFT_END_NORMAL);
+                        shiftEndEmitted = true;
+                    }
                     break;  // shift ended during stand wait
                 }
             }
@@ -234,19 +277,39 @@ class ShiftSimulator {
             // --- 3. OCCUPIED loaded leg ---
             double[] dropoff = host.sampleLogNormalLoadedLeg(pickupLon, pickupLat);
             if (dropoff == null) {
-                // Projection failed even after spiral — taxi loses this cycle.
-                // End shift early rather than infinite-looping.
-                break;
+                // B7.3: Projection failed even after spiral. Previously this
+                // ended the entire shift, costing ~36% of all cycles per
+                // diagnostic.csv evidence. Instead, we now skip ONLY this
+                // cycle: stay in place, advance time by a small "search retry"
+                // budget (~30s, equivalent to one break), and try another
+                // pickup-dropoff sample on the next iteration.
+                currentTime += config.getShiftBreakTimeSeconds();
+                if (currentTime >= shiftEnd) {
+                    if (diagnose) {
+                        diagnostics.emitShiftEnd(taxi, cycleIdx,
+                            currentTime - shiftStart, DiagnosticWriter.EndReason.SHIFT_END_NORMAL);
+                        shiftEndEmitted = true;
+                    }
+                    break;
+                }
+                continue;  // try next cycle from same position
             }
             double dropLon = dropoff[0];
             double dropLat = dropoff[1];
             double loadedRoadKm = host.calculateDistance(pickupLon, pickupLat, dropLon, dropLat);
             long loadedTravel = TaxiTrip.estimateTravelTime(loadedRoadKm);
 
-            long pickupReadyTime = currentTime + config.getTaxiPickupTime();
+            // B7.3: shift_time engine uses its own pickup/break overhead keys
+            // (THTA-aligned ~30s each), not the legacy 5-min/10-min values.
+            long pickupReadyTime = currentTime + config.getShiftPickupTimeSeconds();
             long dropoffTime = pickupReadyTime + loadedTravel;
             if (dropoffTime > shiftEnd) {
                 // Wouldn't finish in time — end shift cleanly.
+                if (diagnose) {
+                    diagnostics.emitShiftEnd(taxi, cycleIdx,
+                        currentTime - shiftStart, DiagnosticWriter.EndReason.PREDICTED_OVERRUN);
+                    shiftEndEmitted = true;
+                }
                 break;
             }
             // B3 / Phase 6: PRHS strict interpretation — trip must complete
@@ -259,6 +322,11 @@ class ShiftSimulator {
                     if (w != null && dropoffTime > w.endSeconds) {
                         currentTime = w.endSeconds;
                         continue;
+                    }
+                    if (diagnose) {
+                        diagnostics.emitShiftEnd(taxi, cycleIdx,
+                            currentTime - shiftStart, DiagnosticWriter.EndReason.PRHS_NO_WINDOW);
+                        shiftEndEmitted = true;
                     }
                     break;
                 }
@@ -273,11 +341,24 @@ class ShiftSimulator {
             taxi.assignTrip(passengerTrip);
             host.recordPassengerTripOutput(passengerTrip);
             host.recordPickupMode(type, pickupMode);
+            // B7: per-cycle LOADED_LEG record. Includes pickup_wait + travel.
+            if (diagnose) {
+                diagnostics.emitLeg(taxi, cycleIdx, DiagnosticWriter.LegType.LOADED_LEG,
+                    loadedRoadKm,
+                    config.getShiftPickupTimeSeconds() + loadedTravel,
+                    dropoffTime - shiftStart, shiftEnd - dropoffTime);
+            }
 
             // Advance to dropoff position for next cycle.
             curLon = dropLon;
             curLat = dropLat;
-            currentTime = dropoffTime + config.getTaxiBreakTime();
+            currentTime = dropoffTime + config.getShiftBreakTimeSeconds();
+            cycleIdx++;
+        }
+        // Natural exit fallback: only emit if no break path already did.
+        if (diagnose && !shiftEndEmitted) {
+            diagnostics.emitShiftEnd(taxi, cycleIdx, currentTime - shiftStart,
+                DiagnosticWriter.EndReason.SHIFT_END_NORMAL);
         }
     }
 
@@ -291,9 +372,18 @@ class ShiftSimulator {
      * scan as the loaded-leg path.
      */
     private double[] sampleDualModeEmptyLeg(TaxiAgent taxi, double curLon, double curLat, long currentTime) {
-        // Sample log-normal road-km empty distance, bound clipped per DESIGN.md §2.6.
-        double roadKm = Math.exp(emptyMu + emptySigma * random.nextGaussian());
-        roadKm = Math.max(EMPTY_MIN_ROAD_KM, Math.min(EMPTY_MAX_ROAD_KM, roadKm));
+        // Sample log-normal road-km empty distance per DESIGN.md §2.6.
+        // B7.5: reject-and-redraw within [EMPTY_MIN_ROAD_KM, EMPTY_MAX_ROAD_KM]
+        // instead of clamping; eliminates at-floor spike artifact.
+        double roadKm;
+        int attempts = 0;
+        do {
+            roadKm = Math.exp(emptyMu + emptySigma * random.nextGaussian());
+            attempts++;
+        } while ((roadKm < EMPTY_MIN_ROAD_KM || roadKm > EMPTY_MAX_ROAD_KM) && attempts < 100);
+        if (roadKm < EMPTY_MIN_ROAD_KM || roadKm > EMPTY_MAX_ROAD_KM) {
+            roadKm = Math.max(EMPTY_MIN_ROAD_KM, Math.min(EMPTY_MAX_ROAD_KM, roadKm));
+        }
         double haversineKm = roadKm / manhattanFactor;
 
         // Pick target zone weighted by attractiveness.
