@@ -22,13 +22,17 @@ public interface TrajectoryOutputWriter<R extends VehicleTripRecord> {
     /**
      * Write one waypoint row to the output CSV.
      *
-     * @param bw     buffered writer
-     * @param record the trip record (contains vehicle-specific metadata)
-     * @param unixMs unix timestamp in milliseconds for this waypoint
-     * @param lon    longitude of this waypoint
-     * @param lat    latitude of this waypoint
-     * @param linkId road network link ID (or "DIRECT" for fallback)
+     * @param bw         buffered writer
+     * @param record     the trip record (contains vehicle-specific metadata)
+     * @param unixMs     unix timestamp in milliseconds for this waypoint
+     * @param lon        longitude of this waypoint
+     * @param lat        latitude of this waypoint
+     * @param linkId     road network link ID (or "DIRECT" for fallback)
+     * @param isFallback true if this waypoint belongs to a 2-point direct fallback
+     *                   trajectory (vs. a full A*-routed sequence); lets downstream
+     *                   consumers filter fallback trips without parsing link IDs
      */
     void writeWaypoint(BufferedWriter bw, R record, long unixMs,
-                       double lon, double lat, String linkId) throws IOException;
+                       double lon, double lat, String linkId,
+                       boolean isFallback) throws IOException;
 }

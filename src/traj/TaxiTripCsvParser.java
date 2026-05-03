@@ -43,7 +43,7 @@ public class TaxiTripCsvParser implements VehicleTripCsvParser<TaxiTripRecord> {
                 try {
                     TaxiTripRecord record = parseLine(line);
                     taxiTrips.computeIfAbsent(record.taxiId, k -> new ArrayList<>()).add(record);
-                } catch (Exception e) {
+                } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
                     parseErrors++;
                     if (parseErrors <= 5) {
                         System.err.printf("[TAXI PARSER] Parse error at line %d: %s%n", lineCount + 1, e.getMessage());

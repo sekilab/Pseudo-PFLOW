@@ -31,7 +31,7 @@ Avg Distance DELIVERY,distance,11.12,km,300,File 08 Calculated,"Weighted avg dis
 Avg Distance LONG_HAUL,distance,260.29,km,25,File 08 Calculated,Weighted avg distance for O-D pairs > 100km,MEDIUM
 Avg Distance MIXED_OPERATION,distance,55.04,km,25,File 08 Calculated,Weighted avg distance for O-D pairs 30-100km,MEDIUM
 Empty Trip Ratio,efficiency,7.5,percent,10,Professor Feedback,Target 5-10% empty ratio - trucks costly to operate without cargo,CRITICAL
-Weight-Limited Shipments,loading_constraints,35.89884212,percent,10,File 03,"330,563/920,818 × 100 = 35.9%",MEDIUM
+Weight-Limited Shipments,loading_constraints,56.04,percent,15,File 03 Kanto,"Total weight-limited / total = 191,301 / 341,336 (interfacility flow, File 03 SS317_H25, all commodities incl. unknown). Refreshed 2026-05-03 after audit F0066 + F0110 (commit 7ce22d7) re-extracted loading_constraints.csv from File 03; previous target 35.89% was derived from pre-audit manually-tuned probs.",LOW
 Average Movements per Truck,operational,1.8577,movements/truck,15,File 08 / File 18,"607,657/327,108 = 1.86 (loaded trips only)",MEDIUM
 Intra-zone Trip Ratio,spatial,20.67,percent,20,File 08,"125,608/607,657 × 100 = 20.67% (domestic matrix diagonal)",MEDIUM
 Heavy Vehicle Volume,trip_volume,4287683,tons/day,10,File 18,"Scaled from 977,441 by 4.387x (MLIT: 2.53M registered × 0.567 operating rate = 1.43M active)",MEDIUM

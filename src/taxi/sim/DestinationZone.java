@@ -126,10 +126,21 @@ public class DestinationZone {
     }
 
     /**
-     * Haversine distance calculation
+     * Haversine distance calculation — pure straight-line, no Manhattan factor.
+     *
+     * <p>TX7 (2026-04-22): Intentionally geometric, unlike {@link TaxiTrip#distanceKm}
+     * which applies the Manhattan factor. Zone radius, {@link #containsPoint},
+     * and the enrichment-dedup check all ask "how close in space is this
+     * point?" — a geometric question. Trip distance asks "how far does the
+     * driver travel?" — a routing question, where Manhattan ≈ road-network
+     * detour. Mixing the two was flagged as a consistency bug; the resolution
+     * is to keep them semantically distinct and document it here.
+     *
+     * <p>Earth radius is sourced from {@link TaxiConfig} so both methods agree
+     * on the one planetary constant that IS shared.
      */
     private double calculateDistance(double lon1, double lat1, double lon2, double lat2) {
-        final double EARTH_RADIUS_KM = 6371.0;
+        final double EARTH_RADIUS_KM = TaxiConfig.getInstance().getEarthRadiusKm();
 
         double dLat = Math.toRadians(lat2 - lat1);
         double dLon = Math.toRadians(lon2 - lon1);

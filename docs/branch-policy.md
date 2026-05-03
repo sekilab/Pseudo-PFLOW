@@ -1,38 +1,40 @@
-# Branch Policy for Pseudo-PFLOW Project
+# Branch Policy
 
-This document outlines the branch naming conventions and usage policies for the Pseudo-PFLOW project to ensure smooth collaboration between multiple developers across different servers.
+## Active
 
-## Branch Overview
+| Branch | Role |
+|---|---|
+| `pseudo-pflow-v3-dev-test` | Active development — feature work, debugging, batch refactors |
+| `main` / `master` | Reserved for stable release snapshots; not yet cut |
 
-| Branch Name            | Purpose                                | Maintainer                               |
-|------------------------|----------------------------------------|------------------------------------------|
-| `pseudo-pflow-v3-dev`  | Main development branch for experiments and debugging | Collaborating Researcher, Lead Developer |
-| `refactor-pseudo-v3`   | Refactoring of core classes and system structure | Lead Developer                           |
-| `main` or `master`     | Stable release branch (future use; not yet merged)     | Maintainer                               |
-| `mdx`, `hms-server2`   | Deprecated / unused legacy branches     | N/A                                      |
+## Remote
+
+```
+origin → https://github.com/wattwong103/Pseudo-PFLOW-North
+```
 
 ## Rules
 
-1. **Never push directly to `main` or `master`** (reserved for release snapshots).
-2. **All refactoring must be done on `refactor-pseudo-v3`**. This branch is owned by the lead developer.
-3. **All debugging, small improvements, and feature testing continue on `pseudo-pflow-v3-dev`**.
-4. **Rebase instead of merge** to avoid cluttered histories:
+1. **Never push directly to `main` or `master`** — reserved for release snapshots.
+2. **Rebase, don't merge**, to keep linear history:
    ```bash
    git pull --rebase origin <branch>
    ```
-5. **Avoid force pushes** unless absolutely necessary. Communicate before doing so.
-6. **All branches should be pushed to `origin` for backup and collaboration.**
+3. **Avoid force pushes.** They overwrite remote history; only acceptable on
+   transient feature branches you own exclusively, never on shared branches.
+4. **All branches push to `origin`** for backup and cross-machine sync (see
+   [`team-dev-flow.md`](team-dev-flow.md)).
 
-## Naming Conventions (for future branches)
+## Naming convention for new branches
 
-| Prefix        | Description                       |
-|---------------|-----------------------------------|
-| `feature/`     | New experimental features         |
-| `bugfix/`      | Fixes for existing functionality  |
-| `refactor/`    | Structural or design refactoring |
-| `hotfix/`      | Urgent fixes to production        |
+| Prefix | Use |
+|---|---|
+| `feature/` | New experimental features |
+| `bugfix/` | Fixes to existing functionality |
+| `refactor/` | Structural / design refactoring |
+| `hotfix/` | Urgent fixes |
 
----
+## Tagging
 
-For questions or proposed changes to this policy, please consult with the lead developer.
-
+Per-batch checkpoints use `b<n>-YYYY-MM-DD` (e.g., `b7-2026-04-27`). Tags push
+to `origin` alongside their branch.

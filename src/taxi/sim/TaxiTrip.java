@@ -143,17 +143,20 @@ public class TaxiTrip {
     }
 
     /**
-     * Calculate distance between two points using Haversine formula
-     * Uses configurable Earth radius and Manhattan factor from TaxiConfig
+     * Calculate distance between two points using Haversine formula.
+     * Uses configurable Earth radius and Manhattan factor from TaxiConfig.
      *
-     * @param lon1 Origin longitude
-     * @param lat1 Origin latitude
-     * @param lon2 Destination longitude
-     * @param lat2 Destination latitude
-     * @return Distance in kilometers
+     * <p>Public static so callers can validate a candidate pickup-dropoff pair
+     * without allocating a full {@link TaxiTrip}.
+     *
+     * @param lon1 Origin longitude (deg WGS84)
+     * @param lat1 Origin latitude  (deg WGS84)
+     * @param lon2 Destination longitude (deg WGS84)
+     * @param lat2 Destination latitude  (deg WGS84)
+     * @return Distance in kilometers (Haversine × Manhattan factor)
      */
-    private double calculateDistance(double lon1, double lat1,
-                                     double lon2, double lat2) {
+    public static double distanceKm(double lon1, double lat1,
+                                    double lon2, double lat2) {
         TaxiConfig config = TaxiConfig.getInstance();
         final double EARTH_RADIUS_KM = config.getEarthRadiusKm();
 
@@ -169,6 +172,11 @@ public class TaxiTrip {
         // Multiply by Manhattan factor to approximate road network distance
         // (straight-line distance × Manhattan factor)
         return EARTH_RADIUS_KM * c * config.getManhattanFactor();
+    }
+
+    private double calculateDistance(double lon1, double lat1,
+                                     double lon2, double lat2) {
+        return distanceKm(lon1, lat1, lon2, lat2);
     }
 
     /**

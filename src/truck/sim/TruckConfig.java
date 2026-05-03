@@ -35,122 +35,199 @@ public class TruckConfig {
 
     private static TruckConfig instance;
     private Properties properties;
-    
-    // Fleet configuration (MLIT alignment)
-    private int truckFleetSize;           // Daily active trucks (after operating rate)
-    private double truckOperatingRate;    // MLIT 実働率 (reference only, not applied)
-    private int registeredFleetSize;      // Total registered fleet (MLIT)
 
-    // MFS survey-day raw baseline (File 18 un-scaled values)
-    private int baselineSurveyTrucks;     // File 18 observed trucks on survey day
-    private long baselineSurveyTons;      // File 18 observed total tons on survey day
-    
-    // Truck type distribution
+    // ═══ Fleet Parameters ═══
+    /** Total active trucks after operating rate applied. Source: MLIT national statistics. */
+    private int truckFleetSize;
+    /** MLIT operating rate (実働率). Reference only — fleet size is set explicitly. */
+    private double truckOperatingRate;
+    /** Total registered trucks nationwide. Source: MLIT. */
+    private int registeredFleetSize;
+
+    // ═══ MFS Survey-Day Baselines ═══
+    /** MFS File 18 observed truck count on survey day (un-scaled). Validation target. */
+    private int baselineSurveyTrucks;
+    /** MFS File 18 observed total tons on survey day (un-scaled). Validation target. */
+    private long baselineSurveyTons;
+
+    // ═══ Truck Type Distribution ═══
+    /** Probability of generating a DELIVERY truck. MFS-calibrated. */
     private double truckTypeDeliveryProb;
+    /** Probability of generating a LONG_HAUL truck. MFS-calibrated. */
     private double truckTypeLongHaulProb;
+    /** Probability of generating a MIXED_OPERATION truck. MFS-calibrated. */
     private double truckTypeUrbanLogisticsProb;
+    /** Maximum operating radius (km) for DELIVERY trucks. Constrains destination selection. */
     private double truckTypeDeliveryFamiliarRadiusKm;
 
-    // Vehicle type preferences by truck type [light, small, medium, heavy]
+    // ═══ Vehicle Type Preferences [light, small, medium, heavy] ═══
+    /** Vehicle size probabilities for DELIVERY trucks. */
     private double[] deliveryVehicleProbs;
+    /** Vehicle size probabilities for LONG_HAUL trucks. */
     private double[] longHaulVehicleProbs;
+    /** Vehicle size probabilities for MIXED_OPERATION trucks. */
     private double[] urbanVehicleProbs;
-    
-    // Trip configuration
+
+    // ═══ Trip Configuration ═══
+    /** Default average trips per truck per day (fallback). */
     private int truckTripsAverage;
+    /** Minimum trips per truck per day. */
     private int truckTripsMin;
+    /** Maximum trips per truck per day (hard cap). */
     private int truckTripsMax;
+    /** Standard deviation for Gaussian trip count variation. */
     private double truckTripsStddev;
+    /** Trips per day for DELIVERY trucks. MFS-calibrated. */
     private int truckTripsDelivery;
+    /** Trips per day for MIXED_OPERATION trucks. MFS-calibrated. */
     private int truckTripsMixed;
+    /** Trips per day for LONG_HAUL trucks. MFS-calibrated. */
     private int truckTripsLongHaul;
 
-    // V5.2: Delivery tour parameters — multi-stop tour model
-    private double deliveryFirstStopMaxKm = 15.0;      // Depot → first POI max distance
-    private double deliveryStopToStopMaxKm = 5.0;       // Between consecutive POIs
-    private int deliveryTourMinStops = 8;                // Min stops per tour
-    private int deliveryTourMaxStops = 15;               // Max stops per tour
-    private double deliveryDecayFirst = 3.0;             // Distance decay for first trip
-    private double deliveryDecaySubsequent = 1.0;        // Distance decay for stop-to-stop
-    private double deliveryTourIntrazoneBonus = 3.0;     // Intra-zone bonus for tour stops (replaces damping)
-    
-    // Vehicle size distribution
+    // ═══ V5.2: Delivery Tour Parameters (multi-stop tour model) ═══
+    /** Maximum distance (km) from depot to first POI stop. */
+    private double deliveryFirstStopMaxKm = 15.0;
+    /** Maximum distance (km) between consecutive POI stops. */
+    private double deliveryStopToStopMaxKm = 5.0;
+    /** Minimum number of stops per delivery tour. */
+    private int deliveryTourMinStops = 8;
+    /** Maximum number of stops per delivery tour. */
+    private int deliveryTourMaxStops = 15;
+    /** Distance decay exponent for depot-to-first-stop selection. */
+    private double deliveryDecayFirst = 3.0;
+    /** Distance decay exponent for stop-to-stop selection. */
+    private double deliveryDecaySubsequent = 1.0;
+    /** Weight bonus for selecting POIs in the same zone as the current stop. */
+    private double deliveryTourIntrazoneBonus = 3.0;
+
+    // ═══ Vehicle Size Distribution ═══
+    /** Probability of generating a heavy (10t) vehicle. */
     private double vehicleSizeLargeProb;
+    /** Probability of generating a medium (4t) vehicle. */
     private double vehicleSizeMediumProb;
+    /** Probability of generating a small (2t) vehicle. */
     private double vehicleSizeSmallProb;
+    /** Cargo capacity in tons for heavy vehicles. */
     private double capacityLargeTons;
+    /** Cargo capacity in tons for medium vehicles. */
     private double capacityMediumTons;
+    /** Cargo capacity in tons for small vehicles. */
     private double capacitySmallTons;
+    /** Cargo capacity in tons for light vehicles. */
     private double capacityLightTons;
-    
-    // Goods type distribution
+
+    // ═══ Goods Type Distribution ═══
+    /** Array of commodity type names (9 MFS categories). */
     private String[] goodsTypes;
+    /** Probability distribution over commodity types. Must sum to 1.0. */
     private double[] goodsTypeProbabilities;
-    
-    // Zone configuration
+
+    // ═══ Zone Configuration ═══
+    /** CSV filename for delivery zone definitions. */
     private String zonesFile;
-    
-    // Time periods
+
+    // ═══ Time Periods ═══
+    /** Morning period start (seconds since midnight). */
     private long timePeriod1Start;
+    /** Morning period end (seconds since midnight). */
     private long timePeriod1End;
+    /** Afternoon period start (seconds since midnight). */
     private long timePeriod2Start;
+    /** Afternoon period end (seconds since midnight). */
     private long timePeriod2End;
-    
-    // Attractiveness coefficients
+
+    // ═══ Attractiveness Coefficients ═══
+    /** Attractiveness weight for warehouse/logistics facilities. */
     private double attractivenessBeta1;
+    /** Attractiveness weight for retail establishments. */
     private double attractivenessBeta2;
+    /** Attractiveness weight for construction sites. */
     private double attractivenessBeta3;
+    /** Attractiveness weight for residential areas. */
     private double attractivenessBeta4;
-    
-    // Loading/unloading times
+
+    // ═══ Loading/Unloading Times ═══
+    /** Average loading time in minutes. Gaussian distribution center. */
     private double loadingTimeAverage;
+    /** Standard deviation of loading time in minutes. */
     private double loadingTimeStddev;
+    /** Average unloading time in minutes. Gaussian distribution center. */
     private double unloadingTimeAverage;
+    /** Standard deviation of unloading time in minutes. */
     private double unloadingTimeStddev;
-    
-    // Shift configuration
+
+    // ═══ Shift Configuration ═══
+    /** Minimum shift duration in hours. */
     private int shiftDurationMin;
+    /** Maximum shift duration in hours. */
     private int shiftDurationMax;
+    /** Average shift duration in hours. Gaussian center. */
     private int shiftDurationAverage;
+    /** Standard deviation of shift duration in hours. */
     private double shiftDurationStddev;
+    /** First shift cohort start time (seconds since midnight). Typically 06:00. */
     private long shiftStart1Time;
+    /** Probability of a truck belonging to the first shift cohort. */
     private double shiftStart1Probability;
+    /** Second shift cohort start time (seconds since midnight). Typically 08:00. */
     private long shiftStart2Time;
+    /** Probability of a truck belonging to the second shift cohort. */
     private double shiftStart2Probability;
+    /** Third shift cohort start time (seconds since midnight). Typically 14:00. */
     private long shiftStart3Time;
+    /** Probability of a truck belonging to the third shift cohort. */
     private double shiftStart3Probability;
-    
-    // Routing configuration
+
+    // ═══ Routing Configuration ═══
+    /** Average truck travel speed in km/h. Used for travel time estimation. */
     private double routingAverageSpeedKmh;
+    /** Break time between trips in seconds. */
     private double routingBreakTimeSeconds;
-    
-    // Geography
+
+    // ═══ Geography ═══
+    /** Minimum longitude of simulation bounding box. Recomputed from zone envelopes. */
     private double geographyMinLon;
+    /** Maximum longitude of simulation bounding box. */
     private double geographyMaxLon;
+    /** Minimum latitude of simulation bounding box. */
     private double geographyMinLat;
+    /** Maximum latitude of simulation bounding box. */
     private double geographyMaxLat;
+    /** Earth radius in km for Haversine distance calculations. */
     private double geographyEarthRadiusKm;
-    
-    // Distance calculation
+
+    // ═══ Distance Calculation ═══
+    /** Manhattan factor: road distance = straight-line distance * this factor. */
     private double distanceManhattanFactor;
-    
-    // Empty trip configuration
+
+    // ═══ Empty Trip Configuration ═══
+    /** Whether empty repositioning trips are enabled. */
     private boolean useEmptyTrips;
+    /** Probability [0.0, 1.0] that a truck makes an empty trip between deliveries. */
     private double emptyTripProbability;
+    /** Minimum distance (km) for an empty trip to be generated. Shorter trips skipped. */
     private double emptyTripThresholdKm;
-    
-    // Cargo weight generation
+
+    // ═══ Cargo Weight Generation ═══
+    /** Mean cargo weight in tons (for Gaussian fallback). */
     private double cargoWeightMean;
+    /** Standard deviation of cargo weight in tons (for Gaussian fallback). */
     private double cargoWeightStddev;
+    /** Shape parameter for gamma-distributed cargo weight. */
     private double cargoWeightGammaShape;
+    /** Scale parameter for gamma-distributed cargo weight. Mean = shape * scale. */
     private double cargoWeightGammaScale;
-    
-    // Random seed
+
+    // ═══ System ═══
+    /** Random seed for deterministic reproducibility. */
     private long randomSeed;
-    
-    // Export configuration
+
+    // ═══ Export Configuration ═══
+    /** Output directory path for simulation results. Resolved via PathResolver. */
     private String outputDirectory;
+    /** Date-time format string for CSV export timestamps. */
     private String dateTimeFormat;
+    /** Time-only format string for CSV export. */
     private String timeFormat;
     
     /**
@@ -177,9 +254,22 @@ public class TruckConfig {
         try (FileInputStream fis = new FileInputStream(configPath)) {
             properties.load(fis);
             parseProperties();
+            this.configFilePath = configPath;
             System.out.println("[✓] Configuration loaded from: " + configPath);
         }
     }
+
+    /**
+     * Path of the .properties file most recently loaded via {@link #loadFromFile}.
+     * Captured into {@code run_metadata.json} by {@link TruckDataExporter}
+     * for downstream provenance tracking. Returns "unknown" if no file has
+     * been loaded yet (e.g., when constants/defaults are used directly).
+     */
+    public String getConfigFilePath() {
+        return configFilePath != null ? configFilePath : "unknown";
+    }
+
+    private String configFilePath;
     
     /**
      * Parse all properties from loaded file.

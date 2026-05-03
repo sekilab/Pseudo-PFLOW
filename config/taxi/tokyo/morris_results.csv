@@ -1,0 +1,13 @@
+parameter_name,mu_star,sigma,rank_by_mu_star,n_effects
+APP_PREFERRED share,26.9439,24.4306,1,12
+LOCAL street share,0.00000,0.00000,4,12
+APP_PREFERRED app share,0.00000,0.00000,5,12
+HUB stand share,0.00000,0.00000,6,12
+AT_STAND mean wait airport,0.00000,0.00000,7,12
+AT_STAND mean wait station,0.00000,0.00000,8,12
+Empty leg sigma,1.06667,1.54581,3,12
+Loaded leg sigma,5.41930,5.84805,2,12
+Attractiveness beta1 jobs,0.00000,0.00000,9,12
+Attractiveness beta2 shops,0.00000,0.00000,10,12
+Attractiveness beta3 nightlife,0.00000,0.00000,11,12
+Attractiveness beta4 residential,0.00000,0.00000,12,12

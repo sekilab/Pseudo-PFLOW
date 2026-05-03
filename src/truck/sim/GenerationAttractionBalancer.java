@@ -6,18 +6,26 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Enforces generation-attraction balance based on MFS survey data (File 21).
+ * Enforces generation-attraction balance based on MFS survey data (File 08).
  * Tracks trip generation and attraction by zone to maintain flow conservation.
  *
- * This implements capacity-based trip generation where:
- * - Zones have target generation/attraction counts from survey data
- * - Trip generation stops when zone reaches generation capacity
- * - Destination selection is weighted by remaining attraction capacity
- * - Mass balance is enforced: total generation ≈ total attraction
+ * <p>Data source: {@code config/truck/flows/ga_targets.csv}, extracted from MFS
+ * File 08 ("Inter-Regional Distribution Volume by Cargo Type") generation and
+ * attraction column totals — see {@code mfs/kanto/readme/file08_ga_targets_provenance.md}
+ * for the full provenance trail. (Earlier comments referenced "File 21"; that
+ * file is a secondary cross-check, not the primary source. Corrected 2026-05-03.)
+ *
+ * <p>This implements capacity-based trip generation where:
+ * <ul>
+ *   <li>Zones have target generation/attraction counts from survey data</li>
+ *   <li>Trip generation stops when zone reaches generation capacity</li>
+ *   <li>Destination selection is weighted by remaining attraction capacity</li>
+ *   <li>Mass balance is enforced: total generation ≈ total attraction</li>
+ * </ul>
  */
 public class GenerationAttractionBalancer {
 
-    // Zone capacity targets (from MFS File 21)
+    // Zone capacity targets (from MFS File 08, via ga_targets.csv)
     private Map<String, ZoneCapacity> zoneCapacities;
 
     // Running counts during simulation (ConcurrentHashMap for thread-safe parallel trip generation)

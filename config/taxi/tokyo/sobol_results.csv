@@ -1,0 +1,26 @@
+output_metric,parameter_name,S_first,S_total,n_valid_pairs
+TRIPS.passenger_per_taxi,APP_PREFERRED share,-8.066168,1.035998,16
+TRIPS.passenger_per_taxi,Loaded leg sigma,-16.861404,0.777258,16
+TRIPS.passenger_per_taxi,Empty leg sigma,4.919473,0.297588,16
+TRIPS.passenger_per_taxi,LOCAL street share,-8.231643,1.034960,16
+TRIPS.passenger_per_taxi,APP_PREFERRED app share,-8.231643,1.034960,16
+DISTANCE.avg_per_taxi_km,APP_PREFERRED share,7.076964,1.142174,16
+DISTANCE.avg_per_taxi_km,Loaded leg sigma,10.281904,0.789317,16
+DISTANCE.avg_per_taxi_km,Empty leg sigma,-9.270804,0.329308,16
+DISTANCE.avg_per_taxi_km,LOCAL street share,6.592486,1.154579,16
+DISTANCE.avg_per_taxi_km,APP_PREFERRED app share,6.592486,1.154579,16
+DISTANCE.empty_running_pct,APP_PREFERRED share,7.884080,0.637971,16
+DISTANCE.empty_running_pct,Loaded leg sigma,5.460004,0.504809,16
+DISTANCE.empty_running_pct,Empty leg sigma,2.392716,0.133585,16
+DISTANCE.empty_running_pct,LOCAL street share,7.856506,0.639869,16
+DISTANCE.empty_running_pct,APP_PREFERRED app share,7.856506,0.639869,16
+FLEET.operating_rate_pct,APP_PREFERRED share,0.000000,0.000000,16
+FLEET.operating_rate_pct,Loaded leg sigma,0.000000,0.000000,16
+FLEET.operating_rate_pct,Empty leg sigma,0.000000,0.000000,16
+FLEET.operating_rate_pct,LOCAL street share,0.000000,0.000000,16
+FLEET.operating_rate_pct,APP_PREFERRED app share,0.000000,0.000000,16
+REVENUE.per_taxi_yen,APP_PREFERRED share,-8.450261,0.601267,16
+REVENUE.per_taxi_yen,Loaded leg sigma,-5.599039,0.258445,16
+REVENUE.per_taxi_yen,Empty leg sigma,-4.169316,0.346704,16
+REVENUE.per_taxi_yen,LOCAL street share,-8.518256,0.598350,16
+REVENUE.per_taxi_yen,APP_PREFERRED app share,-8.518256,0.598350,16

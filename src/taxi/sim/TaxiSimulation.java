@@ -2,6 +2,7 @@ package taxi.sim;
 
 import java.io.File;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 import util.MetricsDashboard;
 
@@ -35,6 +36,24 @@ public class TaxiSimulation {
     // Default config file path
     private static final String DEFAULT_CONFIG_FILE = "config/taxi/tokyo/taxi_config.properties";
 
+    // ──────────────────────────────────────────────────────────────────────
+    // LOCAL-taxi familiarity multipliers (Part D readability pass).
+    // Applied to zone attractiveness scores in selectSmartDestination and
+    // selectDistanceGuidedDestination. Values originally scattered as magic
+    // numbers; names clarify intent and keep the two call sites in sync.
+    //
+    //   FAMILIAR_BOOST       — zone is in the taxi's familiar-zone list
+    //   RADIUS_BOOST         — no zone list, but point is inside home radius
+    //   RADIUS_PENALTY       — no zone list, point is outside home radius
+    //   OUT_OF_TERRITORY_PENALTY — zone list exists and selected zone is NOT in it
+    //
+    // OUT_OF_TERRITORY_PENALTY is the TX5 soft escape factor (~5% long-tail).
+    // ──────────────────────────────────────────────────────────────────────
+    private static final double LOCAL_FAMILIAR_BOOST           = 5.0;
+    private static final double LOCAL_RADIUS_BOOST             = 3.0;
+    private static final double LOCAL_RADIUS_PENALTY           = 0.1;
+    private static final double LOCAL_OUT_OF_TERRITORY_PENALTY = 0.05;
+
     // Data structures
     private List<TaxiAgent> taxiFleet;
     private List<TaxiTrip> allTrips;  // V3.1: Now includes both passenger and empty trips
@@ -46,6 +65,36 @@ public class TaxiSimulation {
 
     // Transport network index for station/airport proximity (null if disabled)
     private TaxiTransportIndex transportIndex;
+
+    // TX5: LOCAL-taxi escape counter. Observability only — the 0.05× soft
+    // penalty is an intentional modelling choice (~5% long-tail for realism);
+    // we count escapes so the rate is visible in dashboard.csv rather than
+    // hidden behind a silent soft decay.
+    private final AtomicLong localTaxiOutOfTerritoryCount = new AtomicLong(0);
+
+    // B1/Phase 2: Trip-generation counters promoted from generateTrips() locals to
+    // class fields so the per-taxi inner block can be extracted into
+    // runLegacyTripLoopForOneTaxi(), shared between the legacy and shift_time engine
+    // paths. Reset at the top of generateTrips(). Single-threaded access — the
+    // taxi fleet is iterated sequentially, no concurrent mutation.
+    private int tripIdCounter;
+    private int rejectedTooShort;
+    private int rejectedTooLong;
+    private int totalPassengerTrips;
+    private int totalEmptyTrips;
+
+    // B2/Phase 4: Per-type mode-mix counters for shift_time engine observability.
+    // 5 types × 3 modes (street, app, stand). Reset at top of generateTrips().
+    // Printed as a per-type breakdown after the trip loop completes.
+    private final java.util.EnumMap<TaxiType, int[]> modeMixCounters =
+        new java.util.EnumMap<>(TaxiType.class);
+    /** B2: ModeMixResolver instance, lazily constructed when shift_time engine activates. */
+    private ModeMixResolver modeMixResolver;
+
+    /** B7: per-cycle diagnostic CSV writer (no-op when disabled). */
+    private DiagnosticWriter diagnosticWriter;
+    /** B7: pre-computed stratified sample of taxi IDs for diagnostic emit. */
+    private java.util.Set<Integer> diagnosticSampleIds;
 
     // ==================== LEGACY HOTSPOT SYSTEM (REMOVED IN V4.0) ====================
     //
@@ -293,7 +342,15 @@ public class TaxiSimulation {
 
         java.util.List<String> newCsvLines = new java.util.ArrayList<>();
         int stationsAdded = 0, settlementsAdded = 0, airportsAdded = 0, portsAdded = 0;
-        int stationCounter = 1, settlementCounter = 1, airportCounter = 1, portCounter = 1;
+
+        // TX6: Seed counters from existing zones so re-runs never mint duplicate
+        // IDs. Location-based dedup (0.3km) already skips already-enriched
+        // features, so on a normal re-run nothing is appended; but if the
+        // shapefile grows or bounds change, new features must get fresh IDs.
+        int stationCounter    = nextCounter("ZS");
+        int settlementCounter = nextCounter("ZP");
+        int airportCounter    = nextCounter("ZA");
+        int portCounter       = nextCounter("ZR");
 
         // ── 1. Stations → hub zones ─────────────────────────────────────
         if (transportIndex.hasStations()) {
@@ -436,6 +493,27 @@ public class TaxiSimulation {
     }
 
     /**
+     * TX6: Scan {@code destinationZones} for IDs beginning with {@code prefix}
+     * (followed by digits, e.g. "ZS07") and return {@code max + 1}. If no
+     * matching ID is found, returns 1. Used to seed enrichment counters so
+     * re-runs don't collide with IDs from a prior enrichment pass.
+     */
+    private int nextCounter(String prefix) {
+        int max = 0;
+        for (DestinationZone zone : destinationZones) {
+            String id = zone.getZoneId();
+            if (id == null || !id.startsWith(prefix)) continue;
+            try {
+                int n = Integer.parseInt(id.substring(prefix.length()));
+                if (n > max) max = n;
+            } catch (NumberFormatException ignore) {
+                // Non-numeric suffix — skip (defensive; current scheme uses %02d digits).
+            }
+        }
+        return max + 1;
+    }
+
+    /**
      * Check if a location is a near-duplicate of any existing zone center.
      * Uses tight threshold (0.3km) — only prevents true duplicates.
      */
@@ -565,8 +643,18 @@ public class TaxiSimulation {
     private void initializeTaxis() {
         System.out.println("[CHECKPOINT] Initializing " + config.getTaxiFleetSize() + " taxis...");
 
-        int numTaxis = config.getTaxiFleetSize();
-        int localCount = 0, citywideCount = 0, hubCount = 0;
+        final int numTaxis = config.getTaxiFleetSize();
+
+        int localCount = 0, citywideCount = 0, appPreferredCount = 0,
+            hubCount = 0, rideHailPrhsCount = 0;
+
+        // Pre-compute cumulative thresholds for the 5-type roll (DESIGN.md §2.2 formula).
+        // Defaults at x=APP_PREFERRED=0.20: 0.5385 + 0.1615 + 0.20 + 0.095 + 0.005 = 1.000
+        final double cumLocal         = config.getTaxiTypeLocalShare();
+        final double cumCitywide      = cumLocal + config.getTaxiTypeCitywideShare();
+        final double cumAppPreferred  = cumCitywide + config.getTaxiTypeAppPreferredShare();
+        final double cumHub           = cumAppPreferred + config.getTaxiTypeHubShare();
+        // PRHS is the residual (= cumHub + getTaxiTypeRideHailPrhsShare ≈ 1.0)
 
         for (int i = 0; i < numTaxis; i++) {
             // Random home location within city bounds, with spatial validation
@@ -579,18 +667,25 @@ public class TaxiSimulation {
                 homeAttempt++;
             } while (homeAttempt < 50 && !isValidLocation(homeLon, homeLat));
 
-            // Determine taxi type based on configured probabilities
+            // 5-type fleet sample from configured shares (DESIGN.md §2.2 formula).
             TaxiType taxiType;
             double typeRoll = random.nextDouble();
-            if (typeRoll < config.getTaxiTypeLocalProb()) {
+
+            if (typeRoll < cumLocal) {
                 taxiType = TaxiType.LOCAL;
                 localCount++;
-            } else if (typeRoll < config.getTaxiTypeLocalProb() + config.getTaxiTypeCitywideProb()) {
+            } else if (typeRoll < cumCitywide) {
                 taxiType = TaxiType.CITYWIDE;
                 citywideCount++;
-            } else {
+            } else if (typeRoll < cumAppPreferred) {
+                taxiType = TaxiType.APP_PREFERRED;
+                appPreferredCount++;
+            } else if (typeRoll < cumHub) {
                 taxiType = TaxiType.HUB;
                 hubCount++;
+            } else {
+                taxiType = TaxiType.RIDE_HAIL_PRHS;
+                rideHailPrhsCount++;
             }
 
             // Determine shift start time (staggered)
@@ -615,8 +710,15 @@ public class TaxiSimulation {
             long shiftDuration = (long)(shiftDurationHours * 3600);
             long shiftEnd = shiftStart + shiftDuration;
 
-            // Create taxi agent with type and familiar area radius
-            double familiarRadius = config.getLocalFamiliarRadiusKm();
+            // B2: per-type familiar radius. LOCAL keeps its 5km legacy default;
+            // APP_PREFERRED + RIDE_HAIL_PRHS are unrestricted (0 km).
+            // CITYWIDE + HUB use the legacy default (radius unused — see TaxiAgent).
+            double familiarRadius;
+            switch (taxiType) {
+                case APP_PREFERRED:    familiarRadius = config.getTaxiTypeAppPreferredFamiliarRadiusKm(); break;
+                case RIDE_HAIL_PRHS:   familiarRadius = config.getTaxiTypeRideHailPrhsFamiliarRadiusKm(); break;
+                default:               familiarRadius = config.getLocalFamiliarRadiusKm();
+            }
             TaxiAgent taxi = new TaxiAgent(i, taxiType, homeLon, homeLat,
                 shiftStart, shiftEnd, familiarRadius);
 
@@ -638,8 +740,12 @@ public class TaxiSimulation {
             String.format("%.1f%%", 100.0 * localCount / numTaxis) + ")");
         System.out.println("  CITYWIDE: " + citywideCount + " (" +
             String.format("%.1f%%", 100.0 * citywideCount / numTaxis) + ")");
+        System.out.println("  APP_PREFERRED: " + appPreferredCount + " (" +
+            String.format("%.1f%%", 100.0 * appPreferredCount / numTaxis) + ")");
         System.out.println("  HUB: " + hubCount + " (" +
             String.format("%.1f%%", 100.0 * hubCount / numTaxis) + ")");
+        System.out.println("  RIDE_HAIL_PRHS: " + rideHailPrhsCount + " (" +
+            String.format("%.1f%%", 100.0 * rideHailPrhsCount / numTaxis) + ")");
     }
 
     /**
@@ -671,202 +777,174 @@ public class TaxiSimulation {
      * - Trips generated during each taxi's shift
      */
     private void generateTrips() {
-        System.out.println("[CHECKPOINT] Generating trips (passenger + empty)...");
+        System.out.println("[CHECKPOINT] Generating trips (passenger + empty) "
+            + "— v7.0 shift-time engine...");
 
-        int tripIdCounter = 0;
-        int rejectedTooShort = 0;
-        int rejectedTooLong = 0;
-        int nearbyTripsCount = 0;
-        int totalPassengerTrips = 0;
-        int totalEmptyTrips = 0;
+        // Reset class-field counters before per-taxi loop.
+        tripIdCounter = 0;
+        rejectedTooShort = 0;
+        rejectedTooLong = 0;
+        totalPassengerTrips = 0;
+        totalEmptyTrips = 0;
+        modeMixCounters.clear();
 
-        final double EMPTY_TRIP_THRESHOLD_KM = 0.05;  // Only create empty trip if distance > 0.05 km
+        // B4 / Phase 7: legacy engine removed. ShiftSimulator (v7.0 5-state
+        // machine, B2/Phase 4) is the only trip-generation path.
+        // State machine: OFF_DUTY → DUAL_MODE ↔ AT_STAND → OCCUPIED.
+        // Empty leg: log-normal toward attractive zone centroid (DUAL_MODE) or
+        //            nearest hub zone (AT_STAND) + Exp(λ) wait (B3/Phase 5).
+        // Pickup mode: per-type ratios (LOCAL/CITYWIDE/APP_PREFERRED/HUB/PRHS).
+        // PRHS taxis additionally gated by MLIT regulatory windows (B3/Phase 6).
+        modeMixResolver = new ModeMixResolver(config, random);
+
+        // B7: instantiate diagnostic writer + build stratified sample-id set.
+        // Both passed to ShiftSimulator. When diagnostics disabled, writer is
+        // a no-op singleton and sampleIds is empty — overhead is negligible.
+        diagnosticWriter = new DiagnosticWriter(config);
+        diagnosticSampleIds = buildDiagnosticSampleSet();
+
+        ShiftSimulator shiftSim = new ShiftSimulator(config, this, modeMixResolver,
+            random, diagnosticWriter, diagnosticSampleIds);
 
         for (TaxiAgent taxi : taxiFleet) {
-            long currentTime = taxi.getShiftStartTime();
-
-            // Tracking variables for nearby trip logic
-            double lastDropoffLon = taxi.getHomeLongitude();
-            double lastDropoffLat = taxi.getHomeLatitude();
-            boolean hasLastDropoff = false;
-
-            // Determine number of trips for this taxi
-            // Gaussian distribution around AVG_TRIPS_PER_TAXI
-            int numTrips = (int)(config.getTaxiTripsAverage() +
-                random.nextGaussian() * config.getTaxiTripsStddev());
-            numTrips = Math.max(config.getTaxiTripsMin(),
-                Math.min(config.getTaxiTripsMax(), numTrips));
-
-            // Generate trips for this taxi
-            for (int tripNum = 0; tripNum < numTrips; tripNum++) {
-                // Decide if this trip should be near previous dropoff
-                boolean useNearbyStart = config.isUseNearbyTrips() && hasLastDropoff &&
-                    (random.nextDouble() < config.getNearbyTripProbability());
-
-                // Try to generate a valid passenger trip
-                final int MAX_ATTEMPTS = 50;
-                TaxiTrip passengerTrip = null;
-
-                for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-                    double pickupLon, pickupLat;
-
-                    // NEARBY TRIP LOGIC: Start near previous dropoff
-                    if (useNearbyStart) {
-                        // V5.2: Generate pickup within configurable radius of last dropoff
-                        // Uses Gaussian/uniform distribution instead of old radial-uniform
-                        double[] nearbyPt = generatePointNearCenter(
-                            lastDropoffLon, lastDropoffLat, config.getNearbyTripRadiusKm());
-                        pickupLon = nearbyPt[0];
-                        pickupLat = nearbyPt[1];
-
-                        // Spatial validation for nearby pickup (city boundary + land check)
-                        if (!isValidLocation(pickupLon, pickupLat)) {
-                            continue;  // retry with new random offset
-                        }
-                    } else {
-                        // Use smart destination selection based on taxi type and time
-                        double[] pickupLocation = selectSmartDestination(taxi, currentTime);
-                        pickupLon = pickupLocation[0];
-                        pickupLat = pickupLocation[1];
-
-                        // Spatial validation for smart pickup
-                        if (!isValidLocation(pickupLon, pickupLat)) {
-                            continue;  // retry
-                        }
-                    }
-
-                    // V5.2: Generate dropoff using distance-guided destination selection
-                    double[] dropoffLocation = selectDistanceGuidedDestination(
-                        taxi, pickupLon, pickupLat, currentTime);
-                    double dropoffLon = dropoffLocation[0];
-                    double dropoffLat = dropoffLocation[1];
-
-                    // Validate dropoff (city boundary + land check)
-                    if (!isValidLocation(dropoffLon, dropoffLat)) {
-                        continue;  // Try again
-                    }
-
-                    // Create passenger trip
-                    passengerTrip = new TaxiTrip(tripIdCounter, pickupLon, pickupLat,
-                        dropoffLon, dropoffLat, currentTime, true);  // true = passenger trip
-
-                    // Validate trip distance (actual Haversine distance)
-                    double actualDistance = passengerTrip.getDistanceKm();
-
-                    if (actualDistance < config.getTripDistanceMin()) {
-                        rejectedTooShort++;
-                        continue;
-                    }
-                    if (actualDistance > config.getTripDistanceMax()) {
-                        rejectedTooLong++;
-                        continue;
-                    }
-
-                    // Valid trip created!
-                    break;
-                }
-
-                // If we successfully generated a passenger trip
-                if (passengerTrip != null) {
-                    // Store pickup/dropoff coordinates for passenger trip
-                    double passengerPickupLon = passengerTrip.getPickupLongitude();
-                    double passengerPickupLat = passengerTrip.getPickupLatitude();
-                    double passengerDropoffLon = passengerTrip.getDropoffLongitude();
-                    double passengerDropoffLat = passengerTrip.getDropoffLatitude();
-
-                    // V3.1: Generate empty trip if taxi needs to reposition
-                    if (hasLastDropoff) {
-                        // Calculate distance from last dropoff to current pickup
-                        double emptyDistance = calculateDistance(
-                            lastDropoffLon, lastDropoffLat,
-                            passengerPickupLon, passengerPickupLat
-                        );
-
-                        // Only create empty trip if distance > threshold
-                        if (emptyDistance > EMPTY_TRIP_THRESHOLD_KM) {
-                            // Create empty trip with current tripIdCounter
-                            TaxiTrip emptyTrip = TaxiTrip.createEmptyTrip(
-                                tripIdCounter,
-                                lastDropoffLon, lastDropoffLat,
-                                passengerPickupLon, passengerPickupLat,
-                                currentTime
-                            );
-
-                            // Estimate times for empty trip
-                            long emptyTravelTime = TaxiTrip.estimateTravelTime(emptyTrip.getDistanceKm());
-                            long emptyPickupTime = currentTime;
-                            long emptyDropoffTime = emptyPickupTime + emptyTravelTime;
-
-                            emptyTrip.setTimes(emptyPickupTime, emptyDropoffTime);
-                            emptyTrip.setAssignedTaxiId(taxi.getTaxiId());
-                            emptyTrip.setStatus(TaxiTrip.TripStatus.COMPLETED);
-
-                            taxi.assignTrip(emptyTrip);
-                            allTrips.add(emptyTrip);
-                            totalEmptyTrips++;
-
-                            // Increment AFTER adding empty trip
-                            tripIdCounter++;
-
-                            // Update current time to after empty trip
-                            currentTime = emptyDropoffTime;
-                        }
-                    }
-
-                    // Now create the passenger trip with NEW tripIdCounter value
-                    // (which may have been incremented if empty trip was created)
-                    passengerTrip = new TaxiTrip(tripIdCounter,
-                        passengerPickupLon, passengerPickupLat,
-                        passengerDropoffLon, passengerDropoffLat,
-                        currentTime, true);
-
-                    // Process the passenger trip
-                    long travelTime = TaxiTrip.estimateTravelTime(passengerTrip.getDistanceKm());
-                    long pickupTime = currentTime + config.getTaxiPickupTime();
-                    long dropoffTime = pickupTime + travelTime;
-
-                    passengerTrip.setTimes(pickupTime, dropoffTime);
-                    passengerTrip.setAssignedTaxiId(taxi.getTaxiId());
-                    passengerTrip.setStatus(TaxiTrip.TripStatus.COMPLETED);
-
-                    taxi.assignTrip(passengerTrip);
-                    allTrips.add(passengerTrip);
-
-                    // Update tracking variables for next trip
-                    lastDropoffLon = passengerTrip.getDropoffLongitude();
-                    lastDropoffLat = passengerTrip.getDropoffLatitude();
-                    hasLastDropoff = true;
-
-                    if (useNearbyStart) {
-                        nearbyTripsCount++;
-                    }
-
-                    // Increment AFTER adding passenger trip
-                    tripIdCounter++;
-                    totalPassengerTrips++;
-                    currentTime = dropoffTime + config.getTaxiBreakTime();
-
-                    // Check if shift is ending
-                    if (currentTime >= taxi.getShiftEndTime()) {
-                        break;
-                    }
-                } else {
-                    // Failed to generate valid trip after MAX_ATTEMPTS
-                    break;
-                }
-            }
+            shiftSim.simulateShift(taxi);
         }
 
         double emptyRatio = 100.0 * totalEmptyTrips / allTrips.size();
         System.out.println("[CHECKPOINT] Generated " + allTrips.size() + " trips " +
             "(" + totalPassengerTrips + " passenger, " + totalEmptyTrips + " empty, " +
             String.format("%.1f%%", emptyRatio) + " empty ratio)");
+
+        // Per-type mode-mix observability — compare observed pickup-mode shares
+        // (street/app/stand) against configured per-type ratios.
+        if (!modeMixCounters.isEmpty()) {
+            System.out.println();
+            System.out.println("[MODE-MIX] Per-type pickup-mode realised shares vs configured:");
+            System.out.println("  " + String.format("%-18s %-22s %-22s", "Type",
+                "street/app/stand observed", "(configured)"));
+            for (TaxiType type : TaxiType.values()) {
+                int[] cnt = modeMixCounters.get(type);
+                if (cnt == null) continue;
+                int total = cnt[0] + cnt[1] + cnt[2];
+                if (total == 0) continue;
+                double obsStreet = 100.0 * cnt[0] / total;
+                double obsApp    = 100.0 * cnt[1] / total;
+                double obsStand  = 100.0 * cnt[2] / total;
+                double cfgStreet, cfgApp, cfgStand;
+                switch (type) {
+                    case LOCAL:
+                        cfgStreet = config.getTaxiTypeLocalModeStreet() * 100;
+                        cfgApp = config.getTaxiTypeLocalModeApp() * 100;
+                        cfgStand = config.getTaxiTypeLocalModeStand() * 100;
+                        break;
+                    case CITYWIDE:
+                        cfgStreet = config.getTaxiTypeCitywideModeStreet() * 100;
+                        cfgApp = config.getTaxiTypeCitywideModeApp() * 100;
+                        cfgStand = config.getTaxiTypeCitywideModeStand() * 100;
+                        break;
+                    case APP_PREFERRED:
+                        cfgStreet = config.getTaxiTypeAppPreferredModeStreet() * 100;
+                        cfgApp = config.getTaxiTypeAppPreferredModeApp() * 100;
+                        cfgStand = config.getTaxiTypeAppPreferredModeStand() * 100;
+                        break;
+                    case HUB:
+                        cfgStreet = config.getTaxiTypeHubModeStreet() * 100;
+                        cfgApp = config.getTaxiTypeHubModeApp() * 100;
+                        cfgStand = config.getTaxiTypeHubModeStand() * 100;
+                        break;
+                    case RIDE_HAIL_PRHS:
+                        cfgStreet = config.getTaxiTypeRideHailPrhsModeStreet() * 100;
+                        cfgApp = config.getTaxiTypeRideHailPrhsModeApp() * 100;
+                        cfgStand = config.getTaxiTypeRideHailPrhsModeStand() * 100;
+                        break;
+                    default:
+                        continue;
+                }
+                System.out.println(String.format("  %-18s %5.1f / %5.1f / %5.1f%%   (cfg %4.1f / %4.1f / %4.1f)",
+                    type.name(), obsStreet, obsApp, obsStand, cfgStreet, cfgApp, cfgStand));
+            }
+            System.out.println();
+        }
+    }
+
+    // ═══ ShiftSimulator integration accessors ═══════════════════════════════
+    // Package-private helpers exposed for the v7.0 state machine in
+    // {@link ShiftSimulator}. After B4 / Phase 7 these are the only callers.
+
+    /** Allocate a fresh trip ID and increment the counter. Sequential access only. */
+    int nextTripId() { return tripIdCounter++; }
+
+    /** Append a passenger trip to the global list and increment the counter. */
+    void recordPassengerTripOutput(TaxiTrip trip) {
+        allTrips.add(trip);
+        totalPassengerTrips++;
+    }
+
+    /** Append an empty trip to the global list and increment the counter. */
+    void recordEmptyTripOutput(TaxiTrip trip) {
+        allTrips.add(trip);
+        totalEmptyTrips++;
+    }
+
+    /** Read access to the destination zones list (attractive-centroid sampling in DUAL_MODE). */
+    java.util.List<DestinationZone> getDestinationZonesList() { return destinationZones; }
+
+    /** Time period (1=morning, 2=daytime, 3=night) — needed by ShiftSimulator for attractiveness. */
+    int getTimePeriod(long currentTime) { return config.getTimePeriod(currentTime); }
+
+    /** Current geo-validator (may be null if spatial validation disabled). */
+    TaxiGeoValidator getGeoValidator() { return geoValidator; }
+
+    /** Track a pickup mode for per-type mode-mix observability (B2 / Phase 4). */
+    void recordPickupMode(TaxiType type, ModeMixResolver.PickupMode mode) {
+        int[] counters = modeMixCounters.computeIfAbsent(type, k -> new int[3]);
+        counters[mode.ordinal()]++;
     }
 
     /**
-     * Calculate distance between two points using Haversine formula
+     * B7 / Phase 7.1 — Build a stratified sample of taxi IDs for diagnostic emit.
+     *
+     * <p>For each {@link TaxiType}, sample
+     * {@code max(diagnosticsSampleMinimumPerType, fleetSize × fraction)} IDs.
+     * This guarantees rare types (RIDE_HAIL_PRHS at 0.5%) get at least the
+     * minimum-per-type coverage, even though their natural fraction would yield
+     * fewer than the floor. Returns an empty set when diagnostics are disabled
+     * — keeps the {@code diagnosticSampleIds.contains(id)} check in
+     * {@link ShiftSimulator} a fast no-op.
      */
-    private double calculateDistance(double lon1, double lat1, double lon2, double lat2) {
+    private java.util.Set<Integer> buildDiagnosticSampleSet() {
+        java.util.Set<Integer> sampled = new java.util.HashSet<>();
+        if (!config.isDiagnosticsEnabled()) return sampled;
+
+        // Group taxiFleet by type
+        java.util.EnumMap<TaxiType, java.util.List<Integer>> byType =
+            new java.util.EnumMap<>(TaxiType.class);
+        for (TaxiAgent t : taxiFleet) {
+            byType.computeIfAbsent(t.getTaxiType(), k -> new java.util.ArrayList<>())
+                  .add(t.getTaxiId());
+        }
+
+        double fraction = config.getDiagnosticsSampleFraction();
+        int minPerType = config.getDiagnosticsSampleMinimumPerType();
+        Random sampleRng = new Random(config.getRandomSeed() + 7777L);  // independent RNG
+
+        for (java.util.Map.Entry<TaxiType, java.util.List<Integer>> e : byType.entrySet()) {
+            java.util.List<Integer> ids = e.getValue();
+            int target = Math.max(minPerType, (int)(ids.size() * fraction));
+            target = Math.min(target, ids.size());  // cap at type fleet size
+            // Reservoir-style: shuffle a copy and take first `target`
+            java.util.Collections.shuffle(ids, sampleRng);
+            for (int i = 0; i < target; i++) sampled.add(ids.get(i));
+            System.out.println("  [B7] " + e.getKey() + ": sampled " + target + "/" + ids.size());
+        }
+        return sampled;
+    }
+
+    /**
+     * Calculate distance between two points using Haversine formula × Manhattan factor.
+     * Package-private — used by ShiftSimulator state machine.
+     */
+    double calculateDistance(double lon1, double lat1, double lon2, double lat2) {
         final double EARTH_RADIUS_KM = config.getEarthRadiusKm();
 
         double dLat = Math.toRadians(lat2 - lat1);
@@ -889,7 +967,8 @@ public class TaxiSimulation {
      * @param lat Latitude
      * @return true if valid location for taxi operation
      */
-    private boolean isValidLocation(double lon, double lat) {
+    /** Package-private — also used by ShiftSimulator (B2). */
+    boolean isValidLocation(double lon, double lat) {
         if (geoValidator == null) return true;  // validation disabled
         return geoValidator.isValidLocation(lon, lat);
     }
@@ -913,60 +992,22 @@ public class TaxiSimulation {
     }
 
     /**
-     * V4.0: Select a transport hub zone using weighted probability
-     * Time-dependent: airports boosted during night hours
-     *
-     * @param timeOfDay Current time in seconds since midnight
-     * @return Selected transport hub zone
+     * Pick the NEAREST transport-hub zone to {@code (lon, lat)}. Used when a
+     * taxi enters AT_STAND mid-shift — DESIGN.md §2.3 says "Move position to
+     * nearest hub-zone". Returns null if no hub zones are configured.
      */
-    private DestinationZone selectTransportHubZone(long timeOfDay) {
-        // Filter transport hub zones
-        List<DestinationZone> hubZones = new ArrayList<>();
+    DestinationZone selectNearestHubZone(double lon, double lat) {
+        DestinationZone nearest = null;
+        double minDist = Double.MAX_VALUE;
         for (DestinationZone zone : destinationZones) {
-            if (zone.isTransportHub()) {
-                hubZones.add(zone);
+            if (!zone.isTransportHub()) continue;
+            double d = zone.getDistanceFromCenter(lon, lat);
+            if (d < minDist) {
+                minDist = d;
+                nearest = zone;
             }
         }
-
-        if (hubZones.isEmpty()) {
-            // Fallback to random zone if no hubs defined
-            return destinationZones.get(random.nextInt(destinationZones.size()));
-        }
-
-        // Calculate weights (boost airports at night)
-        boolean isNight = config.isNightHours(timeOfDay);
-        double totalWeight = 0.0;
-        double[] weights = new double[hubZones.size()];
-
-        for (int i = 0; i < hubZones.size(); i++) {
-            DestinationZone zone = hubZones.get(i);
-            double weight = 1.0;
-
-            // Boost airports during night hours (22:00-06:00)
-            // V5.0: Use shapefile-based airport detection instead of name heuristics
-            if (isNight && zone.isNearAirport()) {
-                weight *= config.getHotspotAirportNightMultiplier();
-            } else if (isNight && zone.getName().toLowerCase().contains("airport")) {
-                // Fallback: string matching for zones without transport index enrichment
-                weight *= config.getHotspotAirportNightMultiplier();
-            }
-
-            weights[i] = weight;
-            totalWeight += weight;
-        }
-
-        // Select based on weighted probability
-        double rand = random.nextDouble() * totalWeight;
-        double cumulative = 0.0;
-
-        for (int i = 0; i < hubZones.size(); i++) {
-            cumulative += weights[i];
-            if (rand <= cumulative) {
-                return hubZones.get(i);
-            }
-        }
-
-        return hubZones.get(0);  // Fallback
+        return nearest;
     }
 
     /**
@@ -1031,224 +1072,144 @@ public class TaxiSimulation {
     }
 
     /**
-     * Select destination using time-dependent attractiveness scoring
+     * Nearest-valid-cell spiral-grid scan (DESIGN.md §2.6).
      *
-     * @param taxi The taxi agent generating the trip
-     * @param currentTime Current time in seconds since midnight
-     * @return array [lon, lat] of selected destination
-     */
-    /**
-     * V5.2: Distance-guided destination selection.
-     * Samples a target distance from Gaussian(avg, stddev), then scores zones
-     * by attractiveness × distance match, producing output distribution that
-     * closely matches the configured target.
+     * <p>When a sampled dropoff fails {@link TaxiGeoValidator#isValidLocation},
+     * search outward for the nearest valid land cell. Replaces the legacy
+     * rejection-resampling approach in the shift_time engine — it eliminates
+     * the water/river-coast bias where rejected pairs cluster near boundaries
+     * (Sumida / Arakawa / Tama / Tokyo Bay coast) and the surviving sample
+     * distribution drifts to longer inland trips.
      *
-     * @param taxi        The taxi agent
-     * @param pickupLon   Pickup longitude
-     * @param pickupLat   Pickup latitude
-     * @param currentTime Current simulation time
-     * @return [lon, lat] of selected dropoff point
+     * <p>Search pattern: concentric rings at radii 50m, 100m, 150m, ... up to
+     * {@code radiusKm}; at each ring, 8 angular samples 45° apart (N, NE, E, SE,
+     * S, SW, W, NW). Up to ~80 {@code isValidLocation} calls for 500m radius.
+     * The underlying {@link TaxiGeoValidator#isOnLand} caches results at ~100m
+     * resolution, so repeated nearby calls are cheap.
+     *
+     * <p>The flat-earth approximation for converting km offsets to lon/lat is
+     * accurate to better than 1m at Tokyo's latitude over a 500m radius —
+     * negligible compared to the 50m grid resolution.
+     *
+     * @param lon initial sampled longitude (failed validation)
+     * @param lat initial sampled latitude  (failed validation)
+     * @param radiusKm maximum search radius in km
+     * @return {@code [lon, lat]} of nearest valid cell, or {@code null} if none
+     *         found within radius (caller falls back to legacy resampling)
      */
-    private double[] selectDistanceGuidedDestination(TaxiAgent taxi,
-                                                      double pickupLon, double pickupLat,
-                                                      long currentTime) {
-        // Sample target distance from Gaussian(avg, stddev), clamped to [min, max]
-        double targetDist = config.getTripDistanceAverage()
-            + random.nextGaussian() * config.getTripDistanceStddev();
-        targetDist = Math.max(config.getTripDistanceMin(),
-            Math.min(config.getTripDistanceMax(), targetDist));
+    /** Package-private — also used by ShiftSimulator (B2). */
+    double[] projectToNearestValidCell(double lon, double lat, double radiusKm) {
+        if (geoValidator == null) {
+            return new double[]{lon, lat};  // no validator → accept as-is
+        }
+        if (geoValidator.isValidLocation(lon, lat)) {
+            return new double[]{lon, lat};  // already valid (defensive)
+        }
+        final double STEP_KM = 0.05;       // 50 m grid spacing
+        final int ANGULAR_SAMPLES = 8;     // 45° apart
+        final double cosLat = Math.cos(Math.toRadians(lat));
+        final int maxRings = (int) Math.ceil(radiusKm / STEP_KM);
 
-        TaxiType taxiType = taxi.getTaxiType();
-        int timePeriod = config.getTimePeriod(currentTime);
-
-        // Score each zone by attractiveness × distance match
-        double totalScore = 0.0;
-        double[] scores = new double[destinationZones.size()];
-
-        for (int i = 0; i < destinationZones.size(); i++) {
-            DestinationZone zone = destinationZones.get(i);
-
-            // Base attractiveness
-            double attr = zone.calculateAttractiveness(timePeriod,
-                config.getAttractivenessBeta1(),
-                config.getAttractivenessBeta2(),
-                config.getAttractivenessBeta3(),
-                config.getAttractivenessBeta4());
-
-            // LOCAL taxi familiar zone boost (same logic as selectSmartDestination)
-            if (taxiType == TaxiType.LOCAL) {
-                List<String> familiarZones = taxi.getFamiliarZoneIds();
-                if (!familiarZones.isEmpty() && familiarZones.contains(zone.getZoneId())) {
-                    attr *= 5.0;
-                } else if (familiarZones.isEmpty()) {
-                    double distance = zone.getDistanceFromCenter(
-                        taxi.getHomeLongitude(), taxi.getHomeLatitude());
-                    if (distance <= taxi.getFamiliarAreaRadiusKm()) {
-                        attr *= 3.0;
-                    } else {
-                        attr *= 0.1;
-                    }
-                } else {
-                    attr *= 0.05;
+        for (int ring = 1; ring <= maxRings; ring++) {
+            double r = ring * STEP_KM;
+            for (int a = 0; a < ANGULAR_SAMPLES; a++) {
+                double bearing = 2.0 * Math.PI * a / ANGULAR_SAMPLES;
+                // km offsets → lon/lat (flat-earth at Tokyo latitude is fine over 500m)
+                double dLon = (r * Math.cos(bearing)) / (111.32 * cosLat);
+                double dLat = (r * Math.sin(bearing)) / 111.32;
+                double candLon = lon + dLon;
+                double candLat = lat + dLat;
+                if (geoValidator.isValidLocation(candLon, candLat)) {
+                    return new double[]{candLon, candLat};
                 }
             }
-
-            // Distance match: penalize zones whose center distance deviates from target
-            double zoneDist = zone.getDistanceFromCenter(pickupLon, pickupLat);
-            double distPenalty = Math.exp(-Math.abs(zoneDist - targetDist) / 2.0);
-
-            scores[i] = attr * distPenalty;
-            totalScore += scores[i];
         }
-
-        // Weighted roulette selection
-        if (totalScore <= 0) {
-            // Fallback to smart destination if scoring fails
-            return selectSmartDestination(taxi, currentTime);
-        }
-
-        double rand = random.nextDouble() * totalScore;
-        double cumulative = 0.0;
-        DestinationZone selectedZone = destinationZones.get(0);
-
-        for (int i = 0; i < destinationZones.size(); i++) {
-            cumulative += scores[i];
-            if (rand <= cumulative) {
-                selectedZone = destinationZones.get(i);
-                break;
-            }
-        }
-
-        // Generate point within selected zone
-        double[] zonePt = generatePointNearCenter(
-            selectedZone.getCenterLon(), selectedZone.getCenterLat(), selectedZone.getRadiusKm());
-        double lon = zonePt[0];
-        double lat = zonePt[1];
-
-        // Validation with retry
-        if (geoValidator != null && !geoValidator.isValidLocation(lon, lat)) {
-            for (int retry = 0; retry < 10; retry++) {
-                zonePt = generatePointNearCenter(
-                    selectedZone.getCenterLon(), selectedZone.getCenterLat(), selectedZone.getRadiusKm());
-                lon = zonePt[0];
-                lat = zonePt[1];
-                if (geoValidator.isValidLocation(lon, lat)) break;
-            }
-        }
-
-        return new double[]{lon, lat};
+        return null;  // no valid cell within radius
     }
 
-    private double[] selectSmartDestination(TaxiAgent taxi, long currentTime) {
-        TaxiType taxiType = taxi.getTaxiType();
-
-        // V4.0: HUB type taxis: use transport hub zone selection
-        if (taxiType == TaxiType.HUB) {
-            DestinationZone hubZone = selectTransportHubZone(currentTime);
-
-            // V5.2: Generate point within hub zone using natural distribution
-            for (int retry = 0; retry <= 5; retry++) {
-                double[] hubPt = generatePointNearCenter(
-                    hubZone.getCenterLon(), hubZone.getCenterLat(), hubZone.getRadiusKm());
-                double lon = hubPt[0];
-                double lat = hubPt[1];
-
-                if (retry == 5 || isValidLocation(lon, lat)) {
-                    return new double[]{lon, lat};
-                }
-            }
-            // Unreachable — loop always returns
-            return new double[]{hubZone.getCenterLon(), hubZone.getCenterLat()};
+    /**
+     * Phase 3 (B1) — Single-sample log-normal loaded-leg dropoff (DESIGN.md §2.6).
+     *
+     * <p>Sample the loaded-leg distance from {@code lognormal(mu, sigma)} where
+     * {@code mu = ln(mean) - sigma^2/2} so the arithmetic mean equals
+     * {@code config.getTripDistanceAverage()} (4.6 km for FY2024). Pick a
+     * uniform random bearing and place the dropoff at exactly that distance
+     * from the pickup. If the resulting position fails spatial validation,
+     * project to the nearest valid land cell within
+     * {@code config.getProjectionRadiusKm()} via the spiral-grid scan.
+     *
+     * <p>This is the "no rejection-resampling" path — distance is sampled once,
+     * and a failure to find a valid cell within the projection radius returns
+     * null so the caller can fall back to the legacy zone-based selection.
+     *
+     * <p>The unbiased flat-earth approximation is accurate to {@literal <}0.1% over
+     * the realized distance range [0.5, 15] km at Tokyo's latitude.
+     *
+     * @return {@code [lon, lat]} of the loaded-leg dropoff, or {@code null} if
+     *         spatial projection failed (caller falls through to legacy path)
+     */
+    /** Package-private — also called by ShiftSimulator (B2 / Phase 4 state machine). */
+    double[] sampleLogNormalLoadedLeg(double pickupLon, double pickupLat) {
+        // Sample log-normal ROAD distance (road-km, matching THTA's reporting unit)
+        // with -sigma^2/2 correction so arithmetic mean of the unbounded sample
+        // equals config.getTripDistanceAverage() = 4.6 km.
+        //
+        // B7.5: reject-and-redraw within [trip.distance.min, trip.distance.max]
+        // instead of clamping. Eliminates the at-floor spike artifact (Trip
+        // Distance Min Check observed 0.07 km below 0.5 km floor pre-fix).
+        // Attempt budget 100; fall back to clamp on exhaustion (rare).
+        final double sigma = config.getTripDistanceLoadedSigma();
+        final double mu = Math.log(config.getTripDistanceAverage()) - 0.5 * sigma * sigma;
+        final double minRoad = config.getTripDistanceMin();
+        final double maxRoad = config.getTripDistanceMax();
+        double roadKm;
+        int attempts = 0;
+        do {
+            roadKm = Math.exp(mu + sigma * random.nextGaussian());
+            attempts++;
+        } while ((roadKm < minRoad || roadKm > maxRoad) && attempts < 100);
+        if (roadKm < minRoad || roadKm > maxRoad) {
+            roadKm = Math.max(minRoad, Math.min(maxRoad, roadKm));
         }
 
-        // Get time period for attractiveness calculation
-        int timePeriod = config.getTimePeriod(currentTime);
+        // CRITICAL: TaxiTrip.distanceKm() stores trip distance as Haversine ×
+        // Manhattan factor (1.4 for Tokyo). To produce a stored road-km of
+        // `roadKm`, place the dropoff at `roadKm / manhattan_factor` Haversine
+        // distance from pickup. Without this conversion, the realized trip
+        // distribution would be 1.4× too long.
+        final double haversineKm = roadKm / config.getManhattanFactor();
 
-        // Calculate attractiveness scores for all zones
-        double totalAttractiveness = 0.0;
-        double[] attractiveness = new double[destinationZones.size()];
+        // Uniform random bearing → place dropoff at exactly `haversineKm` from pickup.
+        // Flat-earth approximation at Tokyo's latitude (35.6°N) is accurate to
+        // <0.1% over the realized [0.5/1.4, 15/1.4] km Haversine range.
+        final double bearing = 2.0 * Math.PI * random.nextDouble();
+        final double cosLat = Math.cos(Math.toRadians(pickupLat));
+        final double dLon = (haversineKm * Math.cos(bearing)) / (111.32 * cosLat);
+        final double dLat = (haversineKm * Math.sin(bearing)) / 111.32;
+        final double dropLon = pickupLon + dLon;
+        final double dropLat = pickupLat + dLat;
 
-        for (int i = 0; i < destinationZones.size(); i++) {
-            DestinationZone zone = destinationZones.get(i);
-            double score = zone.calculateAttractiveness(timePeriod,
-                config.getAttractivenessBeta1(),
-                config.getAttractivenessBeta2(),
-                config.getAttractivenessBeta3(),
-                config.getAttractivenessBeta4());
-
-            // V4.0: LOCAL taxis: boost attractiveness of familiar zones
-            if (taxiType == TaxiType.LOCAL) {
-                List<String> familiarZones = taxi.getFamiliarZoneIds();
-                if (!familiarZones.isEmpty() && familiarZones.contains(zone.getZoneId())) {
-                    score *= 5.0;  // Strong boost for familiar zones
-                } else if (familiarZones.isEmpty()) {
-                    // Fallback to radius-based if zone clustering failed
-                    double distance = zone.getDistanceFromCenter(
-                        taxi.getHomeLongitude(), taxi.getHomeLatitude());
-                    if (distance <= taxi.getFamiliarAreaRadiusKm()) {
-                        score *= 3.0;
-                    } else {
-                        score *= 0.1;
-                    }
-                } else {
-                    score *= 0.05;  // Heavily penalize non-familiar zones
-                }
-            }
-
-            attractiveness[i] = score;
-            totalAttractiveness += score;
+        // Validate; project to nearest valid cell if invalid.
+        double[] result;
+        if (geoValidator != null && !geoValidator.isValidLocation(dropLon, dropLat)) {
+            result = projectToNearestValidCell(dropLon, dropLat,
+                config.getProjectionRadiusKm());  // may return null → caller falls back
+            if (result == null) return null;
+        } else {
+            result = new double[]{dropLon, dropLat};
         }
 
-        // Select zone based on weighted probability
-        double rand = random.nextDouble() * totalAttractiveness;
-        double cumulative = 0.0;
-        DestinationZone selectedZone = destinationZones.get(0);
-
-        for (int i = 0; i < destinationZones.size(); i++) {
-            cumulative += attractiveness[i];
-            if (rand <= cumulative) {
-                selectedZone = destinationZones.get(i);
-                break;
-            }
+        // B7.5: post-projection floor check. Projection can shorten the road
+        // distance below the configured minimum (the spiral lands within 500 m
+        // of the original target, which may be CLOSER to pickup than the
+        // sample). If the final road distance falls below trip.distance.min,
+        // reject this sample so the caller re-tries (continue cycle from
+        // current position; cheap retry budget per cycle).
+        double finalRoadKm = TaxiTrip.distanceKm(pickupLon, pickupLat, result[0], result[1]);
+        if (finalRoadKm < minRoad) {
+            return null;
         }
-
-        // V5.0: Station-biased point generation — 40% chance to generate near station
-        if (transportIndex != null && selectedZone.isNearStation() &&
-            random.nextDouble() < config.getStationBiasProb()) {
-            TaxiTransportIndex.NearestResult station = transportIndex.findNearestStation(
-                selectedZone.getCenterLon(), selectedZone.getCenterLat(), 2.0);
-            if (station != null) {
-                // V5.2: Generate within 500m of station using natural distribution
-                double[] staPt = generatePointNearCenter(station.lon, station.lat, 0.5);
-                double sLon = staPt[0];
-                double sLat = staPt[1];
-
-                // Validate (city boundary + land check)
-                if (isValidLocation(sLon, sLat)) {
-                    return new double[]{sLon, sLat};
-                }
-                // If invalid (e.g., station is near river), fall through to normal generation
-            }
-        }
-
-        // V5.2: Generate point within zone using natural distribution (Gaussian/uniform)
-        double[] zonePt = generatePointNearCenter(
-            selectedZone.getCenterLon(), selectedZone.getCenterLat(), selectedZone.getRadiusKm());
-        double lon = zonePt[0];
-        double lat = zonePt[1];
-
-        // Spatial validation — if invalid, retry up to 10 times with new random point in same zone
-        if (geoValidator != null && !geoValidator.isValidLocation(lon, lat)) {
-            for (int retry = 0; retry < 10; retry++) {
-                zonePt = generatePointNearCenter(
-                    selectedZone.getCenterLon(), selectedZone.getCenterLat(), selectedZone.getRadiusKm());
-                lon = zonePt[0];
-                lat = zonePt[1];
-                if (geoValidator.isValidLocation(lon, lat)) break;
-            }
-        }
-
-        return new double[]{lon, lat};
+        return result;
     }
 
     /**
@@ -1432,6 +1393,13 @@ public class TaxiSimulation {
             metrics.put("TAXI_TYPE." + label + "_revenue_yen", revenue);
         }
 
+        // TX5: LOCAL-taxi territory escape rate (observability only)
+        long localPassengerTrips = typeTripCounts.get(TaxiType.LOCAL)[0];
+        long outOfTerritory = localTaxiOutOfTerritoryCount.get();
+        metrics.put("LOCAL_TAXI.out_of_territory_trips", (double) outOfTerritory);
+        metrics.put("LOCAL_TAXI.out_of_territory_rate",
+                localPassengerTrips > 0 ? (double) outOfTerritory / localPassengerTrips : 0.0);
+
         // Reference targets
         metrics.put("REFERENCE.configured_fleet_size", (double) config.getTaxiFleetSize());
         metrics.put("REFERENCE.avg_passenger_trips_per_taxi",
@@ -1471,6 +1439,15 @@ public class TaxiSimulation {
         // Write unified dashboard.csv to run directory
         String runDir = exporter.getRunDirectory();
         writeDashboard(runDir);
+
+        // B7: flush diagnostic CSV (no-op if disabled)
+        if (diagnosticWriter != null) {
+            try {
+                diagnosticWriter.flush(runDir);
+            } catch (java.io.IOException e) {
+                System.err.println("[B7] WARN: failed to flush diagnostic.csv: " + e.getMessage());
+            }
+        }
 
         // Validation against baseline metrics
         String baselinePath = "config/taxi/validation/taxi_baseline_" +

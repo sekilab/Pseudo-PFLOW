@@ -1,16 +1,20 @@
 metric_name,category,survey_value,unit,tolerance_pct,source,notes,priority
-LOCAL Type Share,FLEET,65.0,percent,15,Config default,65% LOCAL / 25% CITYWIDE / 10% HUB,MEDIUM
-CITYWIDE Type Share,FLEET,25.0,percent,15,Config default,Intra-city wide-range taxis,MEDIUM
-HUB Type Share,FLEET,10.0,percent,15,Config default,Station/airport hub taxis,MEDIUM
-Avg Passenger Trips per Taxi,TRIPS,27.0,trips/taxi,15,THTA 2024,26.8 actual rounded; trip gen failure reduces this,CRITICAL
-Avg Trip Distance,DISTANCE,5.5,km,25,MLIT Taxi Survey,Gaussian centered at 5km but short-trip rejection skews up,HIGH
-Total Daily Distance per Taxi,DISTANCE,250.0,km/taxi,30,THTA 2024,Includes empty running; 200-300km range,MEDIUM
+Fleet Operating Rate,FLEET,68.6,percent,5,THTA FY2024 [#1],実働率 annual avg 特別区・武三 (verbatim p.1); MLIT 旅客自動車運送事業等報告規則 def.,CRITICAL
+LOCAL Type Share,FLEET,53.85,percent,15,DESIGN.md §2.2 formula at x=0.20,(10/13)×(0.90-0.20)=0.5385; sensitivity-analysis candidate,MEDIUM
+CITYWIDE Type Share,FLEET,16.15,percent,15,DESIGN.md §2.2 formula at x=0.20,(3/13)×(0.90-0.20)=0.1615; intra-city wide-range,MEDIUM
+APP_PREFERRED Type Share,FLEET,20.0,percent,15,DESIGN.md §2.1 (v7.0),App-platform-aligned drivers; default 20%; sensitivity range [20-60],MEDIUM
+HUB Type Share,FLEET,9.5,percent,15,DESIGN.md §2.1 (v7.0),Station/airport hub taxis (held fixed in NEW-1 reallocation),MEDIUM
+RIDE_HAIL_PRHS Type Share,FLEET,0.5,percent,30,DESIGN.md §2.1 (v7.0),自家用車活用事業 (Apr 2024 legalization); MLIT 1365/day vs ~625K total ≈0.22%,LOW
+Avg Passenger Trips per Taxi,TRIPS,25.3,trips/taxi,10,THTA FY2024 [#1],運送回数 1日1車当り (verbatim p.13 [資料5-1]); FY2023 was 26.2; FY2019 pre-COVID 27.2,CRITICAL
+Avg Trip Distance,DISTANCE,4.6,km,15,THTA FY2024 [#1],1車1回当り 実車㌔ (p.13); FY2023 was 4.5,HIGH
+Total Daily Distance per Taxi,DISTANCE,243.7,km/taxi,10,THTA FY2024 [#1],走行キロ/active-taxi/day (p.13); includes loaded + empty,CRITICAL
 Trip Distance Min Check,DISTANCE,0.5,km,50,Config,Minimum trip distance enforced,LOW
 Trip Distance Max Check,DISTANCE,15.0,km,50,Config,Maximum trip distance enforced,LOW
-Empty Running Ratio (distance),EMPTY,40.0,percent,15,Industry standard,Distance-based empty ratio,CRITICAL
+Loaded Distance Ratio,EMPTY,47.5,percent,5,THTA FY2024 [#1],実車率 = 実車キロ/走行キロ × 100 (verbatim p.1); MLIT def.,CRITICAL
+Empty Running Ratio (distance),EMPTY,52.5,percent,5,Derived from THTA FY2024 [#1],1 - 実車率 47.5% = 52.5%; MLIT def.,CRITICAL
 Empty Trip Count Ratio,EMPTY,48.0,percent,15,Derived,Count-based: ~1 empty per passenger trip,HIGH
-Avg Fare,REVENUE,2500.0,yen,25,THTA 2024,Base 500 + 392/km * 5.5km = 2656 theoretical,HIGH
-Total Daily Revenue per Taxi,REVENUE,45000.0,yen/taxi,35,THTA 2024,Revenue per operating taxi per day,MEDIUM
-Night Trip Ratio,TEMPORAL,25.0,percent,25,THTA 2024,22:00-05:00 trips as % of total,HIGH
-Nearby Trip Ratio,SPATIAL,80.0,percent,20,Config,Configured at 80% probability,MEDIUM
+Avg Fare,REVENUE,2219,yen,25,Derived THTA FY2024 [#1],日車営収 ¥56139 ÷ 25.3 trips = ¥2219; pre-tax,HIGH
+Total Daily Revenue per Taxi,REVENUE,56139,yen/taxi,15,THTA FY2024 [#1],日車営収 税抜 (verbatim p.13); 税込 = ¥61753,CRITICAL
+Night Trip Ratio,TEMPORAL,25.0,percent,25,THTA FY2024,22:00-05:00 trips as % of total; 深夜割増 trigger window,HIGH
+Nearby Trip Ratio,SPATIAL,80.0,percent,20,Config heuristic,Configured at 80% probability within 2.5km; sensitivity candidate,MEDIUM
 Trips Within City Bounds,SPATIAL,99.0,percent,2,Validation,Spatial validation should reject out-of-bounds,HIGH

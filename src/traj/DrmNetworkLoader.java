@@ -101,6 +101,14 @@ public class DrmNetworkLoader {
             if (pr == null) continue;
 
             int before = network.linkCount();
+            // T6 verified (2026-04-22): Node dedup is first-wins by design.
+            // DRM node IDs are canonical national identifiers — the same intersection
+            // has the same ID across every prefecture file, so coordinate values for a
+            // shared ID must be identical. Even if a file had a sub-meter drift, the
+            // stored Node wins; this is correct because (a) routing stays internally
+            // consistent within a single network build, and (b) any drift is well
+            // below the 11 m RoutingCache node-snap grid. No coord-divergence check
+            // is added to avoid the per-link comparison overhead for a non-issue.
             for (ParsedLink pl : pr.links) {
                 try {
                     Node n0, n1;

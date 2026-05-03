@@ -1,65 +1,82 @@
-# Team Development Workflow for Pseudo-PFLOW Project
+# Cross-Platform Development Workflow
 
-This document defines the workflow for multi-developer collaboration across the main and target servers in the Pseudo-PFLOW project.
+This codebase is developed solo across two machines (Windows and macOS), with
+Dropbox handling the file-level sync between them.
 
-## Developer Roles
+## Machines
 
-- **Lead Developer (Main Server: hms-server2):** Responsible for core class refactoring, architecture updates, and integration.
-- **Research Developer (Target Server: csis-server):** Responsible for debugging, running experiments, and secondary development.
+| Platform | Working tree | Override |
+|---|---|---|
+| Windows | `H:/Dropbox/PFLOW/Pseudo-PFLOW` | `set PFLOW_HOME=<path>` |
+| macOS / Linux | `~/Dropbox/PFLOW/Pseudo-PFLOW` | `export PFLOW_HOME=<path>` |
 
-## Branch Workflow
+`PFLOW_HOME` is auto-detected when unset (see [`config-schema.md`](config-schema.md)).
 
-- `refactor-pseudo-v3`: Lead developer performs class and structure refactoring here.
-- `pseudo-pflow-v3-dev`: Researcher continues experimental development, minor fixes, and debugging.
+## Daily Git workflow
 
-## Daily Workflow
-
-### For Both Developers
 ```bash
-# Start of work
-git checkout <your-branch>
-git pull --rebase origin <your-branch>
+# Start of session — sync remote first, in case the other machine pushed
+git checkout pseudo-pflow-v3-dev-test
+git pull --rebase origin pseudo-pflow-v3-dev-test
 
-# End of work
-git add .
-git commit -m "Your update message"
-git push origin <your-branch>
+# Work...
+
+# End of session
+git add <files>
+git commit -m "B<n>: <subject>"
+git push origin pseudo-pflow-v3-dev-test
 ```
 
-### For Lead Developer (Weekly Integration)
-```bash
-# Integrate updates from dev branch
-git checkout refactor-pseudo-v3
-git pull --rebase origin pseudo-pflow-v3-dev
-# Test & validate before pushing
-```
+## Cross-machine handoff
 
-### Optional: Use Stash When Needed
-```bash
-# Save local uncommitted changes
-git stash
-# Restore later
-git stash pop
-```
+Two viable patterns:
 
-## Conflict Resolution
+1. **Commit-and-push handoff** (preferred — safest).
+   Push at end of session on machine A, `git pull --rebase` first thing on
+   machine B. Dropbox sync of working-tree edits is *not* the source of truth;
+   `origin` is.
 
-- Always use `--rebase` to avoid unnecessary merge commits.
-- If conflicts arise:
+2. **Stash for in-flight work.**
+   ```bash
+   git stash push -m "wip: <topic>"
+   # ...later, on the other machine after pull...
+   git stash pop
+   ```
+
+Avoid letting Dropbox sync uncommitted edits across machines — it can produce
+"Selective Sync Conflict" copies that look like real files but bypass Git's
+diff machinery.
+
+## Conflict resolution
+
 ```bash
-git status            # See which files are conflicted
-# Manually resolve conflicts
+git status                # see conflicted files
+# Manually resolve, then:
 git add <resolved-file>
 git rebase --continue
 ```
 
-## Communication
+If a rebase gets confusing, abort and try again:
 
-- Developers should **communicate before major structural changes**.
-- Commit messages should be clear and descriptive.
-- If in doubt, consult the lead developer before merging or rebasing.
+```bash
+git rebase --abort
+```
 
----
+## Commit-message convention
 
-This workflow aims to ensure smooth progress without blocking each other's work. Keep syncing regularly and commit often!
+Recent history uses a `B<n>: <subject>` prefix for batch work
+(e.g. `B7: Scientific diagnostic + targeted fixes`) and `chore:` / `feat:` /
+`fix:` prefixes for non-batch work. Match the existing style.
 
+## LOCAL-ONLY directories
+
+Several working-tree directories are gitignored and machine-local — do not
+expect Dropbox to keep them coherent across machines:
+
+- `bin/`, `bin_fresh/` — compiled `.class` output (regenerable; see [`pipeline.md`](pipeline.md)).
+- `output/`, `logs/` — runtime artifacts.
+- `target/` — Maven scratch.
+
+If Dropbox produces "Selective Sync Conflict" copies of any of these, treat
+them as disposable and delete after a quick check that no unique data was
+trapped.

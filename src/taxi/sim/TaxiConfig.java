@@ -26,147 +26,358 @@ import util.PathResolver;
  */
 public class TaxiConfig {
 
-    // Singleton instance
     private static TaxiConfig instance;
 
-    // ===== DIRECTORIES =====
+    /**
+     * Path of the .properties file most recently loaded via {@link #loadFromFile}.
+     * Captured into {@code run_metadata.json} by {@link TaxiDataExporter} for
+     * downstream provenance tracking. "unknown" if no file has been loaded.
+     */
+    private String configFilePath;
+
+    public String getConfigFilePath() {
+        return configFilePath != null ? configFilePath : "unknown";
+    }
+
+    // ═══ Directories ═══
+    /** Input data directory path. Resolved via PathResolver. */
     private String inputDirectory = "./data/input/";
+    /** Output directory for simulation results. Resolved via PathResolver. */
     private String outputDirectory = "./data/output/";
 
-    // ===== FLEET CONFIGURATION =====
-    // Fleet size calculation:
-    // - If taxi.fleet.size is explicitly set in config, use that value
-    // - Otherwise, calculate: taxiFleetSize = taxiTotalRegistered × taxiOperatingRate
-    // This allows simulation of different cities with different taxi populations
-    // by setting total.registered and operating.rate specific to each city
-    private int taxiTotalRegistered = 50000;     // Total registered taxis in the city
-    private double taxiOperatingRate = 0.80;      // Fraction of taxis operating at any time
-    private int taxiFleetSize = 1000;             // Actual fleet size (calculated or explicit)
+    // ═══ Fleet Configuration ═══
+    /** Total registered taxis in the city. Source: city taxi association statistics. */
+    private int taxiTotalRegistered = 50000;
+    /** Fraction of registered taxis operating at any given time. */
+    private double taxiOperatingRate = 0.80;
+    /**
+     * Active fleet size for simulation. If explicitly set in config, uses that value;
+     * otherwise calculated as taxiTotalRegistered * taxiOperatingRate.
+     */
+    private int taxiFleetSize = 1000;
 
-    // ===== TRIP CONFIGURATION =====
+    // ═══ Trip Configuration ═══
+    /** Average number of trips per taxi per shift. City-specific calibration. */
     private double taxiTripsAverage = 26.8;
+    /** Minimum trips per taxi per shift. */
     private int taxiTripsMin = 20;
+    /** Maximum trips per taxi per shift (hard cap). */
     private int taxiTripsMax = 35;
+    /** Standard deviation for Gaussian trip count variation. */
     private double taxiTripsStddev = 3.0;
 
-    // ===== DISTANCE PARAMETERS =====
+    // ═══ Distance Parameters ═══
+    /** Average trip distance in km. */
     private double tripDistanceAverage = 5.0;
+    /** Standard deviation of trip distance in km. */
     private double tripDistanceStddev = 2.0;
+    /** Minimum trip distance in km (shorter trips rejected). */
     private double tripDistanceMin = 0.5;
+    /** Maximum trip distance in km (longer trips capped). */
     private double tripDistanceMax = 15.0;
 
-    // ===== NEARBY TRIP LOGIC =====
-    private boolean useNearbyTrips = true;
-    private double nearbyTripProbability = 0.70;
-    private double nearbyTripRadiusKm = 3.0;
+    /**
+     * Spatial-validation retry budget per trip-pair generation attempt.
+     * Default 200 (raised from previously hardcoded 50 in TaxiSimulation v6.0).
+     * Higher values reduce premature loop exit in dense zones with strong
+     * water/river constraints (Sumida River, Tokyo Bay coast, Tama River) at
+     * small runtime cost. Configured via {@code taxi.trip.generation.max.attempts}.
+     */
+    private int tripGenerationMaxAttempts = 200;
 
-    // ===== SHIFT CONFIGURATION =====
+    // ═══ Phase 3 (B1): v7.0 log-normal distance distribution ═══
+    // DESIGN.md §2.6 — used by shift_time engine only. Legacy engine ignores these.
+    //
+    // Loaded leg: lognormal(mu = ln(4.6) - sigma^2/2, sigma = 0.6), bounded [0.5, 15] km
+    //   The -sigma^2/2 correction makes the arithmetic mean = trip.distance.average.
+    // Empty leg:  lognormal(mu = ln(5.1) - sigma^2/2, sigma = 0.7), bounded [0.3, 12] km
+    //   Empty mean is loaded by Phase 3 but only used in Phase 4+ (DUAL_MODE).
+    /** Sigma of log-normal loaded-leg distance (Phase 3 / shift_time engine). */
+    private double tripDistanceLoadedSigma = 0.6;
+    /** Mean of log-normal empty-leg distance (Phase 4+; loaded but unused in Phase 3). */
+    private double tripDistanceEmptyMeanKm = 5.1;
+    /** Sigma of log-normal empty-leg distance (Phase 4+; loaded but unused in Phase 3). */
+    private double tripDistanceEmptySigma = 0.7;
+    /**
+     * Nearest-valid-projection radius for the spiral-grid scan when a sampled
+     * dropoff position fails spatial validation. Phase 3 / shift_time engine.
+     * Default 0.5 km (500 m) per DESIGN.md §2.6.
+     */
+    private double projectionRadiusKm = 0.5;
+
+    // ═══ Nearby Trip Logic ═══
+    /** Whether nearby-trip destination bias is enabled. */
+    private boolean useNearbyTrips = true;
+    /** Probability [0.0, 1.0] of selecting a nearby destination over a random one. */
+    private double nearbyTripProbability = 0.70;
+    /** Radius in km defining "nearby" for trip destination selection. */
+    private double nearbyTripRadiusKm = 3.0;
+    /**
+     * Minimum reposition distance (km) before an empty trip is emitted between
+     * two passenger trips. Default 0.05 km (50 m) matches pre-2026 behavior but
+     * is implausibly small compared with Tokyo field data (~500 m typical
+     * cruising). Consider raising if empty-trip fractions look inflated.
+     */
+    private double emptyTripThresholdKm = 0.05;
+
+    // (Simulation engine flag removed in B4 / Phase 7 — shift_time is now the
+    // only engine. The legacy v6.x trip-count-driven loop and its rejection-
+    // resampling helpers were deleted from TaxiSimulation.java. Pre-B4 .bak
+    // files in src/taxi/sim/*.legacy.bak preserve the rollback path.)
+
+    // ═══ Shift Configuration ═══
+    /** Minimum shift duration in hours. */
     private int shiftDurationMin = 12;
+    /** Maximum shift duration in hours. */
     private int shiftDurationMax = 16;
+    /** Average shift duration in hours. Gaussian center. */
     private double shiftDurationAverage = 14;
+    /** Standard deviation of shift duration in hours. */
     private double shiftDurationStddev = 1.0;
 
-    // Shift start times (in seconds since midnight)
+    /** First shift cohort start time (seconds since midnight). */
     private long shiftStart1Time = 6 * 3600;
+    /** Probability of a taxi belonging to the first shift cohort. */
     private double shiftStart1Prob = 0.40;
+    /** Second shift cohort start time (seconds since midnight). */
     private long shiftStart2Time = 8 * 3600;
+    /** Probability of a taxi belonging to the second shift cohort. */
     private double shiftStart2Prob = 0.30;
+    /** Third shift cohort start time (seconds since midnight). */
     private long shiftStart3Time = 14 * 3600;
+    /** Probability of a taxi belonging to the third shift cohort. */
     private double shiftStart3Prob = 0.30;
 
-    // ===== ROUTING PARAMETERS =====
+    // ═══ Routing Parameters ═══
+    /** Average taxi travel speed in km/h. Used for travel time estimation. */
     private double taxiAverageSpeed = 20.0;
-    private int taxiPickupTime = 300;     // seconds
-    private int taxiBreakTime = 600;      // seconds
-    private double manhattanFactor = 1.4;  // road distance = straight-line × factor
+    /** Passenger pickup time in seconds. Added to each trip duration. */
+    private int taxiPickupTime = 300;
+    /** Break time between trips in seconds. */
+    private int taxiBreakTime = 600;
+    /** Manhattan factor: road distance = straight-line distance * this factor. */
+    private double manhattanFactor = 1.4;
 
-    // ===== CITY & GEOGRAPHICAL PARAMETERS =====
-    private String cityName = "Tokyo";            // City name for display
-    private String configDir = "config/taxi/";    // Directory containing config files
+    // ═══ City & Geographical Parameters ═══
+    /** City name for display and output labeling. */
+    private String cityName = "Tokyo";
+    /** Directory containing per-city config files (zones.csv, etc.). */
+    private String configDir = "config/taxi/";
+    /** Minimum longitude of city bounding box. */
     private double boundsMinLon = 139.6;
+    /** Maximum longitude of city bounding box. */
     private double boundsMaxLon = 139.9;
+    /** Minimum latitude of city bounding box. */
     private double boundsMinLat = 35.5;
+    /** Maximum latitude of city bounding box. */
     private double boundsMaxLat = 35.8;
-    private double earthRadiusKm = 6371.0;  // For Haversine formula
+    /** Earth radius in km for Haversine distance calculations. */
+    private double earthRadiusKm = 6371.0;
 
-    // ===== HOTSPOT CONFIGURATION =====
+    // ═══ Hotspot Configuration ═══
+    /** Whether demand hotspot zones (stations, airports) are enabled. */
     private boolean useHotspots = true;
+    /** Multiplier for airport zone demand during night hours. */
     private double hotspotAirportNightMultiplier = 2.0;
 
-    // ===== FARE PARAMETERS =====
+    // ═══ Fare Parameters ═══
+    /** Base fare in yen (flag drop). Source: THTA / city taxi association. */
     private double taxiFareBase = 730.0;
+    /** Distance in km covered by base fare. */
     private double taxiFareBaseDistance = 2.0;
+    /** Per-km fare in yen beyond base distance. */
     private double taxiFarePerKm = 320.0;
+    /** Waiting charge per hour in yen. */
     private double taxiFareWaitingPerHour = 3085.0;
+    /** Night surcharge multiplier (e.g. 1.20 = +20%). Applied during nightHours. */
     private double taxiFareNightSurcharge = 1.20;
 
-    // ===== NIGHT HOURS =====
-    // Night hours for fare surcharge and hotspot weighting
-    private int nightHoursStart = 22;  // 22:00
-    private int nightHoursEnd = 5;     // 05:00
-    private long nightHoursStartSeconds = 22 * 3600;  // 79200
-    private long nightHoursEndSeconds = 5 * 3600;     // 18000
+    // ═══ Night Hours ═══
+    /** Night period start hour (24h format). Used for fare surcharge and hotspot weighting. */
+    private int nightHoursStart = 22;
+    /** Night period end hour (24h format). */
+    private int nightHoursEnd = 5;
+    /** Night period start in seconds since midnight. */
+    private long nightHoursStartSeconds = 22 * 3600;
+    /** Night period end in seconds since midnight. */
+    private long nightHoursEndSeconds = 5 * 3600;
 
-    // ===== TIME/DATE FORMATS =====
+    // ═══ Time/Date Formats ═══
+    /** Date-time format for CSV export timestamps. */
     private String exportDatetimeFormat = "MM/dd/yyyy HH:mm";
+    /** Timestamp format for run directory naming. */
     private String exportTimestampFormat = "yyyyMMdd_HHmmss";
 
-    // ===== SYSTEM =====
+    // ═══ System ═══
+    /** Random seed for deterministic reproducibility. Negative = non-reproducible. */
     private int randomSeed = 12345;
 
-    // ===== TAXI TYPE DISTRIBUTION =====
-    private double taxiTypeLocalProb = 0.70;      // 70% LOCAL type
-    private double taxiTypeCitywideProb = 0.15;   // 15% CITYWIDE type
-    private double taxiTypeHubProb = 0.15;        // 15% HUB type
-    private double localFamiliarRadiusKm = 5.0;   // Familiar area radius for LOCAL taxis (legacy)
+    // ═══ Taxi Type Distribution ═══
+    /** Probability of generating a LOCAL taxi (operates within familiar zone cluster). */
+    private double taxiTypeLocalProb = 0.70;
+    /** Probability of generating a CITYWIDE taxi (operates across entire city). */
+    private double taxiTypeCitywideProb = 0.15;
+    /** Probability of generating a HUB taxi (anchored to stations/airports). */
+    private double taxiTypeHubProb = 0.15;
+    /** Familiar area radius in km for LOCAL taxis (legacy, pre-V4.0 zone clustering). */
+    private double localFamiliarRadiusKm = 5.0;
 
-    // ===== ZONE CLUSTERING (V4.0) =====
-    private int zoneClusterMinZones = 3;                  // Min familiar zones for LOCAL taxis
-    private int zoneClusterMaxZones = 5;                  // Max familiar zones for LOCAL taxis
-    private double zoneClusterMinDistanceKm = 5.0;        // Min distance between cluster zones
-    private double zoneClusterMaxDistanceKm = 10.0;       // Max distance between cluster zones
+    // ═══ v7.0 Five-type Fleet (Phase 1, used by shift_time engine) ═══
+    // DESIGN.md §2.1 — defaults match Tokyo 特別区・武三 FY2024 calibration.
+    // Sums to 1.000: 0.500 + 0.150 + 0.200 + 0.095 + 0.005 = 1.000
+    /** v7.0: LOCAL share of fleet. Read by initializeTaxis() when isShiftTimeEngine(). */
+    private double taxiTypeLocalShare = 0.500;
+    /** v7.0: CITYWIDE share of fleet. */
+    private double taxiTypeCitywideShare = 0.150;
+    /** v7.0: APP_PREFERRED share. Sensitivity range [0.20, 0.60]; default 0.20 per DESIGN.md NEW-1. */
+    private double taxiTypeAppPreferredShare = 0.200;
+    /** v7.0: HUB share (held fixed in NEW-1 sensitivity reallocation). */
+    private double taxiTypeHubShare = 0.095;
+    /** v7.0: RIDE_HAIL_PRHS share (held fixed; matches MLIT 1,365 trips/day vs ~625K total ≈0.22%). */
+    private double taxiTypeRideHailPrhsShare = 0.005;
 
-    // ===== TIME PERIODS =====
-    // Three time periods for attractiveness calculation
-    private long timePeriod1Start = 5 * 3600;    // Morning: 05:00
-    private long timePeriod1End = 10 * 3600;     // to 10:00
-    private long timePeriod2Start = 10 * 3600;   // Daytime: 10:00
-    private long timePeriod2End = 18 * 3600;     // to 18:00
-    // Period 3 (Night): 18:00-05:00 (everything else)
+    /** v7.0: APP_PREFERRED has no familiar zone (citywide demand-following). 0.0 = unrestricted. */
+    private double taxiTypeAppPreferredFamiliarRadiusKm = 0.0;
+    /** v7.0: RIDE_HAIL_PRHS has no familiar zone (regulatorily citywide). 0.0 = unrestricted. */
+    private double taxiTypeRideHailPrhsFamiliarRadiusKm = 0.0;
 
-    // ===== ATTRACTIVENESS COEFFICIENTS =====
-    private double attractivenessBeta1 = 1.0;  // Jobs coefficient
-    private double attractivenessBeta2 = 0.8;  // Shops coefficient
-    private double attractivenessBeta3 = 0.6;  // Nightlife coefficient
-    private double attractivenessBeta4 = 0.5;  // Residential coefficient
+    // ═══ v7.0 Per-Type Mode Mix (street / app / stand) ═══
+    // Each row sums to 1.0. RIDE_HAIL_PRHS street is regulatorily 0% (Road Transport Act 78-3).
+    /** LOCAL street-hail probability. */    private double taxiTypeLocalModeStreet = 0.70;
+    /** LOCAL app-dispatch probability. */   private double taxiTypeLocalModeApp = 0.25;
+    /** LOCAL stand-queue probability. */    private double taxiTypeLocalModeStand = 0.05;
 
-    // ===== SPATIAL VALIDATION =====
+    /** CITYWIDE street-hail probability. */ private double taxiTypeCitywideModeStreet = 0.60;
+    /** CITYWIDE app-dispatch probability. */private double taxiTypeCitywideModeApp = 0.30;
+    /** CITYWIDE stand-queue probability. */ private double taxiTypeCitywideModeStand = 0.10;
+
+    /** APP_PREFERRED street-hail probability. */ private double taxiTypeAppPreferredModeStreet = 0.20;
+    /** APP_PREFERRED app-dispatch probability. */private double taxiTypeAppPreferredModeApp = 0.75;
+    /** APP_PREFERRED stand-queue probability. */ private double taxiTypeAppPreferredModeStand = 0.05;
+
+    /** HUB street-hail probability. */    private double taxiTypeHubModeStreet = 0.10;
+    /** HUB app-dispatch probability. */   private double taxiTypeHubModeApp = 0.30;
+    /** HUB stand-queue probability. */    private double taxiTypeHubModeStand = 0.60;
+
+    /** RIDE_HAIL_PRHS street-hail probability (regulatorily 0%). */
+    private double taxiTypeRideHailPrhsModeStreet = 0.00;
+    /** RIDE_HAIL_PRHS app-dispatch probability (100% by regulation). */
+    private double taxiTypeRideHailPrhsModeApp = 1.00;
+    /** RIDE_HAIL_PRHS stand-queue probability (regulatorily 0%). */
+    private double taxiTypeRideHailPrhsModeStand = 0.00;
+
+    // ═══ v7.0 AT_STAND Exponential Wait (DESIGN.md §2.8) ═══
+    /** Mean exponential wait at airport stands (Haneda, Narita) in minutes. */
+    private double taxiStandWaitAirportMeanMinutes = 8.0;
+    /** Mean exponential wait at major-station stands (Tokyo, Shinjuku, etc.) in minutes. */
+    private double taxiStandWaitStationMeanMinutes = 12.0;
+    /** Mean exponential wait at entertainment stands (Roppongi) in minutes. */
+    private double taxiStandWaitEntertainmentMeanMinutes = 6.0;
+
+    // ═══ v7.0 RIDE_HAIL_PRHS Regulatory Windows (DESIGN.md §2.9) ═══
+    /** Number of MLIT-permitted PRHS operating windows in current scenario. */
+    private int prhsWindowCount = 0;
+    /**
+     * PRHS windows as raw spec strings, e.g. {@code "07:00-10:00,Mon-Fri"}.
+     * Parsed by ShiftSimulator at runtime via {@code PrhsWindow.parse(spec)}.
+     * FY2024 default: 4 windows; R8 contraction: 1 window.
+     */
+    private final java.util.List<String> prhsWindowSpecs = new java.util.ArrayList<>();
+
+    /**
+     * Day of the week this simulation represents (Mon/Tue/.../Sun). Used by
+     * PRHS window filtering — only windows whose day-spec matches are active
+     * for this run. For paper §6.4, average results across 7 daily runs.
+     */
+    private String simDayOfWeek = "Mon";
+
+    // ═══ B7 / Diagnostic Instrumentation (default off) ═══
+    /** When true, ShiftSimulator writes per-cycle records to <run_dir>/diagnostic.csv. */
+    private boolean diagnosticsEnabled = false;
+    /** Stratified sampling fraction for diagnostic emit (default 10% per type). */
+    private double diagnosticsSampleFraction = 0.10;
+    /** Minimum sampled taxis per TaxiType, ensuring rare types get coverage. */
+    private int diagnosticsSampleMinimumPerType = 50;
+
+    // ═══ B7.3 / Shift-time engine cycle overhead (THTA-aligned) ═══
+    /** Per-cycle pickup wait time (seconds) for shift_time engine. Default 30s. */
+    private int shiftPickupTimeSeconds = 30;
+    /** Per-cycle post-dropoff break (seconds) for shift_time engine. Default 30s. */
+    private int shiftBreakTimeSeconds = 30;
+
+    // ═══ Zone Clustering (V4.0) ═══
+    /** Minimum number of familiar zones assigned to LOCAL taxis. */
+    private int zoneClusterMinZones = 3;
+    /** Maximum number of familiar zones assigned to LOCAL taxis. */
+    private int zoneClusterMaxZones = 5;
+    /** Minimum distance (km) between zones in a cluster. */
+    private double zoneClusterMinDistanceKm = 5.0;
+    /** Maximum distance (km) between zones in a cluster. */
+    private double zoneClusterMaxDistanceKm = 10.0;
+
+    // ═══ Time Periods ═══
+    /** Morning period start (seconds since midnight). For attractiveness calculation. */
+    private long timePeriod1Start = 5 * 3600;
+    /** Morning period end (seconds since midnight). */
+    private long timePeriod1End = 10 * 3600;
+    /** Daytime period start (seconds since midnight). */
+    private long timePeriod2Start = 10 * 3600;
+    /** Daytime period end (seconds since midnight). Night = everything else. */
+    private long timePeriod2End = 18 * 3600;
+
+    // ═══ Attractiveness Coefficients ═══
+    /** Attractiveness weight for employment/job density. */
+    private double attractivenessBeta1 = 1.0;
+    /** Attractiveness weight for commercial/shop density. */
+    private double attractivenessBeta2 = 0.8;
+    /** Attractiveness weight for nightlife/entertainment density. */
+    private double attractivenessBeta3 = 0.6;
+    /** Attractiveness weight for residential density. */
+    private double attractivenessBeta4 = 0.5;
+
+    // ═══ Spatial Validation ═══
+    /** Whether 3-layer spatial validation (land/water/river) is enabled. */
     private boolean spatialValidationEnabled = true;
+    /** Directory containing shared Japan admin shapefiles. */
     private String shapefileDir = "src/shared/gm-jp/";
+    /** Buffer distance (km) around rivers for point rejection. */
     private double riverBufferKm = 0.15;
-    private String prefectureCodes = "";  // e.g. "13,14" — filter polbnda_jpn.shp by adm_code prefix
+    /** Comma-separated prefecture adm_code prefixes for shapefile filtering. */
+    private String prefectureCodes = "";
 
-    // ===== TRANSPORT NETWORK INDEX =====
+    // ═══ Transport Network Index ═══
+    /** Whether station/airport proximity enrichment is enabled. */
     private boolean transportIndexEnabled = true;
-    private double stationProximityMaxKm = 2.0;     // Max distance for station boost
-    private double stationBiasProb = 0.4;           // Probability of station-biased point generation
+    /** Maximum distance (km) for station proximity boost. */
+    private double stationProximityMaxKm = 2.0;
+    /** Probability [0.0, 1.0] of generating station-biased origin/destination points. */
+    private double stationBiasProb = 0.4;
 
-    // ===== SPATIAL DISTRIBUTION (V5.2) =====
-    // Replaces radial-uniform polar sampling with configurable distribution
-    private String spatialDistributionMode = "gaussian";  // "gaussian" or "uniform"
-    private double spatialGaussianSigmaFactor = 2.5;      // sigma = radius / this value
-    private double spatialGaussianClipFactor = 1.2;       // max distance = radius * this value
-    private double spatialAspectX = 1.0;                  // E-W stretch factor (>1 = wider)
-    private double spatialAspectY = 1.0;                  // N-S stretch factor (>1 = taller)
-    private double spatialJitterMeters = 50.0;            // final random perturbation in meters
+    // ═══ Spatial Distribution (V5.2) ═══
+    /** Point generation mode: "gaussian" (center-weighted) or "uniform" (radial). */
+    private String spatialDistributionMode = "gaussian";
+    /** Gaussian sigma = zone radius / this factor. Smaller = tighter clustering. */
+    private double spatialGaussianSigmaFactor = 2.5;
+    /** Maximum sampling distance = zone radius * this factor. Hard clip boundary. */
+    private double spatialGaussianClipFactor = 1.2;
+    /** East-West stretch factor for zone shapes (>1 = wider ellipse). */
+    private double spatialAspectX = 1.0;
+    /** North-South stretch factor for zone shapes (>1 = taller ellipse). */
+    private double spatialAspectY = 1.0;
+    /** Final random perturbation in meters applied after all other sampling. */
+    private double spatialJitterMeters = 50.0;
 
-    // ===== ZONE ENRICHMENT FROM SHAPEFILES =====
+    // ═══ Zone Enrichment from Shapefiles ═══
+    /** Whether automatic zone creation from station/settlement shapefiles is enabled. */
     private boolean zoneEnrichmentEnabled = true;
-    private double stationCoverageKm = 1.5;       // station is "covered" if within this of existing zone
-    private double settlementCoverageKm = 2.0;     // settlement is "covered" if within this of existing zone
+    /** Distance threshold (km): stations within this of an existing zone are skipped. */
+    private double stationCoverageKm = 1.5;
+    /** Distance threshold (km): settlements within this of an existing zone are skipped. */
+    private double settlementCoverageKm = 2.0;
 
-    // ===== ZONE CONFIGURATION =====
-    private String zonesFile = "zones.csv";  // Zone CSV file path
+    // ═══ Zone Configuration ═══
+    /** CSV filename for zone definitions (loaded relative to configDir). */
+    private String zonesFile = "zones.csv";
 
     /**
      * Private constructor for singleton pattern
@@ -191,6 +402,7 @@ public class TaxiConfig {
      * @return true if loaded successfully, false otherwise
      */
     public boolean loadFromFile(String configPath) {
+        this.configFilePath = configPath;
         Properties props = new Properties();
 
         try (FileInputStream fis = new FileInputStream(configPath)) {
@@ -199,6 +411,9 @@ public class TaxiConfig {
             System.out.println("=== Loading Configuration ===");
 
             // Load all parameters with defaults
+            // (B4 / Phase 7: simulation engine flag removed; v7.0 shift_time is
+            // the only engine. Any taxi.simulation.engine= line in a .properties
+            // file is silently ignored.)
             loadDirectories(props);
             loadFleetConfig(props);
             loadTripConfig(props);
@@ -269,15 +484,27 @@ public class TaxiConfig {
         tripDistanceStddev = getDouble(props, "trip.distance.stddev", tripDistanceStddev);
         tripDistanceMin = getDouble(props, "trip.distance.min", tripDistanceMin);
         tripDistanceMax = getDouble(props, "trip.distance.max", tripDistanceMax);
-        System.out.println("  Trip distance: " + tripDistanceAverage + " km average");
+        tripGenerationMaxAttempts = getInt(props, "taxi.trip.generation.max.attempts", tripGenerationMaxAttempts);
+        // Phase 3 (B1): log-normal distance params for shift_time engine
+        tripDistanceLoadedSigma = getDouble(props, "trip.distance.loaded.sigma", tripDistanceLoadedSigma);
+        tripDistanceEmptyMeanKm = getDouble(props, "trip.distance.empty.mean.km", tripDistanceEmptyMeanKm);
+        tripDistanceEmptySigma = getDouble(props, "trip.distance.empty.sigma", tripDistanceEmptySigma);
+        projectionRadiusKm = getDouble(props, "spatial.projection.radius.km", projectionRadiusKm);
+        System.out.println("  Trip distance (loaded leg lognormal): mean=" + tripDistanceAverage
+            + " km, sigma=" + tripDistanceLoadedSigma + ", bounds=[" + tripDistanceMin + ", " + tripDistanceMax + "] km");
+        System.out.println("  Empty leg lognormal: mean=" + tripDistanceEmptyMeanKm
+            + " km, sigma=" + tripDistanceEmptySigma);
+        System.out.println("  Projection radius: " + projectionRadiusKm + " km (spiral-grid scan)");
     }
 
     private void loadNearbyTripLogic(Properties props) {
         useNearbyTrips = getBoolean(props, "use.nearby.trips", useNearbyTrips);
         nearbyTripProbability = getDouble(props, "nearby.trip.probability", nearbyTripProbability);
         nearbyTripRadiusKm = getDouble(props, "nearby.trip.radius.km", nearbyTripRadiusKm);
+        emptyTripThresholdKm = getDouble(props, "empty.trip.threshold.km", emptyTripThresholdKm);
         System.out.println("  Nearby trips: " + (useNearbyTrips ? "ENABLED" : "DISABLED") +
             " (" + (nearbyTripProbability * 100) + "% within " + nearbyTripRadiusKm + " km)");
+        System.out.println("  Empty trip threshold: " + emptyTripThresholdKm + " km");
     }
 
     private void loadShiftConfig(Properties props) {
@@ -376,10 +603,71 @@ public class TaxiConfig {
     }
 
     private void loadTaxiTypeDistribution(Properties props) {
+        // Legacy 3-type prob keys (used by initializeTaxis when engine=legacy).
         taxiTypeLocalProb = getDouble(props, "taxi.type.local.prob", taxiTypeLocalProb);
         taxiTypeCitywideProb = getDouble(props, "taxi.type.citywide.prob", taxiTypeCitywideProb);
         taxiTypeHubProb = getDouble(props, "taxi.type.hub.prob", taxiTypeHubProb);
         localFamiliarRadiusKm = getDouble(props, "taxi.type.local.familiar.radius.km", localFamiliarRadiusKm);
+
+        // v7.0 5-type share keys (used by initializeTaxis when engine=shift_time, B2/Phase 4).
+        taxiTypeLocalShare = getDouble(props, "taxi.type.local.share", taxiTypeLocalShare);
+        taxiTypeCitywideShare = getDouble(props, "taxi.type.citywide.share", taxiTypeCitywideShare);
+        taxiTypeAppPreferredShare = getDouble(props, "taxi.type.app_preferred.share", taxiTypeAppPreferredShare);
+        taxiTypeHubShare = getDouble(props, "taxi.type.hub.share", taxiTypeHubShare);
+        taxiTypeRideHailPrhsShare = getDouble(props, "taxi.type.ride_hail_prhs.share", taxiTypeRideHailPrhsShare);
+
+        taxiTypeAppPreferredFamiliarRadiusKm = getDouble(props,
+            "taxi.type.app_preferred.familiar.radius.km", taxiTypeAppPreferredFamiliarRadiusKm);
+        taxiTypeRideHailPrhsFamiliarRadiusKm = getDouble(props,
+            "taxi.type.ride_hail_prhs.familiar.radius.km", taxiTypeRideHailPrhsFamiliarRadiusKm);
+
+        // v7.0 per-type mode mix (street / app / stand) — used by ModeMixResolver in B2/Phase 4.
+        taxiTypeLocalModeStreet = getDouble(props, "taxi.type.local.mode.street", taxiTypeLocalModeStreet);
+        taxiTypeLocalModeApp    = getDouble(props, "taxi.type.local.mode.app",    taxiTypeLocalModeApp);
+        taxiTypeLocalModeStand  = getDouble(props, "taxi.type.local.mode.stand",  taxiTypeLocalModeStand);
+        taxiTypeCitywideModeStreet = getDouble(props, "taxi.type.citywide.mode.street", taxiTypeCitywideModeStreet);
+        taxiTypeCitywideModeApp    = getDouble(props, "taxi.type.citywide.mode.app",    taxiTypeCitywideModeApp);
+        taxiTypeCitywideModeStand  = getDouble(props, "taxi.type.citywide.mode.stand",  taxiTypeCitywideModeStand);
+        taxiTypeAppPreferredModeStreet = getDouble(props, "taxi.type.app_preferred.mode.street", taxiTypeAppPreferredModeStreet);
+        taxiTypeAppPreferredModeApp    = getDouble(props, "taxi.type.app_preferred.mode.app",    taxiTypeAppPreferredModeApp);
+        taxiTypeAppPreferredModeStand  = getDouble(props, "taxi.type.app_preferred.mode.stand",  taxiTypeAppPreferredModeStand);
+        taxiTypeHubModeStreet = getDouble(props, "taxi.type.hub.mode.street", taxiTypeHubModeStreet);
+        taxiTypeHubModeApp    = getDouble(props, "taxi.type.hub.mode.app",    taxiTypeHubModeApp);
+        taxiTypeHubModeStand  = getDouble(props, "taxi.type.hub.mode.stand",  taxiTypeHubModeStand);
+        taxiTypeRideHailPrhsModeStreet = getDouble(props, "taxi.type.ride_hail_prhs.mode.street", taxiTypeRideHailPrhsModeStreet);
+        taxiTypeRideHailPrhsModeApp    = getDouble(props, "taxi.type.ride_hail_prhs.mode.app",    taxiTypeRideHailPrhsModeApp);
+        taxiTypeRideHailPrhsModeStand  = getDouble(props, "taxi.type.ride_hail_prhs.mode.stand",  taxiTypeRideHailPrhsModeStand);
+
+        // v7.0 AT_STAND exponential wait (DESIGN.md §2.8).
+        taxiStandWaitAirportMeanMinutes = getDouble(props, "taxi.stand.wait.airport.mean.minutes", taxiStandWaitAirportMeanMinutes);
+        taxiStandWaitStationMeanMinutes = getDouble(props, "taxi.stand.wait.station.mean.minutes", taxiStandWaitStationMeanMinutes);
+        taxiStandWaitEntertainmentMeanMinutes = getDouble(props, "taxi.stand.wait.entertainment.mean.minutes", taxiStandWaitEntertainmentMeanMinutes);
+
+        // v7.0 PRHS regulatory windows (DESIGN.md §2.9).
+        prhsWindowCount = getInt(props, "prhs.window.count", 0);
+        prhsWindowSpecs.clear();
+        for (int i = 1; i <= prhsWindowCount; i++) {
+            String spec = props.getProperty("prhs.window." + i);
+            if (spec != null && !spec.isEmpty()) {
+                prhsWindowSpecs.add(spec);
+            }
+        }
+        simDayOfWeek = props.getProperty("sim.day.of.week", simDayOfWeek);
+
+        // B7: diagnostic instrumentation flags (default off)
+        diagnosticsEnabled = getBoolean(props, "taxi.diagnostics.enabled", diagnosticsEnabled);
+        diagnosticsSampleFraction = getDouble(props, "taxi.diagnostics.sample.fraction", diagnosticsSampleFraction);
+        diagnosticsSampleMinimumPerType = getInt(props, "taxi.diagnostics.sample.minimum.per.type", diagnosticsSampleMinimumPerType);
+        if (diagnosticsEnabled) {
+            System.out.println("  [B7 diagnostics] ENABLED — sample fraction=" + diagnosticsSampleFraction
+                + ", min per type=" + diagnosticsSampleMinimumPerType);
+        }
+
+        // B7.3: shift_time-engine cycle overhead (THTA-aligned)
+        shiftPickupTimeSeconds = getInt(props, "taxi.shift.pickup.time.seconds", shiftPickupTimeSeconds);
+        shiftBreakTimeSeconds = getInt(props, "taxi.shift.break.time.seconds", shiftBreakTimeSeconds);
+        System.out.println("  [v7.0 cycle overhead] pickup=" + shiftPickupTimeSeconds
+            + "s, break=" + shiftBreakTimeSeconds + "s (legacy was 300+600 = 15 min)");
 
         // V4.0: Zone clustering parameters
         zoneClusterMinZones = getInt(props, "zone.cluster.min.zones", zoneClusterMinZones);
@@ -387,10 +675,16 @@ public class TaxiConfig {
         zoneClusterMinDistanceKm = getDouble(props, "zone.cluster.min.distance.km", zoneClusterMinDistanceKm);
         zoneClusterMaxDistanceKm = getDouble(props, "zone.cluster.max.distance.km", zoneClusterMaxDistanceKm);
 
-        System.out.println("  Taxi types: LOCAL=" + (taxiTypeLocalProb * 100) + "%, " +
-            "CITYWIDE=" + (taxiTypeCitywideProb * 100) + "%, " +
-            "HUB=" + (taxiTypeHubProb * 100) + "%");
-        System.out.println("  Local familiar radius (legacy): " + localFamiliarRadiusKm + " km");
+        System.out.println("  Taxi types: LOCAL=" + (taxiTypeLocalShare * 100)
+            + "%, CITYWIDE=" + (taxiTypeCitywideShare * 100)
+            + "%, APP_PREFERRED=" + (taxiTypeAppPreferredShare * 100)
+            + "%, HUB=" + (taxiTypeHubShare * 100)
+            + "%, RIDE_HAIL_PRHS=" + (taxiTypeRideHailPrhsShare * 100) + "%");
+        System.out.println("  Stand wait (Exp mean min): airport=" + taxiStandWaitAirportMeanMinutes
+            + ", station=" + taxiStandWaitStationMeanMinutes
+            + ", entertainment=" + taxiStandWaitEntertainmentMeanMinutes);
+        System.out.println("  PRHS windows: " + prhsWindowCount + " configured" + (prhsWindowCount > 0 ? " " + prhsWindowSpecs : ""));
+        System.out.println("  Local familiar radius: " + localFamiliarRadiusKm + " km");
         System.out.println("  Zone clustering: " + zoneClusterMinZones + "-" + zoneClusterMaxZones +
             " zones within " + zoneClusterMinDistanceKm + "-" + zoneClusterMaxDistanceKm + " km");
     }
@@ -544,6 +838,10 @@ public class TaxiConfig {
 
     // ===== GETTERS =====
 
+    // (B4 / Phase 7: getSimulationEngine() and isShiftTimeEngine() removed —
+    // shift_time is now the only engine. v6.x .properties files setting
+    // taxi.simulation.engine=... are silently ignored by the loader.)
+
     public String getInputDirectory() { return inputDirectory; }
     public String getOutputDirectory() { return outputDirectory; }
 
@@ -561,9 +859,32 @@ public class TaxiConfig {
     public double getTripDistanceMin() { return tripDistanceMin; }
     public double getTripDistanceMax() { return tripDistanceMax; }
 
+    /**
+     * Spatial-validation retry budget per trip-pair generation attempt.
+     * Configured via {@code taxi.trip.generation.max.attempts} (default 200).
+     * Higher values reduce premature loop exit in dense zones with strong
+     * water/river constraints; lower values run faster.
+     */
+    public int getTripGenerationMaxAttempts() { return tripGenerationMaxAttempts; }
+
+    // Phase 3 (B1) — v7.0 log-normal distance distribution getters
+    /** Sigma of log-normal loaded-leg distance. Used by shift_time engine. DESIGN.md §2.6. */
+    public double getTripDistanceLoadedSigma() { return tripDistanceLoadedSigma; }
+    /** Mean of log-normal empty-leg distance in km. Loaded by Phase 3, used by Phase 4+. */
+    public double getTripDistanceEmptyMeanKm() { return tripDistanceEmptyMeanKm; }
+    /** Sigma of log-normal empty-leg distance. Loaded by Phase 3, used by Phase 4+. */
+    public double getTripDistanceEmptySigma() { return tripDistanceEmptySigma; }
+    /**
+     * Spiral-grid projection radius (km) for nearest-valid-cell snap when a
+     * sampled dropoff position fails spatial validation. Used by shift_time
+     * engine in Phase 3+. DESIGN.md §2.6.
+     */
+    public double getProjectionRadiusKm() { return projectionRadiusKm; }
+
     public boolean isUseNearbyTrips() { return useNearbyTrips; }
     public double getNearbyTripProbability() { return nearbyTripProbability; }
     public double getNearbyTripRadiusKm() { return nearbyTripRadiusKm; }
+    public double getEmptyTripThresholdKm() { return emptyTripThresholdKm; }
 
     public int getShiftDurationMin() { return shiftDurationMin; }
     public int getShiftDurationMax() { return shiftDurationMax; }
@@ -620,6 +941,59 @@ public class TaxiConfig {
     public double getTaxiTypeCitywideProb() { return taxiTypeCitywideProb; }
     public double getTaxiTypeHubProb() { return taxiTypeHubProb; }
     public double getLocalFamiliarRadiusKm() { return localFamiliarRadiusKm; }
+
+    // ═══ v7.0 5-type fleet share getters (B2 / Phase 4) ═══
+    public double getTaxiTypeLocalShare()         { return taxiTypeLocalShare; }
+    public double getTaxiTypeCitywideShare()      { return taxiTypeCitywideShare; }
+    public double getTaxiTypeAppPreferredShare()  { return taxiTypeAppPreferredShare; }
+    public double getTaxiTypeHubShare()           { return taxiTypeHubShare; }
+    public double getTaxiTypeRideHailPrhsShare()  { return taxiTypeRideHailPrhsShare; }
+    public double getTaxiTypeAppPreferredFamiliarRadiusKm()  { return taxiTypeAppPreferredFamiliarRadiusKm; }
+    public double getTaxiTypeRideHailPrhsFamiliarRadiusKm()  { return taxiTypeRideHailPrhsFamiliarRadiusKm; }
+
+    // ═══ v7.0 Per-type mode-mix getters (street/app/stand) ═══
+    public double getTaxiTypeLocalModeStreet()  { return taxiTypeLocalModeStreet; }
+    public double getTaxiTypeLocalModeApp()     { return taxiTypeLocalModeApp; }
+    public double getTaxiTypeLocalModeStand()   { return taxiTypeLocalModeStand; }
+    public double getTaxiTypeCitywideModeStreet() { return taxiTypeCitywideModeStreet; }
+    public double getTaxiTypeCitywideModeApp()    { return taxiTypeCitywideModeApp; }
+    public double getTaxiTypeCitywideModeStand()  { return taxiTypeCitywideModeStand; }
+    public double getTaxiTypeAppPreferredModeStreet() { return taxiTypeAppPreferredModeStreet; }
+    public double getTaxiTypeAppPreferredModeApp()    { return taxiTypeAppPreferredModeApp; }
+    public double getTaxiTypeAppPreferredModeStand()  { return taxiTypeAppPreferredModeStand; }
+    public double getTaxiTypeHubModeStreet()    { return taxiTypeHubModeStreet; }
+    public double getTaxiTypeHubModeApp()       { return taxiTypeHubModeApp; }
+    public double getTaxiTypeHubModeStand()     { return taxiTypeHubModeStand; }
+    public double getTaxiTypeRideHailPrhsModeStreet() { return taxiTypeRideHailPrhsModeStreet; }
+    public double getTaxiTypeRideHailPrhsModeApp()    { return taxiTypeRideHailPrhsModeApp; }
+    public double getTaxiTypeRideHailPrhsModeStand()  { return taxiTypeRideHailPrhsModeStand; }
+
+    // ═══ v7.0 AT_STAND wait time getters (DESIGN.md §2.8) ═══
+    /** Mean exponential wait at airport stands in MINUTES. */
+    public double getTaxiStandWaitAirportMeanMinutes() { return taxiStandWaitAirportMeanMinutes; }
+    /** Mean exponential wait at major-station stands in MINUTES. */
+    public double getTaxiStandWaitStationMeanMinutes() { return taxiStandWaitStationMeanMinutes; }
+    /** Mean exponential wait at entertainment-district stands in MINUTES. */
+    public double getTaxiStandWaitEntertainmentMeanMinutes() { return taxiStandWaitEntertainmentMeanMinutes; }
+
+    // ═══ v7.0 PRHS regulatory window getters ═══
+    /** Number of MLIT-permitted PRHS operating windows in current scenario. */
+    public int getPrhsWindowCount() { return prhsWindowCount; }
+    /** Raw PRHS window spec strings (e.g. "07:00-10:00,Mon-Fri"). Parsed at runtime. */
+    public java.util.List<String> getPrhsWindowSpecs() { return java.util.Collections.unmodifiableList(prhsWindowSpecs); }
+    /** Day of week the simulation represents (Mon/Tue/.../Sun). For PRHS window filtering. */
+    public String getSimDayOfWeek() { return simDayOfWeek; }
+
+    // B7 diagnostic getters
+    public boolean isDiagnosticsEnabled() { return diagnosticsEnabled; }
+    public double getDiagnosticsSampleFraction() { return diagnosticsSampleFraction; }
+    public int getDiagnosticsSampleMinimumPerType() { return diagnosticsSampleMinimumPerType; }
+
+    // B7.3 shift-time cycle overhead getters
+    /** Per-cycle pickup wait (seconds) for shift_time engine. Default 30s. */
+    public int getShiftPickupTimeSeconds() { return shiftPickupTimeSeconds; }
+    /** Per-cycle post-dropoff break (seconds) for shift_time engine. Default 30s. */
+    public int getShiftBreakTimeSeconds() { return shiftBreakTimeSeconds; }
 
     // V4.0: Zone clustering getters
     public int getZoneClusterMinZones() { return zoneClusterMinZones; }
