@@ -73,9 +73,89 @@ public class TruckDataExporter {
      * @param trips List of trips (including empty trips)
      */
     public void exportAll(List<TruckAgent> trucks, List<TruckTrip> trips) {
+        writeRunMetadata();
         exportTrucks(trucks);
         exportTripsComplete(trucks, trips);
         exportTripsPseudoPFlow(trips);
+    }
+
+    /**
+     * Write a small JSON file capturing run provenance: git commit, config
+     * path, timestamp, JVM, OS. Lets downstream consumers (Baseline Platform,
+     * MVE, validation diff tools) reconcile a result package against the
+     * exact code state that produced it without manual hash-pinning.
+     *
+     * <p>If git is unavailable (no .git dir, missing CLI, etc.) the commit
+     * field is set to "unknown" and the run still succeeds.
+     *
+     * <p>Added 2026-05-03 in response to Shi's Baseline Platform v0.1 audit
+     * (confirmation question G — runtime config snapshots).
+     */
+    private void writeRunMetadata() {
+        String filename = runDirectory + "/run_metadata.json";
+        String commit = captureGitCommit();
+        String dirty = captureGitDirty();
+        String timestamp = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX").format(new Date());
+        String javaVersion = System.getProperty("java.version", "unknown");
+        String osName = System.getProperty("os.name", "unknown");
+        String osVersion = System.getProperty("os.version", "");
+        String userDir = System.getProperty("user.dir", "");
+        String configFilePath = (config != null) ? config.getConfigFilePath() : "unknown";
+
+        try (PrintWriter w = new PrintWriter(new BufferedWriter(new FileWriter(filename)))) {
+            w.println("{");
+            w.println("  \"sim_module\": \"truck\",");
+            w.println("  \"timestamp\": \"" + timestamp + "\",");
+            w.println("  \"git_commit\": \"" + commit + "\",");
+            w.println("  \"git_dirty\": " + dirty + ",");
+            w.println("  \"config_file\": \"" + jsonEscape(configFilePath) + "\",");
+            w.println("  \"output_dir\": \"" + jsonEscape(runDirectory) + "\",");
+            w.println("  \"java_version\": \"" + javaVersion + "\",");
+            w.println("  \"os\": \"" + osName + " " + osVersion + "\",");
+            w.println("  \"working_dir\": \"" + jsonEscape(userDir) + "\"");
+            w.println("}");
+            System.out.println("Wrote run metadata: " + filename + " (commit=" + commit + ")");
+        } catch (IOException e) {
+            System.err.println("Warning: failed to write run_metadata.json: " + e.getMessage());
+        }
+    }
+
+    /** Capture {@code git rev-parse --short HEAD}; returns "unknown" on failure. */
+    private static String captureGitCommit() {
+        return runGitCommand(new String[]{"git", "rev-parse", "--short", "HEAD"}, "unknown");
+    }
+
+    /** Returns "true" if {@code git status --porcelain} reports any changes, else "false"; "false" on failure. */
+    private static String captureGitDirty() {
+        String out = runGitCommand(new String[]{"git", "status", "--porcelain"}, "");
+        return (out != null && !out.isEmpty()) ? "true" : "false";
+    }
+
+    /** Run a git command with a 3-second timeout; return stdout trimmed, or fallback on any error. */
+    private static String runGitCommand(String[] cmd, String fallback) {
+        try {
+            ProcessBuilder pb = new ProcessBuilder(cmd).redirectErrorStream(false);
+            Process p = pb.start();
+            if (!p.waitFor(3, java.util.concurrent.TimeUnit.SECONDS)) {
+                p.destroyForcibly();
+                return fallback;
+            }
+            if (p.exitValue() != 0) return fallback;
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = r.readLine()) != null) sb.append(line).append("\n");
+                return sb.toString().trim();
+            }
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+
+    /** Minimal JSON string escape for backslash and double-quote (sufficient for paths). */
+    private static String jsonEscape(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     /**

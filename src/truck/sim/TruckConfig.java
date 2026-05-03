@@ -254,9 +254,22 @@ public class TruckConfig {
         try (FileInputStream fis = new FileInputStream(configPath)) {
             properties.load(fis);
             parseProperties();
+            this.configFilePath = configPath;
             System.out.println("[✓] Configuration loaded from: " + configPath);
         }
     }
+
+    /**
+     * Path of the .properties file most recently loaded via {@link #loadFromFile}.
+     * Captured into {@code run_metadata.json} by {@link TruckDataExporter}
+     * for downstream provenance tracking. Returns "unknown" if no file has
+     * been loaded yet (e.g., when constants/defaults are used directly).
+     */
+    public String getConfigFilePath() {
+        return configFilePath != null ? configFilePath : "unknown";
+    }
+
+    private String configFilePath;
     
     /**
      * Parse all properties from loaded file.

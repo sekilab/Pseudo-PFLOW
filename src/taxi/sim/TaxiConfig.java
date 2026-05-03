@@ -28,6 +28,17 @@ public class TaxiConfig {
 
     private static TaxiConfig instance;
 
+    /**
+     * Path of the .properties file most recently loaded via {@link #loadFromFile}.
+     * Captured into {@code run_metadata.json} by {@link TaxiDataExporter} for
+     * downstream provenance tracking. "unknown" if no file has been loaded.
+     */
+    private String configFilePath;
+
+    public String getConfigFilePath() {
+        return configFilePath != null ? configFilePath : "unknown";
+    }
+
     // ═══ Directories ═══
     /** Input data directory path. Resolved via PathResolver. */
     private String inputDirectory = "./data/input/";
@@ -391,6 +402,7 @@ public class TaxiConfig {
      * @return true if loaded successfully, false otherwise
      */
     public boolean loadFromFile(String configPath) {
+        this.configFilePath = configPath;
         Properties props = new Properties();
 
         try (FileInputStream fis = new FileInputStream(configPath)) {
