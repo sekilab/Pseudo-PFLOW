@@ -106,8 +106,8 @@ public class MeshVolumeCalculator {
         String outputDir = String.format("%s/mesh_volume/", dir);
         //String input = "/home/ubuntu/Data/pseudo/trajectory/city/";
         //String output = "/home/ubuntu/Data/pseudo/mesh_volume.csv";
-        int start = 22;
-        int end = 22;
+        int start = 13;
+        int end = 13;
 
         for (int i = start; i <=end; i++) {
             // create directory

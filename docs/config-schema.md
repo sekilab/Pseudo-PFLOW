@@ -51,6 +51,19 @@ Each `taxi_config.properties` carries ~80 parameters: fleet, fare schedule,
 agent-type mix, shift structure, demand zones, diagnostic toggles. See
 `config/taxi/README.md` for the per-property reference.
 
+### Tokyo-only scenario variants
+
+Tokyo has additional config variants for subsample testing and PRHS scenarios:
+
+| File | Role |
+|---|---|
+| `taxi_config_1pct.properties` | 1 % subsample (FY2019 baseline) |
+| `taxi_config_5pct.properties` | 5 % subsample (FY2019 baseline) |
+| `taxi_config_tokyo_r8.properties` | PRHS Scenario B — R8 contracted (1 window); see `references/taxi_data_sources/DESIGN.md` |
+
+GSA-related artifacts in Tokyo (`gsa_params.csv`, `morris_results.csv`, `sobol_results.csv`)
+are sensitivity-analysis aggregates, not configs — see `gsa-lead` agent.
+
 ## `config/archive/`
 
 Historical configs preserved for traceability. Not loaded by current runs.

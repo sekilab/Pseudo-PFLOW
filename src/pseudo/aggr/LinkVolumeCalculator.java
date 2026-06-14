@@ -64,8 +64,8 @@ public class LinkVolumeCalculator {
         dir = PathResolver.resolve(prop.getProperty("root"));
         String inputDir = String.format("%s/trajectory/", dir);
         String outputDir = String.format("%s/link_volume/", dir);
-        int start = 22;
-        int end = 22;
+        int start = 13;
+        int end = 13;
 
 		//String input = "/home/ubuntu/Data/pseudo/trajectory/city/"; //args[0];
 		//String output = "/home/ubuntu/Data/pseudo/link_volume.csv";//args[1];
