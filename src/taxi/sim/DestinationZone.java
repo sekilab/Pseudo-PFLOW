@@ -34,6 +34,13 @@ public class DestinationZone {
     private double nearestAirportDistKm = Double.MAX_VALUE;
     private String nearestAirportName = null;
 
+    // W19 (2026-05): Land-use signature, pre-computed at zone init.
+    // One of {@link LanduseRasterReader#LU_UNKNOWN, LU_RESIDENTIAL,
+    // LU_INDUSTRIAL, LU_COMMERCIAL, LU_MIXED_OR_GREEN}. Defaults to UNKNOWN
+    // (no multiplier applied), allowing the simulation to run with the
+    // raster missing (graceful degradation).
+    private int landuseClass = LanduseRasterReader.LU_UNKNOWN;
+
     /**
      * Constructor for DestinationZone (V4.0 with zone type and transport hub)
      */
@@ -54,7 +61,13 @@ public class DestinationZone {
     }
 
     /**
-     * Calculate attractiveness score for a given time period
+     * Calculate attractiveness score (legacy 5-arg signature; preserved for
+     * backward compatibility with pre-W19 callers).
+     *
+     * <p>Delegates to {@link #calculateAttractiveness(int, int, double, double, double, double)}
+     * with {@code dayOfWeek = 1} (Monday — neutral weekday) so the original
+     * calibration is exactly reproduced when callers do not opt into the
+     * weekday-aware path.
      *
      * @param timePeriod 0=daytime (6-18), 1=evening (18-24), 2=night (0-6)
      * @param beta1 coefficient for jobs
@@ -64,6 +77,38 @@ public class DestinationZone {
      * @return attractiveness score
      */
     public double calculateAttractiveness(int timePeriod, double beta1, double beta2,
+                                          double beta3, double beta4) {
+        return calculateAttractiveness(timePeriod, 1, beta1, beta2, beta3, beta4);
+    }
+
+    /**
+     * Calculate attractiveness score for a given time period and day of week
+     * (W19 enhancement, addressing professor review comment on time/space-varying
+     * demand). Adds two orthogonal factors on top of the legacy time-period
+     * multiplier:
+     *
+     * <ol>
+     *   <li><b>Weekday/weekend modulation</b>: weekend (Sat=6, Sun=0) shifts
+     *       demand toward shops/nightlife/residential by +20% and away from
+     *       jobs by −15%, matching THTA monthly-report patterns. The default
+     *       coefficients are conservative; per-zone-type tuning lives in
+     *       config keys {@code taxi.demand.weekend.jobs.factor} etc.</li>
+     *   <li><b>Land-use multiplier</b>: zones in commercial land use receive
+     *       1.15× boost, residential 1.10×, industrial 0.85×. Multiplier is
+     *       1.0× for {@link LanduseRasterReader#LU_UNKNOWN} (no raster
+     *       available — graceful degradation).</li>
+     * </ol>
+     *
+     * @param timePeriod 0=daytime (6-18), 1=evening (18-24), 2=night (0-6)
+     * @param dayOfWeek 0=Sun, 1=Mon, ..., 6=Sat (per java.time.DayOfWeek - 1)
+     * @param beta1 coefficient for jobs
+     * @param beta2 coefficient for shops
+     * @param beta3 coefficient for nightlife
+     * @param beta4 coefficient for residential
+     * @return attractiveness score (time × weekday × landuse × station-boost)
+     */
+    public double calculateAttractiveness(int timePeriod, int dayOfWeek,
+                                          double beta1, double beta2,
                                           double beta3, double beta4) {
         // Base attractiveness from zone characteristics
         double baseScore = beta1 * jobsWeight +
@@ -107,7 +152,31 @@ public class DestinationZone {
             transportBoost *= 1.15; // Double station
         }
 
-        return baseScore * timeMultiplier * transportBoost;
+        // W19: Weekday/weekend modulation (orthogonal to time-of-day).
+        // Defaults match observed Tokyo patterns; per-zone-type config override possible.
+        double weekdayMultiplier = 1.0;
+        boolean isWeekend = (dayOfWeek == 0 /*Sun*/ || dayOfWeek == 6 /*Sat*/);
+        if (isWeekend) {
+            // Weekend: shops/nightlife/residential up, jobs down
+            if (shopsWeight > 0.5)        weekdayMultiplier *= 1.20;
+            if (nightlifeWeight > 0.5)    weekdayMultiplier *= 1.20;
+            if (residentialWeight > 0.5)  weekdayMultiplier *= 1.10;
+            if (jobsWeight > 0.5)         weekdayMultiplier *= 0.85;
+        }
+
+        // W19: Land-use multiplier (1.0× if raster not loaded).
+        double landuseMultiplier = 1.0;
+        switch (landuseClass) {
+            case LanduseRasterReader.LU_COMMERCIAL:    landuseMultiplier = 1.15; break;
+            case LanduseRasterReader.LU_RESIDENTIAL:   landuseMultiplier = 1.10; break;
+            case LanduseRasterReader.LU_INDUSTRIAL:    landuseMultiplier = 0.85; break;
+            case LanduseRasterReader.LU_MIXED_OR_GREEN: landuseMultiplier = 1.00; break;
+            case LanduseRasterReader.LU_UNKNOWN:
+            default:                                    landuseMultiplier = 1.00; break;
+        }
+
+        return baseScore * timeMultiplier * transportBoost
+             * weekdayMultiplier * landuseMultiplier;
     }
 
     /**
@@ -188,6 +257,10 @@ public class DestinationZone {
     public int getStationsWithin1km() { return stationsWithin1km; }
     public double getNearestAirportDistKm() { return nearestAirportDistKm; }
     public String getNearestAirportName() { return nearestAirportName; }
+
+    // W19: Land-use signature accessors
+    public int getLanduseClass() { return landuseClass; }
+    public void setLanduseClass(int landuseClass) { this.landuseClass = landuseClass; }
 
     /** @return true if a railway station is within 2km of zone center */
     public boolean isNearStation() { return nearestStationDistKm < 2.0; }
